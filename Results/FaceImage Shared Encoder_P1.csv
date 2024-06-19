@@ -1,0 +1,2 @@
+Full data size,Testing data size,Recall,Precision,F1,Accuracy,AOD,Avg. Difference,Spearman's rank correlation
+1000,200,0.8126272912423625,0.8036253776435045,0.8081012658227849,0.8105,-0.235233798195242,35.78,0.675
