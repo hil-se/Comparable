@@ -1,13 +1,17 @@
-import tensorflow as tf
-import DualEncoder
-import SharedDualEncoder
 import numpy as np
 import pandas as pd
+import tensorflow as tf
+from scipy import stats
+
+import DualEncoder
+import SharedDualEncoder
+import metrics
+
 
 def learn(train_data,
-          epochs = 100,
+          epochs=100,
           validation_data=None,
-          y_true = [],
+          y_true=[],
           patience=10,
           batch_size=256,
           shared=False):
@@ -30,15 +34,15 @@ def learn(train_data,
 
     train_dataset = train_dataset.batch(batch_size)
     val_dataset = val_dataset.batch(batch_size)
-    if shared==True:
+    if shared == True:
         encoder = SharedDualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
         dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
     else:
         encoder_A = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
         encoder_B = DualEncoder.create_encoder(input_size=val_dataset.element_spec['A'].shape[1])
         dual_encoder = DualEncoder.DualEncoderAll(encoder_A, encoder_B, y_true=np.array(y_true))
-    dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001))
-    # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
+    # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001))
+    dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
     dual_encoder.fit(
         x=train_dataset,
@@ -49,11 +53,13 @@ def learn(train_data,
     )
     return dual_encoder
 
+
 def train_model(train, val, y_true, epochs=100, shared=False):
     np.random.shuffle(train.values)
     np.random.shuffle(val.values)
     dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared)
     return dual_encoder
+
 
 def test_model(test, dual_encoder):
     dataA = test["A"].tolist()
@@ -67,9 +73,9 @@ def test_model(test, dual_encoder):
         datapoint_A = np.expand_dims(datapoint_A, axis=0)
         datapoint_B = np.expand_dims(datapoint_B, axis=0)
         prediction = dual_encoder.predict(datapoint_A, datapoint_B)
-        
+
         # prediction = round(prediction.numpy()[0][0].item()) # Labels in [0, 1]
-        
+
         prediction = prediction.numpy()[0][0].item()
 
         # Labels: -1, 0, 1
@@ -85,19 +91,21 @@ def test_model(test, dual_encoder):
         #     prediction=-1
         # else:
         #     prediction=1
-        
+
         predictions.append(prediction)
-    # return evaluate(labels, predictions)
-    return evaluate_accuracy(labels, predictions)
+    return evaluate(labels, predictions)
+    # return evaluate_accuracy(labels, predictions)
+
 
 def evaluate_accuracy(y_true, y_pred):
     matches = 0
     ln = len(y_true)
     for i in range(ln):
-        if y_pred[i]==y_true[i]:
-            matches+=1
-    accuracy = matches/ln
+        if y_pred[i] == y_true[i]:
+            matches += 1
+    accuracy = matches / ln
     return accuracy
+
 
 def evaluate(y_true, y_pred):
     TP = 0
@@ -112,25 +120,50 @@ def evaluate(y_true, y_pred):
     for i in range(ln):
         label = y_true[i]
         prediction = y_pred[i]
-        if label==1:
-            if prediction==1:
-                TP+=1
+        if label == 1:
+            if prediction == 1:
+                TP += 1
             else:
-                FN+=1
+                FN += 1
         else:
-            if prediction==1:
-                FP+=1
+            if prediction == 1:
+                FP += 1
             else:
-                TN+=1
-    if (TP+FP)!=0:
-        precision = TP/(TP+FP)
-    if (TP+FN)!=0:
-        recall = TP/(TP+FN)
-    if (recall+precision)!=0:
-        F1 = (2*recall*precision)/(recall+precision)
-    if (TP+FP+TN+FN)!=0:
-        accuracy = (TP+TN)/(TP+FP+TN+FN)
+                TN += 1
+    if (TP + FP) != 0:
+        precision = TP / (TP + FP)
+    if (TP + FN) != 0:
+        recall = TP / (TP + FN)
+    if (recall + precision) != 0:
+        F1 = (2 * recall * precision) / (recall + precision)
+    if (TP + FP + TN + FN) != 0:
+        accuracy = (TP + TN) / (TP + FP + TN + FN)
     return recall, precision, F1, accuracy
+
+
+# def generateLists(test_dataset, dual_encoder):
+#     # realList = {}
+#     # predList = {}
+#     realList = []
+#     predList = []
+#     for index, row in test_dataset.iterrows():
+#         idName = row["indexA"]
+#         datapoint = np.array(row["A"])
+#         real_score = row["Score"]
+#         datapoint = np.expand_dims(datapoint, axis=0)
+#         pred_score = dual_encoder.score(datapoint)
+#         pred_score = pred_score.numpy()[0][0].item()
+#         # realList[idName] = real_score
+#         # predList[idName] = pred_score
+#         realList.append({"id": idName, "Score": real_score})
+#         predList.append({"id": idName, "Score": pred_score})
+#     realList = pd.DataFrame(realList)
+#     predList = pd.DataFrame(predList)
+#     realList.sort_values(by=['Score'], inplace=True)
+#     predList.sort_values(by=['Score'], inplace=True)
+#     realList = realList.reset_index()
+#     predList = predList.reset_index()
+#     return realList, predList
 
 def generateLists(test_dataset, dual_encoder):
     # realList = {}
@@ -150,11 +183,18 @@ def generateLists(test_dataset, dual_encoder):
         predList.append({"id": idName, "Score": pred_score})
     realList = pd.DataFrame(realList)
     predList = pd.DataFrame(predList)
-    realList.sort_values(by=['Score'], inplace=True)
-    predList.sort_values(by=['Score'], inplace=True)
-    realList = realList.reset_index()
-    predList = predList.reset_index()
-    return realList, predList
+
+    m_comp = metrics.Metrics(realList["Score"], predList["Score"])
+
+    [spearmanr, sp_pvalue] = stats.spearmanr(realList["Score"], predList["Score"])
+    [pearsonr, p_pvalue] = stats.pearsonr(realList["Score"], predList["Score"])
+
+    # realList.sort_values(by=['Score'], inplace=True)
+    # predList.sort_values(by=['Score'], inplace=True)
+    # realList = realList.reset_index()
+    # predList = predList.reset_index()
+    return spearmanr, sp_pvalue, pearsonr, p_pvalue
+
 
 def evaluateLists(realList, predList):
     realList = realList["id"].tolist()
@@ -165,12 +205,13 @@ def evaluateLists(realList, predList):
     for i in range(ln):
         id = realList[i]
         j = predList.index(id)
-        diff+=(abs(i-j))
-        sum_d+=((i-j)*(i-j))
-    spearman_corr = 1 - ((6*sum_d)/(ln*((ln*ln)-1)))
+        diff += (abs(i - j))
+        sum_d += ((i - j) * (i - j))
+    spearman_corr = 1 - ((6 * sum_d) / (ln * ((ln * ln) - 1)))
     spearman_corr = round(spearman_corr, 3)
-    avg_diff = round(diff/ln, 3)
+    avg_diff = round(diff / ln, 3)
     return avg_diff, spearman_corr
+
 
 def explainability(test_dataset, feat_list, dual_encoder):
     res = []
@@ -191,7 +232,7 @@ def explainability(test_dataset, feat_list, dual_encoder):
         t_real["Score"] = real_score
         res.append(t_real)
 
-        t_weights= {"id": idName}
+        t_weights = {"id": idName}
         t_weights["Type"] = "Weighted features"
         weighted_feats = (np.multiply(np.array(row["A"]), grad)).tolist()
         for i in range(len(feat_list)):
@@ -201,8 +242,6 @@ def explainability(test_dataset, feat_list, dual_encoder):
         res.append({})
     res = pd.DataFrame(res)
     return res
-
-
 
 # def comparabilityExperiment(shared=False, dataName="Boston", testList=None, dataList=None, feat_list=None, epochs=100):
 #     r = Reader()
@@ -246,4 +285,3 @@ def explainability(test_dataset, feat_list, dual_encoder):
 #
 #     # return recall, precision, F1, accuracy, avg_diff, avg_diff_full, spearman_corr, spearman_corr_full
 #     return accuracy, avg_diff, avg_diff_full, spearman_corr, spearman_corr_full
-

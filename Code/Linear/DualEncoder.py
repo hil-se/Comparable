@@ -1,7 +1,7 @@
 import tensorflow as tf
+
 K = tf.keras.backend
-import pandas as pd
-import math
+
 
 def create_encoder(input_size):
     input = tf.keras.layers.Input(shape=(input_size,))
@@ -9,6 +9,7 @@ def create_encoder(input_size):
     output = tf.keras.layers.Dense(1, activation='linear')(x)
     # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
     return tf.keras.models.Model(inputs=input, outputs=output)
+
 
 class DualEncoderAll(tf.keras.Model):
     def __init__(self, source_encoder, target_encoder, y_true, **kwargs):
@@ -37,7 +38,7 @@ class DualEncoderAll(tf.keras.Model):
         # pred = (encodings_A + encodings_B)/2
         pred = encodings_A - encodings_B
         y = tf.cast(y, tf.float32)
-        
+
         loss = tf.math.abs(y - pred)
 
         # Hinge loss
@@ -78,15 +79,15 @@ class DualEncoderAll(tf.keras.Model):
         return {"loss": self.loss_tracker.result()}
 
     def predict(self, A, B):
-        return self.encoder_A(A)-self.encoder_B(B)
+        return self.encoder_A(A) - self.encoder_B(B)
 
     def score(self, input):
-        return (self.encoder_A(input) + self.encoder_B(input))/2
+        return (self.encoder_A(input) + self.encoder_B(input)) / 2
 
     def save(self, path):
-        self.encoder_A.save_weights(path+"_A")
-        self.encoder_B.save_weights(path+"_B")
+        self.encoder_A.save_weights(path + "_A")
+        self.encoder_B.save_weights(path + "_B")
 
     def load(self, path):
-        self.encoder_A.load_weights(path+"_A")
-        self.encoder_B.load_weights(path+"_B")
+        self.encoder_A.load_weights(path + "_A")
+        self.encoder_B.load_weights(path + "_B")

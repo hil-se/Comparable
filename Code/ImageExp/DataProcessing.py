@@ -93,6 +93,10 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                                "B": rowB["Filename"],
                                "Label": label
                                })
+                res_tr.append({"A": rowB["Filename"],
+                               "B": rowA["Filename"],
+                               "Label": -label
+                               })
                 comp.append(indexB)
     data_tr = pd.DataFrame(res_tr)
     data_tr['A'] = data_tr['A'].apply(retrievePixels).div(255.0)
@@ -106,7 +110,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         # for indexB, rowB in test.iterrows():
         #     if (indexA == indexB) or (protected_ts[indexA] == protected_ts[indexB]):
         #         continue
-        while len(comp) < 10:
+        while len(comp) < num_comp:
             indexB = random.randint(0, len(test) - 1)
             rowB = test.iloc[indexB]
             if (indexA == indexB) or (indexB in comp) or (protected_ts[indexA] == protected_ts[indexB]):
@@ -122,6 +126,10 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                 res_ts.append({"A": rowA["Filename"],
                                "B": rowB["Filename"],
                                "Label": label
+                               })
+                res_ts.append({"A": rowB["Filename"],
+                               "B": rowA["Filename"],
+                               "Label": -label
                                })
                 comp.append(indexB)
     data_ts = pd.DataFrame(res_ts)
@@ -181,7 +189,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     data_list = pd.DataFrame(data_list)
     data_list['A'] = data_list['A'].apply(retrievePixels)
 
-    return data_tr, data_ts, test_list, data_list, len(data_list.index), len(
-        test_list.index), protected_ts_AB, train, test, protected_ts
+    return data_tr, data_ts, test_list, data_list, len(data_tr.index), len(
+        data_ts.index), protected_ts_AB, train, test, protected_ts
 
 # processData()

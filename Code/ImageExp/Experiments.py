@@ -35,7 +35,7 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             height=height,
             width=width,
             protected=protected,
-            protected_ts = protected_ts)
+            protected_ts=protected_ts)
         # result_reg = {"Full data size": full_len, "Testing data size": test_len,
         #               "MSE": mse, "R2": r2, "P Coef": p_coef,
         #               "P Value": p_value, "SP Coef": s_coef,

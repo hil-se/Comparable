@@ -1,10 +1,10 @@
-import random
-import DualEncoder
-import SharedDualEncoder
-import Classification
-import pandas as pd
-from sklearn.svm import SVC,LinearSVC
 import os
+import random
+
+import pandas as pd
+from sklearn.svm import LinearSVC
+
+import Classification
 
 path = "../../Data/landmark_txt/"
 os.chdir(path)
@@ -16,7 +16,7 @@ final_results_encoder = []
 
 dataName = "SCUT"
 iterations = 5
-num_comp = 50
+num_comp = 5
 global col
 
 for i in range(iterations):
@@ -40,7 +40,7 @@ for i in range(iterations):
         for index, row in df.iterrows():
             region = str(row["region"])
             df.loc[index, region] = 1
-        df = df.drop(["share_borders", "region","country"], axis=1)
+        df = df.drop(["share_borders", "region", "country"], axis=1)
         features = list(df.columns)
         for feature in features:
             if feature == "WorldHappiness2022" or feature == "country":
@@ -56,13 +56,13 @@ for i in range(iterations):
         df = []
         col = 'attractiveness'
 
-        All_labels = pd.read_csv("../../Data/ImageExp/All_labels.txt", sep=" ", header=None, names=["File","label"])
+        All_labels = pd.read_csv("../../Data/ImageExp/All_labels.txt", sep=" ", header=None, names=["File", "label"])
 
         for file in os.listdir():
             # Check whether file is in text format or not
             if file.endswith(".txt"):
                 lm = pd.read_csv(path + file, sep=" ", header=None).to_numpy().flatten().tolist()
-                label = All_labels.loc[All_labels['File'] == file.replace(".txt",'.jpg')]["label"].values[0]
+                label = All_labels.loc[All_labels['File'] == file.replace(".txt", '.jpg')]["label"].values[0]
                 lm.append(label)
                 df.append(lm)
 
@@ -84,6 +84,7 @@ for i in range(iterations):
     res_tr_encoder = []
     res_ts_encoder = []
     test_list = []
+    protected_ts = []
 
     for indexA, rowA in train.iterrows():
         comp = []
@@ -92,9 +93,9 @@ for i in range(iterations):
             rowB = train.iloc[indexB]
             if (indexA == indexB) or (indexB in comp):
                 continue
-        # for indexB, rowB in train.iterrows():
-        #     if (indexA == indexB):
-        #         continue
+            # for indexB, rowB in train.iterrows():
+            #     if (indexA == indexB):
+            #         continue
             ratingA = rowA[col]
             ratingB = rowB[col]
             label = 0
@@ -112,12 +113,15 @@ for i in range(iterations):
                                        "B": trainB.to_list(),
                                        "Label": label
                                        })
+                res_tr_encoder.append({"A": trainB.to_list(),
+                                       "B": trainA.to_list(),
+                                       "Label": -label
+                                       })
 
                 comp.append(indexB)
 
     data_tr = pd.DataFrame(res_tr)
     data_tr_encoder = pd.DataFrame(res_tr_encoder)
-
 
     for indexA, rowA in test.iterrows():
         comp = []
@@ -126,9 +130,9 @@ for i in range(iterations):
             rowB = test.iloc[indexB]
             if (indexA == indexB) or (indexB in comp):
                 continue
-        # for indexB, rowB in test.iterrows():
-        #     if (indexA == indexB):
-        #         continue
+            # for indexB, rowB in test.iterrows():
+            #     if (indexA == indexB):
+            #         continue
             ratingA = rowA[col]
             ratingB = rowB[col]
             label = 0
@@ -145,6 +149,10 @@ for i in range(iterations):
                 res_ts_encoder.append({"A": testA.to_list(),
                                        "B": testB.to_list(),
                                        "Label": label
+                                       })
+                res_ts_encoder.append({"A": testB.to_list(),
+                                       "B": testA.to_list(),
+                                       "Label": -label
                                        })
 
                 comp.append(indexB)
@@ -187,24 +195,25 @@ for i in range(iterations):
 
     dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500)
 
-    accuracy_encoder = Classification.test_model(data_ts_encoder, dual_encoder)
-    realList, predList = Classification.generateLists(test_list, dual_encoder)
-    avg_diff, spearman_corr = Classification.evaluateLists(realList, predList)
-
+    recall, precision, F1, accuracy = Classification.test_model(data_ts_encoder, dual_encoder)
+    spearmanr, sp_pvalue, pearsonr, p_pvalue = Classification.generateLists(test_list, dual_encoder)
 
     result_encoder = {"Full data size": len(train), "Testing data size": len(test),
-              "Accuracy": accuracy_encoder, "Spearman coef": spearman_corr}
+                      "Recall": recall, "Precision": precision, "F1": F1,
+                      "Accuracy": accuracy, "Spearman coef": spearmanr,
+                      "Spearman P": sp_pvalue,
+                      "Pearson coef": pearsonr, "Pearson P": p_pvalue}
 
     final_results_encoder.append(result_encoder)
 
 final_results = pd.DataFrame(final_results)
-final_results.to_csv("../../Code/Qian/" + dataName + " Reg_" + str(num_comp) + ".csv", index=False)
+final_results.to_csv("../../Results/" + dataName + " Reg_" + str(num_comp) + ".csv", index=False)
 
 final_results_encoder = pd.DataFrame(final_results_encoder)
-final_results_encoder.to_csv("../../Code/Qian/" + dataName + " Encoder_" + str(num_comp) + ".csv", index=False)
+final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + str(num_comp) + ".csv", index=False)
 
-#debug the encoder
-#experiment on face beauty data
-#change cnn to a naive linear model (train with SGD)
-#include pearson's coef
-#create pairs of comparison for dual encoder model
+# debug the encoder
+# experiment on face beauty data
+# change cnn to a naive linear model (train with SGD)
+# include pearson's coef
+# create pairs of comparison for dual encoder model

@@ -1,14 +1,15 @@
 import tensorflow as tf
+
 K = tf.keras.backend
-import pandas as pd
-import math
+
 
 def create_encoder(input_size):
     input = tf.keras.layers.Input(shape=(input_size,))
-    x = tf.keras.layers.Dense(32, activation='relu')(input)
-    output = tf.keras.layers.Dense(1, activation='linear')(x)
+    # x = tf.keras.layers.Dense(32, activation='relu')(input)
+    output = tf.keras.layers.Dense(1, activation='linear')(input)
     # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
     return tf.keras.models.Model(inputs=input, outputs=output)
+
 
 class DualEncoderAll(tf.keras.Model):
     def __init__(self, encoder, y_true, **kwargs):
@@ -77,7 +78,7 @@ class DualEncoderAll(tf.keras.Model):
         return {"loss": self.loss_tracker.result()}
 
     def predict(self, A, B):
-        return self.encoder(A)-self.encoder(B)
+        return self.encoder(A) - self.encoder(B)
 
     def output_grad(self, inputs):
         with tf.GradientTape() as tape:
@@ -89,9 +90,9 @@ class DualEncoderAll(tf.keras.Model):
         return self.encoder(input)
 
     def save(self, path):
-        self.encoder.save_weights(path+"_A")
-        self.encoder.save_weights(path+"_B")
+        self.encoder.save_weights(path + "_A")
+        self.encoder.save_weights(path + "_B")
 
     def load(self, path):
-        self.encoder.load_weights(path+"_A")
-        self.encoder.load_weights(path+"_B")
+        self.encoder.load_weights(path + "_A")
+        self.encoder.load_weights(path + "_B")
