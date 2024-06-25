@@ -16,7 +16,7 @@ final_results_encoder = []
 
 dataName = "SCUT"
 iterations = 5
-num_comp = 5
+num_comp = 10
 global col
 
 for i in range(iterations):
@@ -54,15 +54,15 @@ for i in range(iterations):
     elif dataName == "SCUT":
 
         df = []
-        col = 'attractiveness'
+        col = 'Average'
 
-        All_labels = pd.read_csv("../../Data/ImageExp/All_labels.txt", sep=" ", header=None, names=["File", "label"])
+        All_labels = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
 
         for file in os.listdir():
             # Check whether file is in text format or not
             if file.endswith(".txt"):
                 lm = pd.read_csv(path + file, sep=" ", header=None).to_numpy().flatten().tolist()
-                label = All_labels.loc[All_labels['File'] == file.replace(".txt", '.jpg')]["label"].values[0]
+                label = All_labels.loc[All_labels['Filename'] == file.replace(".txt", '.jpg')][col].values[0]
                 lm.append(label)
                 df.append(lm)
 
@@ -207,10 +207,10 @@ for i in range(iterations):
     final_results_encoder.append(result_encoder)
 
 final_results = pd.DataFrame(final_results)
-final_results.to_csv("../../Results/" + dataName + " Reg_" + str(num_comp) + ".csv", index=False)
+final_results.to_csv("../../Results/" + dataName + " Reg_" + col + "_"+ str(num_comp) + ".csv", index=False)
 
 final_results_encoder = pd.DataFrame(final_results_encoder)
-final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + str(num_comp) + ".csv", index=False)
+final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "_"+ str(num_comp) + ".csv", index=False)
 
 # debug the encoder
 # experiment on face beauty data
