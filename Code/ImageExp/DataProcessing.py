@@ -43,32 +43,35 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
-    protected_tr = []
-    protected_ts = []
+    protected_tr_race = []
+    protected_ts_race = []
+
+    protected_tr_sex = []
+    protected_ts_sex = []
 
     # for file in train["Filename"]:
     #     if file[1] == 'M':
-    #         protected_tr.append(1)
+    #         protected_tr_sex.append(1)
     #     else:
-    #         protected_tr.append(0)
+    #         protected_tr_sex.append(0)
     #
-    # for file in test["Filename"]:
-    #     if file[1] == 'M':
-    #         protected_ts.append(1)
-    #     else:
-    #         protected_ts.append(0)
-
-    for file in train["Filename"]:
-        if file[0] == 'C':
-            protected_tr.append(1)
+    for file in test["Filename"]:
+        if file[1] == 'M':
+            protected_ts_sex.append(1)
         else:
-            protected_tr.append(0)
-
+            protected_ts_sex.append(0)
+    #
+    # for file in train["Filename"]:
+    #     if file[0] == 'C':
+    #         protected_tr_race.append(1)
+    #     else:
+    #         protected_tr_race.append(0)
+    #
     for file in test["Filename"]:
         if file[0] == 'C':
-            protected_ts.append(1)
+            protected_ts_race.append(1)
         else:
-            protected_ts.append(0)
+            protected_ts_race.append(0)
 
     res_tr = []
     res_ts = []
@@ -79,7 +82,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         while len(comp) < num_comp:
             indexB = random.randint(0, len(train) - 1)
             rowB = train.iloc[indexB]
-            if (indexA == indexB) or (indexB in comp) or (protected_tr[indexA] == protected_tr[indexB]):
+            if (indexA == indexB) or (indexB in comp):
                 continue
             ratingA = rowA[col]
             ratingB = rowB[col]
@@ -113,7 +116,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         while len(comp) < num_comp:
             indexB = random.randint(0, len(test) - 1)
             rowB = test.iloc[indexB]
-            if (indexA == indexB) or (indexB in comp) or (protected_ts[indexA] == protected_ts[indexB]):
+            if (indexA == indexB) or (indexB in comp):
                 continue
             ratingA = rowA[col]
             ratingB = rowB[col]
@@ -134,36 +137,44 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                 comp.append(indexB)
     data_ts = pd.DataFrame(res_ts)
 
-    protected_ts_A = []
-    protected_ts_B = []
+    protected_ts_A_sex = []
+    protected_ts_B_sex = []
 
-    # for file in data_ts["A"]:
-    #     if file[1] == 'M':
-    #         protected_ts_A.append(1)
-    #     else:
-    #         protected_ts_A.append(0)
-    #
-    # for file in data_ts["B"]:
-    #     if file[1] == 'M':
-    #         protected_ts_B.append(1)
-    #     else:
-    #         protected_ts_B.append(0)
+    protected_ts_A_race = []
+    protected_ts_B_race = []
+
+    for file in data_ts["A"]:
+        if file[1] == 'M':
+            protected_ts_A_sex.append(1)
+        else:
+            protected_ts_A_sex.append(0)
+
+    for file in data_ts["B"]:
+        if file[1] == 'M':
+            protected_ts_B_sex.append(1)
+        else:
+            protected_ts_B_sex.append(0)
 
     for file in data_ts["A"]:
         if file[0] == 'C':
-            protected_ts_A.append(1)
+            protected_ts_A_race.append(1)
         else:
-            protected_ts_A.append(0)
+            protected_ts_A_race.append(0)
 
     for file in data_ts["B"]:
         if file[0] == 'C':
-            protected_ts_B.append(1)
+            protected_ts_B_race.append(1)
         else:
-            protected_ts_B.append(0)
+            protected_ts_B_race.append(0)
 
-    protected_ts_AB = pd.DataFrame({
-        "A": protected_ts_A,
-        "B": protected_ts_B
+    protected_ts_AB_race = pd.DataFrame({
+        "A": protected_ts_A_race,
+        "B": protected_ts_B_race
+    })
+
+    protected_ts_AB_sex = pd.DataFrame({
+        "A": protected_ts_A_sex,
+        "B": protected_ts_B_sex
     })
 
     data_ts['A'] = data_ts['A'].apply(retrievePixels).div(255.0)
@@ -190,6 +201,6 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     data_list['A'] = data_list['A'].apply(retrievePixels)
 
     return data_tr, data_ts, test_list, data_list, len(data_tr.index), len(
-        data_ts.index), protected_ts_AB, train, test, protected_ts
+        data_ts.index), train, test, protected_ts_race, protected_ts_sex, protected_ts_AB_race, protected_ts_AB_sex
 
 # processData()

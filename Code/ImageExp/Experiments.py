@@ -4,7 +4,7 @@ import Classification as cl
 import DataProcessing as dp
 
 num_comp = 1
-num_img = 5500
+num_img = 100
 
 iterations = 5
 
@@ -15,18 +15,19 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
     for i in range(iterations):
         print("Iteration:", i + 1, "/", iterations)
         print("Generating data...")
-        training_data, testing_data, testList, dataList, full_len, test_len, protected, train, test, protected_ts = dp.processData(
+        training_data, testing_data, testList, dataList, full_len, test_len, train, test, protected_ts_race, protected_ts_sex, protected_ts_AB_race, protected_ts_AB_sex = dp.processData(
             h=height, w=width, col=col, num_comp=num_comp, num_img=num_img)
         print("Data generated.")
 
-        # mse, r2, p_coef, p_value, s_coef, s_value, MI, r_sep, accuracy_r, f1_r, precision_r, recall_r = cl.regressionExperiment(
-        #     train_val=train,
-        #     test=test,
-        #     comp_test=testing_data,
-        #     height=height,
-        #     width=width, col=col)
+        mse, r2, p_coef, p_value, s_coef, s_value, MI_race, MI_sex, r_sep_race, r_sep_sex, accuracy_r, f1_r, precision_r, recall_r = cl.regressionExperiment(
+            train_val=train,
+            test=test,
+            comp_test=testing_data,
+            height=height,
+            width=width, col=col,
+            protected_ts_race=protected_ts_race, protected_ts_sex=protected_ts_sex)
 
-        recall, precision, f1, acc, AOD, spearmanr, sp_pvalue, pearsonr, p_pvalue, MI = cl.comparabilityExperiment(
+        recall, precision, f1, acc, AOD_race, AOD_sex, spearmanr, sp_pvalue, pearsonr, p_pvalue, MI_encoder_race, MI_encoder_sex = cl.comparabilityExperiment(
             dataName="FaceImage",
             train_val=training_data,
             test=testing_data,
@@ -34,8 +35,8 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             dataList=dataList,
             height=height,
             width=width,
-            protected=protected,
-            protected_ts=protected_ts)
+            protected_ts_race=protected_ts_race, protected_ts_sex=protected_ts_sex,
+            protected_ts_AB_race=protected_ts_AB_race, protected_ts_AB_sex=protected_ts_AB_sex)
         # result_reg = {"Full data size": full_len, "Testing data size": test_len,
         #               "MSE": mse, "R2": r2, "P Coef": p_coef,
         #               "P Value": p_value, "SP Coef": s_coef,
@@ -44,8 +45,10 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
 
         result = {"Full data size": full_len, "Testing data size": test_len,
                   "Recall": recall, "Precision": precision, "F1": f1, "Accuracy": acc,
-                  "AOD": AOD, "Spearman's rank correlation": spearmanr, "SP value": sp_pvalue,
-                  "Pearson's rank correlation": pearsonr, "P value": p_pvalue, "MI": MI}
+                  "AOD_race": AOD_race, "AOD_sex": AOD_sex, "Spearman's rank correlation": spearmanr,
+                  "SP value": sp_pvalue,
+                  "Pearson's rank correlation": pearsonr, "P value": p_pvalue, "MI_race": MI_race, "MI_sex": MI_sex,
+                  "MI_encoder_race": MI_encoder_race, "MI_encoder_sex": MI_encoder_sex}
         # print(result)
         final_results.append(result)
         # final_results_reg.append(result_reg)

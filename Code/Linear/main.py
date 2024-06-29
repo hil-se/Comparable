@@ -207,13 +207,17 @@ for i in range(iterations):
     final_results_encoder.append(result_encoder)
 
 final_results = pd.DataFrame(final_results)
-final_results.to_csv("../../Results/" + dataName + " Reg_" + col + "_"+ str(num_comp) + ".csv", index=False)
+final_results.to_csv("../../Results/" + dataName + " Reg_" + col + "_" + str(num_comp) + ".csv", index=False)
 
 final_results_encoder = pd.DataFrame(final_results_encoder)
-final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "_"+ str(num_comp) + ".csv", index=False)
+final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "_" + str(num_comp) + ".csv",
+                             index=False)
 
 # debug the encoder
 # experiment on face beauty data
 # change cnn to a naive linear model (train with SGD)
 # include pearson's coef
 # create pairs of comparison for dual encoder model
+# try different batch size
+# try different encoder structure % optimizer (non-linear layer)
+# Redo the experiment in Table 4.1 with the same training set for different SA

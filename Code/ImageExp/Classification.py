@@ -164,7 +164,7 @@ def evaluate(y_true, y_pred, protected):
     return recall, precision, F1, accuracy, AOD
 
 
-def generateLists(test_dataset, dual_encoder, protected_ts):
+def generateLists(test_dataset, dual_encoder, protected_ts_race, protected_ts_sex):
     # realList = {}
     # predList = {}
     realList = []
@@ -192,7 +192,8 @@ def generateLists(test_dataset, dual_encoder, protected_ts):
     # predList.sort_values(by=['Score'], inplace=True)
     # realList = realList.reset_index()
     # predList = predList.reset_index()
-    return spearmanr, sp_pvalue, pearsonr, p_pvalue, m_comp.MI_con_info(protected_ts)
+    return spearmanr, sp_pvalue, pearsonr, p_pvalue, m_comp.MI_con_info(protected_ts_race), m_comp.MI_con_info(
+        protected_ts_sex)
 
 
 def evaluateLists(realList, predList):
@@ -212,10 +213,11 @@ def evaluateLists(realList, predList):
     return avg_diff, spearman_corr
 
 
-def comparabilityExperiment(dataName="FaceImage", train_val=None, test=None, testList=None, dataList=None, height=250,
-                            width=250, protected=[], protected_ts=[]):
+def comparabilityExperiment(protected_ts_race, protected_ts_sex, protected_ts_AB_race, protected_ts_AB_sex,
+                            dataName="FaceImage", train_val=None, test=None, testList=None, dataList=None, height=250,
+                            width=250):
     np.random.shuffle(train_val.values)
-    train = train_val.head(int((len(train_val) * 0.7)))
+    train = train_val.head(int((len(train_val) * 0.8)))
     y_true = train["Label"].tolist()
     val = train_val.drop(train.index)
     np.random.shuffle(test.values)
@@ -224,10 +226,14 @@ def comparabilityExperiment(dataName="FaceImage", train_val=None, test=None, tes
     dual_encoder = train_model(train=train, val=val, y_true=y_true, shared=True, height=height, width=width)
     print("Finished training.")
     print("Testing...")
-    recall, precision, F1, accuracy, AOD = test_model(test, dual_encoder, protected)
+    recall, precision, F1, accuracy, AOD_race = test_model(test, dual_encoder, protected_ts_AB_race)
+    recall, precision, F1, accuracy, AOD_sex = test_model(test, dual_encoder, protected_ts_AB_sex)
+
     print(recall, precision, F1, accuracy)
 
-    spearmanr, sp_pvalue, pearsonr, p_pvalue, MI = generateLists(testList, dual_encoder, protected_ts)
+    spearmanr, sp_pvalue, pearsonr, p_pvalue, MI_encoder_race, MI_encoder_sex = generateLists(testList, dual_encoder,
+                                                                                              protected_ts_race,
+                                                                                              protected_ts_sex)
     # realList.to_csv("../../Results/Real Order " + dataName + ".csv", index=False)
     # predList.to_csv("../../Results/Prediction Order " + dataName + ".csv", index=False)
     # avg_diff, spearman_corr = evaluateLists(realList, predList)
@@ -239,30 +245,30 @@ def comparabilityExperiment(dataName="FaceImage", train_val=None, test=None, tes
     # avg_diff_full = evaluateLists(realList, predList)
     # print(avg_diff_full)
 
-    return recall, precision, F1, accuracy, AOD, spearmanr, sp_pvalue, pearsonr, p_pvalue, MI
+    return recall, precision, F1, accuracy, AOD_race, AOD_sex, spearmanr, sp_pvalue, pearsonr, p_pvalue, MI_encoder_race, MI_encoder_sex
 
 
 def regressionExperiment(train_val,
                          test,
-                         comp_test,
+                         comp_test, protected_ts_race, protected_ts_sex,
                          height=250,
                          width=250, col="Average"):
     protected_reg = []
 
     train_val['pixels'] = train_val['Filename'].apply(DataProcessing.retrievePixels)
     test['pixels'] = test['Filename'].apply(DataProcessing.retrievePixels)
-    train = train_val.head(int((len(train_val) * 0.7)))
+    train = train_val.head(int((len(train_val) * 0.8)))
     val = train_val.drop(train.index)
 
     features_tr = np.array([pixel for pixel in train['pixels']]) / 255.0
     features_val = np.array([pixel for pixel in val['pixels']]) / 255.0
     features_ts = np.array([pixel for pixel in test['pixels']]) / 255.0
 
-    for file in test['Filename']:
-        if file[1] == 'M':
-            protected_reg.append(1)
-        else:
-            protected_reg.append(0)
+    # for file in test['Filename']:
+    #     if file[1] == 'M':
+    #         protected_reg.append(1)
+    #     else:
+    #         protected_reg.append(0)
 
     X_train = features_tr
     X_val = features_val
@@ -294,8 +300,9 @@ def regressionExperiment(train_val,
     preds = model.decision_function(X_test).flatten()
     m = metrics.Metrics(test[col], preds)
 
-    return m.mse(), m.r2(), m.pearsonr_coefficient(), m.pearsonr_value(), m.spearmanr_coefficient(), m.spearmanr_value(), m.MI(
-        protected_reg), m.r_sep(protected_reg), m_comp.accuracy(), m_comp.f1(), m_comp.precision(), m_comp.recall()
+    return m.mse(), m.r2(), m.pearsonr_coefficient(), m.pearsonr_value(), m.spearmanr_coefficient(), m.spearmanr_value(), m.MI_con_info(
+        protected_ts_race), m.MI_con_info(protected_ts_sex), m.r_sep(protected_ts_race), m.r_sep(
+        protected_ts_sex), m_comp.accuracy(), m_comp.f1(), m_comp.precision(), m_comp.recall()
     # result["R2"] = m.r2()
     # result["P Coefficient"] = m.p_coefficient()
     # result["P Value"] = m.p_value()
