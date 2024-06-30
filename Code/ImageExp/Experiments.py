@@ -6,7 +6,7 @@ import DataProcessing as dp
 num_comp = 1
 num_img = 5500
 
-iterations = 5
+iterations = 1
 
 
 def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
