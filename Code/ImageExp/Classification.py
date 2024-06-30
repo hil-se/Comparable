@@ -293,7 +293,7 @@ def regressionExperiment(train_val,
         if pred_score_A > pred_score_B:
             predList.append(1)
         else:
-            predList.append(0)
+            predList.append(-1)
 
     m_comp = metrics.Metrics(realList, predList)
 

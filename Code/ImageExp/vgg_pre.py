@@ -90,7 +90,7 @@ class VGG_Pre:
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
         history = self.model.fit(X, y, callbacks=[lr_reduce, early_stopping],
-                                 validation_data=(X_val, y_val), batch_size=32, epochs=5000, verbose=1)
+                                 validation_data=(X_val, y_val), batch_size=256, epochs=100, verbose=1)
         # print(history.history)
 
     def predict(self, X):

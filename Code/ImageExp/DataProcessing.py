@@ -86,12 +86,12 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                 continue
             ratingA = rowA[col]
             ratingB = rowB[col]
-            label = -1
+            label = 0
             if ratingA > ratingB:
                 label = 1
             elif ratingA < ratingB:
-                label = 0
-            if label != -1:
+                label = -1
+            if label != 0:
                 res_tr.append({"A": rowA["Filename"],
                                "B": rowB["Filename"],
                                "Label": label
@@ -120,12 +120,12 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                 continue
             ratingA = rowA[col]
             ratingB = rowB[col]
-            label = -1
+            label = 0
             if ratingA > ratingB:
                 label = 1
             elif ratingA < ratingB:
-                label = 0
-            if label != -1:
+                label = -1
+            if label != 0:
                 res_ts.append({"A": rowA["Filename"],
                                "B": rowB["Filename"],
                                "Label": label
