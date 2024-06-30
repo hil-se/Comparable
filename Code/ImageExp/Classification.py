@@ -14,7 +14,7 @@ def learn(train_data,
           validation_data=None,
           y_true=[],
           patience=10,
-          batch_size=8,
+          batch_size=4,
           shared=False,
           height=250,
           width=250):
