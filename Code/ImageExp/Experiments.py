@@ -19,13 +19,13 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             h=height, w=width, col=col, num_comp=num_comp, num_img=num_img)
         print("Data generated.")
 
-        # mse, r2, p_coef, p_value, s_coef, s_value, MI_race, MI_sex, r_sep_race, r_sep_sex, accuracy_r, f1_r, precision_r, recall_r = cl.regressionExperiment(
-        #     train_val=train,
-        #     test=test,
-        #     comp_test=testing_data,
-        #     height=height,
-        #     width=width, col=col,
-        #     protected_ts_race=protected_ts_race, protected_ts_sex=protected_ts_sex)
+        mse, r2, p_coef, p_value, s_coef, s_value, MI_race, MI_sex, r_sep_race, r_sep_sex, accuracy_r, f1_r, precision_r, recall_r = cl.regressionExperiment(
+            train_val=train,
+            test=test,
+            comp_test=testing_data,
+            height=height,
+            width=width, col=col,
+            protected_ts_race=protected_ts_race, protected_ts_sex=protected_ts_sex)
 
         recall, precision, f1, acc, AOD_race, AOD_sex, spearmanr, sp_pvalue, pearsonr, p_pvalue, MI_encoder_race, MI_encoder_sex = cl.comparabilityExperiment(
             dataName="FaceImage",

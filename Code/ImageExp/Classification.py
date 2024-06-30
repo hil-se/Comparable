@@ -277,7 +277,12 @@ def regressionExperiment(train_val,
     y_train = np.array(train[col])
     y_val = np.array(val[col])
 
-    model = vgg_pre.VGG_Pre()
+    strategy = tf.distribute.MirroredStrategy()
+    print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+
+    with strategy.scope():
+        model = vgg_pre.VGG_Pre()
+
     model.fit(X_train, train[col], X_val, val[col])
 
     realList = comp_test["Label"].to_list()
