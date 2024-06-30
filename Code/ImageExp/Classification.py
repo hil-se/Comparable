@@ -14,7 +14,7 @@ def learn(train_data,
           validation_data=None,
           y_true=[],
           patience=10,
-          batch_size=2,
+          batch_size=1,
           shared=False,
           height=250,
           width=250):
@@ -277,11 +277,11 @@ def regressionExperiment(train_val,
     y_train = np.array(train[col])
     y_val = np.array(val[col])
 
-    strategy = tf.distribute.MirroredStrategy()
-    print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+    # strategy = tf.distribute.MirroredStrategy()
+    # print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
 
-    with strategy.scope():
-        model = vgg_pre.VGG_Pre()
+    # with strategy.scope():
+    model = vgg_pre.VGG_Pre()
 
     model.fit(X_train, train[col], X_val, val[col])
 
