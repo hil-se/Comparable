@@ -64,4 +64,4 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
     # final_results_reg.to_csv("../../Results/" + dataName + " Reg_" + col + "_" + str(num_img) + ".csv", index=False)
 
 
-experiment(dataName="FaceImage", col='Average', height=250, width=250)
+experiment(dataName="FaceImage", col='3', height=250, width=250)
