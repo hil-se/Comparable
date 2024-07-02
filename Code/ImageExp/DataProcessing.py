@@ -75,6 +75,9 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
 
     res_tr = []
     res_ts = []
+
+    res_tr_single = []
+    res_ts_single = []
     print("\nGenerating training data...")
 
     for indexA, rowA in train.iterrows():
@@ -96,14 +99,25 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                                "B": rowB["Filename"],
                                "Label": label
                                })
+
+                res_tr_single.append({"A": rowA["Filename"],
+                                      "B": rowB["Filename"],
+                                      "Label": label
+                                      })
+
                 res_tr.append({"A": rowB["Filename"],
                                "B": rowA["Filename"],
                                "Label": -label
                                })
                 comp.append(indexB)
     data_tr = pd.DataFrame(res_tr)
+    data_tr_single = pd.DataFrame(res_tr_single)
+
     data_tr['A'] = data_tr['A'].apply(retrievePixels).div(255.0)
     data_tr['B'] = data_tr['B'].apply(retrievePixels).div(255.0)
+
+    data_tr_single['A'] = data_tr_single['A'].apply(retrievePixels).div(255.0)
+    data_tr_single['B'] = data_tr_single['B'].apply(retrievePixels).div(255.0)
     # print("Saving training data...")
     # data_tr = data_tr.sample(frac=1)
     # data_tr.to_csv("../../Data/ImageExp/image_train.csv", index=False)
@@ -130,6 +144,10 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                                "B": rowB["Filename"],
                                "Label": label
                                })
+                res_ts_single.append({"A": rowA["Filename"],
+                                      "B": rowB["Filename"],
+                                      "Label": label
+                                      })
                 res_ts.append({"A": rowB["Filename"],
                                "B": rowA["Filename"],
                                "Label": -label
@@ -137,11 +155,25 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                 comp.append(indexB)
     data_ts = pd.DataFrame(res_ts)
 
+    data_ts_single = pd.DataFrame(res_ts_single)
+
+    data_ts['A'] = data_ts['A'].apply(retrievePixels).div(255.0)
+    data_ts['B'] = data_ts['B'].apply(retrievePixels).div(255.0)
+
+    data_ts_single['A'] = data_ts_single['A'].apply(retrievePixels).div(255.0)
+    data_ts_single['B'] = data_ts_single['B'].apply(retrievePixels).div(255.0)
+
     protected_ts_A_sex = []
     protected_ts_B_sex = []
 
     protected_ts_A_race = []
     protected_ts_B_race = []
+
+    protected_ts_A_sex_single = []
+    protected_ts_B_sex_single = []
+
+    protected_ts_A_race_single = []
+    protected_ts_B_race_single = []
 
     for file in data_ts["A"]:
         if file[1] == 'M':
@@ -177,14 +209,48 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         "B": protected_ts_B_sex
     })
 
-    data_ts['A'] = data_ts['A'].apply(retrievePixels).div(255.0)
-    data_ts['B'] = data_ts['B'].apply(retrievePixels).div(255.0)
+    for file in data_ts_single["A"]:
+        if file[1] == 'M':
+            protected_ts_A_sex_single.append(1)
+        else:
+            protected_ts_A_sex_single.append(0)
+
+    for file in data_ts_single["B"]:
+        if file[1] == 'M':
+            protected_ts_B_sex_single.append(1)
+        else:
+            protected_ts_B_sex_single.append(0)
+
+    for file in data_ts_single["A"]:
+        if file[0] == 'C':
+            protected_ts_A_race_single.append(1)
+        else:
+            protected_ts_A_race_single.append(0)
+
+    for file in data_ts_single["B"]:
+        if file[0] == 'C':
+            protected_ts_B_race_single.append(1)
+        else:
+            protected_ts_B_race_single.append(0)
+
+    protected_ts_AB_race_single = pd.DataFrame({
+        "A": protected_ts_A_race_single,
+        "B": protected_ts_B_race_single
+    })
+
+    protected_ts_AB_sex_single = pd.DataFrame({
+        "A": protected_ts_A_sex_single,
+        "B": protected_ts_B_sex_single
+    })
+
     # print("Saving testing data...")
     # data_ts = data_ts.sample(frac=1)
     # data_ts.to_csv("../../Data/ImageExp/image_test.csv", index=False)
     print("Done.")
     print("Training data size:", len(data_tr.index))
     print("Testing data size:", len(data_ts.index))
+    print("Training data size:", len(data_tr_single.index))
+    print("Testing data size:", len(data_ts_single.index))
 
     test_list = []
     for indexA, rowA in test.iterrows():
@@ -200,7 +266,6 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     data_list = pd.DataFrame(data_list)
     data_list['A'] = data_list['A'].apply(retrievePixels)
 
-    return data_tr, data_ts, test_list, data_list, len(data_tr.index), len(
-        data_ts.index), train, test, protected_ts_race, protected_ts_sex, protected_ts_AB_race, protected_ts_AB_sex
-
-# processData()
+    return data_tr, data_ts, data_tr_single, data_ts_single, test_list, data_list, len(data_tr.index), len(
+        data_ts.index), len(data_tr_single.index), len(
+        data_ts_single.index), train, test, protected_ts_race, protected_ts_sex, protected_ts_AB_race, protected_ts_AB_sex, protected_ts_AB_race_single, protected_ts_AB_sex_single
