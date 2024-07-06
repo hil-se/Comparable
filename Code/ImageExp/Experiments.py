@@ -3,10 +3,10 @@ import pandas as pd
 import Classification as cl
 import DataProcessing as dp
 
-num_comp = 1
-num_img = 100
+num_comp = 5
+num_img = 5500
 
-iterations = 5
+iterations = 3
 
 
 def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
@@ -23,7 +23,8 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             h=height, w=width, col=col, num_comp=num_comp, num_img=num_img)
         print("Data generated.")
 
-        mse, r2, p_coef, p_value, s_coef, s_value, MI_race, MI_sex, r_sep_race, r_sep_sex, accuracy_r, f1_r, precision_r, recall_r = cl.regressionExperiment(
+        (mse, r2, p_coef, p_value, s_coef, s_value, MI_race, MI_sex, r_sep_race, r_sep_sex, accuracy_r, f1_r,
+         precision_r, recall_r) = cl.regressionExperiment(
             train_val=train,
             test=test,
             comp_test=testing_data,
@@ -71,7 +72,7 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             protected_ts_AB_race=protected_ts_AB_race_single, protected_ts_AB_sex=protected_ts_AB_sex_single)
 
         result_single = {"Full data size": full_len_single, "Testing data size": test_len_single,
-                         "Recall": recall_single, "Precision": precision_single, "F1": f1, "Accuracy": acc_single,
+                         "Recall": recall_single, "Precision": precision_single, "F1": f1_single, "Accuracy": acc_single,
                          "AOD_race": AOD_race_single, "AOD_sex": AOD_sex_single,
                          "Spearman's rank correlation": spearmanr_single,
                          "SP value": sp_pvalue_single,
@@ -90,8 +91,14 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
     print(dataName)
     print("*******************************************\n")
 
-    final_results.to_csv("../../Results/" + dataName + " Shared Encoder_" + col + "_" + str(num_img) + "_" + str(num_comp) + ".csv", index=False)
-    final_results_reg.to_csv("../../Results/" + dataName + " Reg_" + col + "_" + str(num_img) + "_" + str(num_comp) + ".csv", index=False)
-    final_results_single.to_csv("../../Results/" + dataName + " Shared Encoder Single_" + col + "_" + str(num_img) + "_" + str(num_comp) + ".csv", index=False)
+    final_results.to_csv(
+        "../../Results/" + dataName + " Shared Encoder_" + col + "_" + str(num_img) + "_" + str(num_comp) + ".csv",
+        index=False)
+    final_results_reg.to_csv(
+        "../../Results/" + dataName + " Reg_" + col + "_" + str(num_img) + "_" + str(num_comp) + ".csv", index=False)
+    final_results_single.to_csv(
+        "../../Results/" + dataName + " Shared Encoder Single_" + col + "_" + str(num_img) + "_" + str(
+            num_comp) + ".csv", index=False)
+
 
 experiment(dataName="FaceImage", col='Average', height=250, width=250)

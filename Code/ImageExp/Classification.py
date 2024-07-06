@@ -12,12 +12,14 @@ import vgg_pre
 def learn(train_data,
           epochs=100,
           validation_data=None,
-          y_true=[],
+          y_true=None,
           patience=10,
-          batch_size=16,
+          batch_size=1,
           shared=False,
           height=250,
           width=250):
+    if y_true is None:
+        y_true = []
     td_s = train_data["A"].to_list()
     td_t = train_data["B"].to_list()
     train_y = np.array(train_data["Label"].tolist())

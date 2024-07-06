@@ -97,7 +97,7 @@ class VGG_Pre:
         return self.decision_function(X)
 
     def decision_function(self, X):
-        pred = self.model.predict(X)
+        pred = self.model.predict(X,verbose=0)
         return pred
 
     def load_model(self, checkpoint_filepath):

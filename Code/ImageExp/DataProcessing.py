@@ -154,14 +154,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
                                })
                 comp.append(indexB)
     data_ts = pd.DataFrame(res_ts)
-
     data_ts_single = pd.DataFrame(res_ts_single)
-
-    data_ts['A'] = data_ts['A'].apply(retrievePixels).div(255.0)
-    data_ts['B'] = data_ts['B'].apply(retrievePixels).div(255.0)
-
-    data_ts_single['A'] = data_ts_single['A'].apply(retrievePixels).div(255.0)
-    data_ts_single['B'] = data_ts_single['B'].apply(retrievePixels).div(255.0)
 
     protected_ts_A_sex = []
     protected_ts_B_sex = []
@@ -243,6 +236,12 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         "B": protected_ts_B_sex_single
     })
 
+    data_ts['A'] = data_ts['A'].apply(retrievePixels).div(255.0)
+    data_ts['B'] = data_ts['B'].apply(retrievePixels).div(255.0)
+
+    data_ts_single['A'] = data_ts_single['A'].apply(retrievePixels).div(255.0)
+    data_ts_single['B'] = data_ts_single['B'].apply(retrievePixels).div(255.0)
+
     # print("Saving testing data...")
     # data_ts = data_ts.sample(frac=1)
     # data_ts.to_csv("../../Data/ImageExp/image_test.csv", index=False)
@@ -266,6 +265,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     data_list = pd.DataFrame(data_list)
     data_list['A'] = data_list['A'].apply(retrievePixels)
 
-    return data_tr, data_ts, data_tr_single, data_ts_single, test_list, data_list, len(data_tr.index), len(
+    return (data_tr, data_ts, data_tr_single, data_ts_single, test_list, data_list, len(data_tr.index), len(
         data_ts.index), len(data_tr_single.index), len(
-        data_ts_single.index), train, test, protected_ts_race, protected_ts_sex, protected_ts_AB_race, protected_ts_AB_sex, protected_ts_AB_race_single, protected_ts_AB_sex_single
+        data_ts_single.index), train, test, protected_ts_race, protected_ts_sex, protected_ts_AB_race,
+            protected_ts_AB_sex, protected_ts_AB_race_single, protected_ts_AB_sex_single)
