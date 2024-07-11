@@ -41,8 +41,8 @@ def learn(train_data,
         encoder_A = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
         encoder_B = DualEncoder.create_encoder(input_size=val_dataset.element_spec['A'].shape[1])
         dual_encoder = DualEncoder.DualEncoderAll(encoder_A, encoder_B, y_true=np.array(y_true))
-    # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001))
-    dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
+    dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=1e-3))
+    # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
     dual_encoder.fit(
         x=train_dataset,

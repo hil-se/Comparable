@@ -16,7 +16,7 @@ final_results_encoder = []
 
 dataName = "SCUT"
 iterations = 5
-num_comp = 10
+num_comp = 1
 global col
 
 for i in range(iterations):
@@ -189,7 +189,7 @@ for i in range(iterations):
 
     final_results.append(result)
 
-    train_encoder = data_tr_encoder.sample(frac=0.8)
+    train_encoder = data_tr_encoder.sample(frac=0.85)
     y_true = train_encoder["Label"].tolist()
     val = data_tr_encoder.drop(train_encoder.index)
 
@@ -207,7 +207,7 @@ for i in range(iterations):
     final_results_encoder.append(result_encoder)
 
 final_results = pd.DataFrame(final_results)
-final_results.to_csv("../../Results/" + dataName + " Reg_" + col + "_" + str(num_comp) + ".csv", index=False)
+final_results.to_csv("../../Results/" + dataName + " SVM_" + col + "_" + str(num_comp) + ".csv", index=False)
 
 final_results_encoder = pd.DataFrame(final_results_encoder)
 final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "_" + str(num_comp) + ".csv",
@@ -221,3 +221,4 @@ final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "
 # try different batch size
 # try different encoder structure % optimizer (non-linear layer)
 # Redo the experiment in Table 4.1 with the same training set for different SA
+# 

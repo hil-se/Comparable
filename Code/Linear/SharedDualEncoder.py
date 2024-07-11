@@ -1,14 +1,35 @@
 import tensorflow as tf
-
+import keras
 K = tf.keras.backend
 
 
 def create_encoder(input_size):
-    input = tf.keras.layers.Input(shape=(input_size,))
+    # input = tf.keras.layers.Input(shape=(input_size,))
     # x = tf.keras.layers.Dense(32, activation='relu')(input)
-    output = tf.keras.layers.Dense(1, activation='linear')(input)
+    # output = tf.keras.layers.Dense(1, activation='linear')(input)
     # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
-    return tf.keras.models.Model(inputs=input, outputs=output)
+
+    input_shape = (input_size, 1)
+
+    model = keras.Sequential(
+        [
+            keras.layers.Input(shape=input_shape),
+            keras.layers.Conv1D(64, kernel_size=3, activation="relu"),
+            keras.layers.Conv1D(64, kernel_size=3, activation="relu"),
+            keras.layers.Dropout(0.5),
+            keras.layers.MaxPooling1D(pool_size=2),
+            keras.layers.Flatten(),
+            # keras.layers.Conv1D(128, kernel_size=3, activation="relu"),
+            # keras.layers.Conv1D(128, kernel_size=3, activation="relu"),
+            # keras.layers.GlobalAveragePooling1D(),
+            # keras.layers.Dropout(0.5),
+            keras.layers.Dense(100, activation='relu'),
+            keras.layers.Dense(1, activation="linear"),
+        ]
+    )
+
+    # return tf.keras.models.Model(inputs=input, outputs=output)
+    return model
 
 
 class DualEncoderAll(tf.keras.Model):

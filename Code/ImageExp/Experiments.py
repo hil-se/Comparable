@@ -3,7 +3,7 @@ import pandas as pd
 import Classification as cl
 import DataProcessing as dp
 
-num_comp = 5
+num_comp = 2
 num_img = 5500
 
 iterations = 3
