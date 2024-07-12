@@ -36,16 +36,16 @@ class Metrics:
         return sklearn.metrics.r2_score(self.y, self.y_pred)
 
     def pearsonr_coefficient(self):
-        return pearsonr(self.y, self.y_pred).statistic
+        return pearsonr(self.y, self.y_pred).r
 
     def pearsonr_value(self):
-        return pearsonr(self.y, self.y_pred).pvalue
+        return pearsonr(self.y, self.y_pred).p-value
 
     def spearmanr_coefficient(self):
-        return spearmanr(self.y, self.y_pred).statistic
+        return spearmanr(self.y, self.y_pred).r
 
     def spearmanr_value(self):
-        return spearmanr(self.y, self.y_pred).pvalue
+        return spearmanr(self.y, self.y_pred).p-value
 
     def RBD(self, s):
         # s is an array of numerical values of a sensitive attribute

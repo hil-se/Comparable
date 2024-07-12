@@ -14,7 +14,7 @@ def learn(train_data,
           validation_data=None,
           y_true=None,
           patience=10,
-          batch_size=1,
+          batch_size=32,
           shared=False,
           height=250,
           width=250):
@@ -47,7 +47,7 @@ def learn(train_data,
 
     encoder = SharedDualEncoder.create_encoder(height=height, width=width)
     dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
-    dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
+    dual_encoder.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.001))
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
 
     dual_encoder.fit(
