@@ -36,7 +36,7 @@
 spack unload -a
 ## Load modules with spack
 ## Tensorflow
-spack load /xi3pch3
+## spack load /xi3pch3
 ## keras
 spack load py-keras
 
