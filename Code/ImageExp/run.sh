@@ -40,6 +40,8 @@ spack load /xi3pch3
 ## keras
 spack load py-keras
 
+spack env activate default-ml-24022101
+
 ## Execute target code
 python3 Experiments.py
 
