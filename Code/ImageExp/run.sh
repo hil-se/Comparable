@@ -8,7 +8,7 @@
 #SBATCH -A loop
 
 ## To send mail for updates on the job
-#SBATCH --mail-user=xx4455@rit.edu
+#SBATCH --mail-user=slack:@xx4455
 #SBATCH --mail-type=ALL
 
 ## Standard out and Standard Error output files
@@ -17,16 +17,16 @@
 
 ## Request 5 Days, 0 Hours, 0 Minutes, 0 Seconds run time MAX,
 ## anything over will be KILLED
-#SBATCH -t 2-00:00:00
+#SBATCH -t 1-00:00:00
 
 ## Put in tier3 partition for testing small jobs, like this one
 ## But because our requested time is over 4 day, it won't run, so
 ## use any tier you have available
-#SBATCH -p tier3
+#SBATCH -p debug
 
 ## Request 1 GPU for one task, note how you can put multiple commands
 ## on one line
-#SBATCH --gres=gpu:a100:4
+#SBATCH --gres=gpu:a100:1
 
 ## Job memory requirements in MB
 #SBATCH --mem=300G
