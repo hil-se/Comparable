@@ -4,7 +4,7 @@ import Classification as cl
 import DataProcessing as dp
 
 num_comp = 1
-num_img = 20
+num_img = 100
 
 iterations = 5
 
