@@ -29,7 +29,7 @@
 #SBATCH --gres=gpu:a100:1
 
 ## Job memory requirements in MB
-#SBATCH --mem=300G
+#SBATCH --mem=400G
 
 ## Job script goes below this line
 
