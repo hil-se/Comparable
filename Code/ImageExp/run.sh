@@ -30,7 +30,6 @@
 
 #SBATCH --nodes=1
 #SBATCH --exclusive
-#SBATCH --cpus-per-task=2
 
 ## Job memory requirements in MB
 #SBATCH --mem=0
