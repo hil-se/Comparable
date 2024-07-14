@@ -29,10 +29,9 @@
 #SBATCH --gres=gpu:a100:1
 
 #SBATCH --nodes=1
-#SBATCH --exclusive
 
 ## Job memory requirements in MB
-#SBATCH --mem=0
+#SBATCH --mem=390g
 
 ## Job script goes below this line
 
