@@ -28,7 +28,7 @@
 ## on one line
 #SBATCH --gres=gpu:a100:1
 
-#SBATCH --nodes=2
+#SBATCH --nodes=1
 
 ## Job memory requirements in MB
 #SBATCH --mem=350g
