@@ -3,7 +3,7 @@ import pandas as pd
 import Classification as cl
 import DataProcessing as dp
 
-num_comp = 5
+num_comp = 3
 num_img = 5500
 
 iterations = 3
@@ -101,4 +101,4 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             num_comp) + ".csv", index=False)
 
 
-experiment(dataName="FaceImage", col='Average', height=250, width=250)
+experiment(dataName="FaceImage", col='1', height=250, width=250)
