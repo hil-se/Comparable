@@ -101,4 +101,4 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             num_comp) + ".csv", index=False)
 
 
-experiment(dataName="FaceImage", col='1', height=250, width=250)
+experiment(dataName="FaceImage", col='2', height=250, width=250)
