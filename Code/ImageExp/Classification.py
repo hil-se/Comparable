@@ -55,7 +55,7 @@ def learn(train_data,
         epochs=epochs,
         validation_data=val_dataset,
         callbacks=[early_stopping],
-        verbose=0
+        verbose=1
     )
     return dual_encoder
 

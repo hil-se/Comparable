@@ -221,4 +221,7 @@ final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "
 # try different batch size
 # try different encoder structure % optimizer (non-linear layer)
 # Redo the experiment in Table 4.1 with the same training set for different SA
-# 
+
+
+# four accuracies (within & cross)
+# conditional independence

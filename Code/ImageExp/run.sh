@@ -40,7 +40,7 @@ spack unload -a
 ## Tensorflow
 ## spack load /xi3pch3
 ## keras
-spack load py-keras
+## spack load py-keras
 
 spack env activate default-ml-24022101
 

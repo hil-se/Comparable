@@ -287,3 +287,44 @@ class Metrics:
 
         MI = Info / len(s)
         return MI
+
+    def AOD_comp(self, s):
+
+        T_i_j = 0
+        TP_i_j = 0
+        FP_i_j = 0
+        T_j_i = 0
+        TP_j_i = 0
+        FP_j_i = 0
+        F_i_j = 0
+        F_j_i = 0
+
+        for i, row in s.iterrows():
+            if row[0] > row[1]:
+                if self.y[i] == 1:
+                    T_i_j += 1
+                    if self.y_pred[i] == 1:
+                        TP_i_j += 1
+                else:
+                    F_i_j += 1
+                    if self.y_pred[i] == 1:
+                        FP_i_j += 1
+
+            elif row[0] < row[1]:
+                if self.y[i] != 1:
+                    T_j_i += 1
+                    if self.y_pred[i] != 1:
+                        TP_j_i += 1
+                else:
+                    F_j_i += 1
+                    if self.y_pred[i] != 1:
+                        FP_j_i += 1
+
+        TPR_i_j = TP_i_j / T_i_j
+        FPR_i_j = FP_i_j / F_i_j
+        TPR_j_i = TP_j_i / T_j_i
+        FPR_j_i = FP_j_i / F_j_i
+
+        AOD = (TPR_i_j + FPR_i_j - TPR_j_i - FPR_j_i) / 2
+
+        return AOD
