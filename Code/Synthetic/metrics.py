@@ -334,44 +334,44 @@ class Metrics:
 
     def AOD_comp(self, s):
 
-        T_i_j = 0
-        TP_i_j = 0
-        FP_i_j = 0
-        T_j_i = 0
-        TP_j_i = 0
-        FP_j_i = 0
-        F_i_j = 0
-        F_j_i = 0
+        t = n = tp = fp = tn = fn = 0
 
         for i, row in s.iterrows():
             if row['A'] > row['B']:
                 if self.y[i] == 1:
-                    T_i_j += 1
+                    t += 1
                     if self.y_pred[i] == 1:
-                        TP_i_j += 1
-                else:
-                    F_i_j += 1
+                        tp += 1
+                    if self.y_pred[i] == 0:
+                        fn += 1
+                elif self.y[i] == 0:
+                    n += 1
                     if self.y_pred[i] == 1:
-                        FP_i_j += 1
+                        fp += 1
+                    if self.y_pred[i] == 0:
+                        tn += 1
 
             elif row['A'] < row['B']:
-                if self.y[i] != 1:
-                    T_j_i += 1
-                    if self.y_pred[i] != 1:
-                        TP_j_i += 1
-                else:
-                    F_j_i += 1
-                    if self.y_pred[i] != 1:
-                        FP_j_i += 1
+                if self.y[i] == 0:
+                    t += 1
+                    if self.y_pred[i] == 0:
+                        tp += 1
+                    if self.y_pred[i] == 1:
+                        fn += 1
+                elif self.y[i] == 1:
+                    n += 1
+                    if self.y_pred[i] == 0:
+                        fp += 1
+                    if self.y_pred[i] == 1:
+                        tn += 1
 
-        TPR_i_j = TP_i_j / T_i_j
-        FPR_i_j = FP_i_j / F_i_j
-        TPR_j_i = TP_j_i / T_j_i
-        FPR_j_i = FP_j_i / F_j_i
+        tpr = tp / t
+        tnr = tn / n
+        fpr = fp / n
+        fnr = fn / t
+        aod = (tpr + fpr - tnr - fnr) / 2
 
-        AOD = (TPR_i_j + FPR_i_j - TPR_j_i - FPR_j_i) / 2
-
-        return AOD
+        return aod
 
     def gAOD(self, s):
         # s is an array of numerical values of a sensitive attribute

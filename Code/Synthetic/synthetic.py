@@ -147,4 +147,6 @@ data_tr = pd.DataFrame(res_tr)
 
 m = Metrics(data_tr["Label"], data_tr["pred"])
 AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
+from pdb import set_trace
+set_trace()
 print(df)
