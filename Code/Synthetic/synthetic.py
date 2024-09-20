@@ -112,13 +112,13 @@ gAOD = m.gAOD(df["gender"])
 MI = mutual_info_score(df["pred"], df["gender"])
 
 res_tr = []
-for indexA in range(0,len(df)-1):
+for indexA in range(0,len(df)):
     comp = []
     rowA = df.iloc[indexA]
     # while len(comp) < num_comp:
     #     indexB = random.randint(0, len(df) - 1)
     #     rowB = df.iloc[indexB]
-    for indexB in range(indexA+1 , len(df)):
+    for indexB in range(0 , len(df)):
         # if (indexA == indexB) or (indexB in comp):
         #     continue
         rowB = df.iloc[indexB]
@@ -126,27 +126,27 @@ for indexA in range(0,len(df)-1):
         ratingB = rowB[col]
         predA = rowA["pred"]
         predB = rowB["pred"]
-        label = -1
-        pred = -1
+        label = 0
+        pred = 0
         if ratingA > ratingB:
             label = 1
         elif ratingA < ratingB:
-            label = 0
+            label = -1
         if predA > predB:
             pred = 1
         elif predA < predB:
-            pred = 0
-        if (label != -1) & (pred != -1):
-            res_tr.append({"A": rowA["gender"],
-                           "B": rowB["gender"],
-                           "Label": label,
-                           "pred": pred
-                           })
-            comp.append(indexB)
+            pred = -1
+        res_tr.append({"A": rowA["gender"],
+                       "B": rowB["gender"],
+                       "Label": label,
+                       "pred": pred
+                       })
+        comp.append(indexB)
 data_tr = pd.DataFrame(res_tr)
 
 m = Metrics(data_tr["Label"], data_tr["pred"])
 AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
+Within_comp = m.Within_comp(data_tr[["A", "B"]])
 from pdb import set_trace
 set_trace()
 print(df)

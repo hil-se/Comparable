@@ -342,25 +342,25 @@ class Metrics:
                     t += 1
                     if self.y_pred[i] == 1:
                         tp += 1
-                    if self.y_pred[i] == 0:
+                    if self.y_pred[i] == -1:
                         fn += 1
-                elif self.y[i] == 0:
+                elif self.y[i] == -1:
                     n += 1
                     if self.y_pred[i] == 1:
                         fp += 1
-                    if self.y_pred[i] == 0:
+                    if self.y_pred[i] == -1:
                         tn += 1
 
             elif row['A'] < row['B']:
-                if self.y[i] == 0:
+                if self.y[i] == -1:
                     t += 1
-                    if self.y_pred[i] == 0:
+                    if self.y_pred[i] == -1:
                         tp += 1
                     if self.y_pred[i] == 1:
                         fn += 1
                 elif self.y[i] == 1:
                     n += 1
-                    if self.y_pred[i] == 0:
+                    if self.y_pred[i] == -1:
                         fp += 1
                     if self.y_pred[i] == 1:
                         tn += 1
@@ -372,6 +372,48 @@ class Metrics:
         aod = (tpr + fpr - tnr - fnr) / 2
 
         return aod
+
+    def Within_comp(self, s):
+
+        t1 = n1 = tp1 = fp1 = tn1 = fn1 = 0
+        t0 = n0 = tp0 = fp0 = tn0 = fn0 = 0
+
+        for i, row in s.iterrows():
+            if row['A'] == row['B'] == 1:
+                if self.y[i] == 1:
+                    t1 += 1
+                    if self.y_pred[i] == 1:
+                        tp1 += 1
+                    if self.y_pred[i] == -1:
+                        fn1 += 1
+                elif self.y[i] == -1:
+                    n1 += 1
+                    if self.y_pred[i] == 1:
+                        fp1 += 1
+                    if self.y_pred[i] == -1:
+                        tn1 += 1
+
+            elif row['A'] == row['B'] == 0:
+                if self.y[i] == -1:
+                    t0 += 1
+                    if self.y_pred[i] == -1:
+                        tp0 += 1
+                    if self.y_pred[i] == 1:
+                        fn0 += 1
+                elif self.y[i] == 1:
+                    n0 += 1
+                    if self.y_pred[i] == -1:
+                        fp0 += 1
+                    if self.y_pred[i] == 1:
+                        tn0 += 1
+
+        tpr1 = (tp1+tn1) / (t1+n1)
+        fpr1 = (fp1+fn1) / (t1+n1)
+        tpr0 = (tp0+tn0) / (t0+n0)
+        fpr0 = (fp0+fn0) / (t0+n0)
+        within = (tpr1 - fpr1 - tpr0 + fpr0) / 2
+
+        return within
 
     def gAOD(self, s):
         # s is an array of numerical values of a sensitive attribute
