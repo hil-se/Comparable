@@ -191,6 +191,21 @@ class Metrics:
         MI = Info / (-Entropy)
         return MI
 
+    def MI_b(self, s):
+
+        y0 = self.y[s == 0]
+        y0_pred = self.y_pred[s == 0]
+        y1 = self.y[s == 1]
+        y1_pred = self.y_pred[s == 1]
+
+        tp0, fp0, tn0, fn0 = self.confusion(y0, y0_pred)
+        tp1, fp1, tn1, fn1 = self.confusion(y1, y1_pred)
+        def ediff(n1, d1, n0, d0):
+            return np.log(n0/(n0+d0))*n0 + np.log(n1/(n1+d1))*n1 - (n0+n1)*np.log((n0+n1)/(n0+n1+d0+d1))
+
+        MI = ediff(tp1, fn1, tp0, fn0) + ediff(fp1, tn1, fp0, tn0) + ediff(tn1, fp1, tn0, fp0) + ediff(fn1, tp1, fn0, tp0)
+        return MI / len(s)
+
     def MI_con(self, s):
 
         joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
@@ -414,6 +429,9 @@ class Metrics:
         within = (tpr1 - fpr1 - tpr0 + fpr0) / 2
 
         return within
+
+    def Sep_comp(self, s):
+        return np.sqrt(self.Within_comp(s)**2+self.AOD_comp(s)**2)
 
     def gAOD(self, s):
         # s is an array of numerical values of a sensitive attribute
