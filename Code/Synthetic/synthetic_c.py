@@ -58,7 +58,7 @@ def make_data1(n=500, p=0.5, l=6):
 
 
 
-df1 = make_data1(n=1000, p=0.5, l=6)
+df1 = make_data0(n=10000, p=0.5, l=6)
 df1["A"] = df1["sex"]
 df1["Y"] = df1["hire"]
 df1["Y_pred"] = df1["pred"]
