@@ -58,7 +58,7 @@ def make_data1(n=500, p=0.5, l=6):
 
 
 
-df1 = make_data1(n=100, p=0.3)
+df1 = make_data0(n=1000, p=0.5, l=0)
 df1["A"] = df1["sex"]
 df1["Y"] = df1["hire"]
 df1["Y_pred"] = df1["pred"]
@@ -69,8 +69,12 @@ df = df1
 m = Metrics(df["Y"], df["Y_pred"])
 
 gAOD = m.gAOD(df["A"])
+gWithin = m.gWithin(df["A"])
+gSep = m.gSep(df["A"])
 MI = m.MI(df["A"])
 
+from pdb import set_trace
+set_trace()
 
 data_tr = generate_pairs(df)
 
@@ -78,5 +82,5 @@ m = Metrics(data_tr["Label"], data_tr["pred"])
 AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
 Within_comp = m.Within_comp(data_tr[["A", "B"]])
 Sep_comp = m.Sep_comp(data_tr[["A", "B"]])
-from pdb import set_trace
+
 set_trace()

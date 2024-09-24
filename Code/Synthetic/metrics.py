@@ -409,17 +409,17 @@ class Metrics:
                         tn1 += 1
 
             elif row['A'] == row['B'] == 0:
-                if self.y[i] == -1:
+                if self.y[i] == 1:
                     t0 += 1
-                    if self.y_pred[i] == -1:
+                    if self.y_pred[i] == 1:
                         tp0 += 1
-                    if self.y_pred[i] == 1:
-                        fn0 += 1
-                elif self.y[i] == 1:
-                    n0 += 1
                     if self.y_pred[i] == -1:
-                        fp0 += 1
+                        fn0 += 1
+                elif self.y[i] == -1:
+                    n0 += 1
                     if self.y_pred[i] == 1:
+                        fp0 += 1
+                    if self.y_pred[i] == -1:
                         tn0 += 1
 
         tpr1 = (tp1+tn1) / (t1+n1)
@@ -458,3 +458,47 @@ class Metrics:
         fnr = fn / t
         aod = (tpr + fpr - tnr - fnr) / 2
         return aod
+
+    def gWithin(self, s):
+        # s is an array of numerical values of a sensitive attribute
+        t1 = n1 = tp1 = fp1 = tn1 = fn1 = 0
+        t0 = n0 = tp0 = fp0 = tn0 = fn0 = 0
+        for i in range(len(self.y)):
+            for j in range(len(self.y)):
+                if s[i] == s[j] == 1:
+                    if self.y[i] - self.y[j] > 0:
+                        t1 += 1
+                        if self.y_pred[i] > self.y_pred[j]:
+                            tp1 += 1
+                        if self.y_pred[i] < self.y_pred[j]:
+                            fn1 += 1
+                    elif self.y[j] - self.y[i] > 0:
+                        n1 += 1
+                        if self.y_pred[i] > self.y_pred[j]:
+                            fp1 += 1
+                        elif self.y_pred[i] < self.y_pred[j]:
+                            tn1 += 1
+                elif s[i] == s[j] == 0:
+                    if self.y[i] - self.y[j] > 0:
+                        t0 += 1
+                        if self.y_pred[i] > self.y_pred[j]:
+                            tp0 += 1
+                        if self.y_pred[i] < self.y_pred[j]:
+                            fn0 += 1
+                    elif self.y[j] - self.y[i] > 0:
+                        n0 += 1
+                        if self.y_pred[i] > self.y_pred[j]:
+                            fp0 += 1
+                        elif self.y_pred[i] < self.y_pred[j]:
+                            tn0 += 1
+
+        tpr1 = (tp1 + tn1) / (t1 + n1)
+        fpr1 = (fp1 + fn1) / (t1 + n1)
+        tpr0 = (tp0 + tn0) / (t0 + n0)
+        fpr0 = (fp0 + fn0) / (t0 + n0)
+        within = (tpr1 - fpr1 - tpr0 + fpr0) / 2
+
+        return within
+
+    def gSep(self, s):
+        return np.sqrt(self.gWithin(s) ** 2 + self.gAOD(s) ** 2)
