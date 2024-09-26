@@ -602,3 +602,97 @@ class Metrics:
         mi = mi00 + mi01 + mi10 + mi11
         return mi
 
+    def MI_comp2(self, s):
+        t = n = tp = fp = tn = fn = 0
+        t11 = n11 = tp11 = fp11 = tn11 = fn11 = 0
+        t10 = n10 = tp10 = fp10 = tn10 = fn10 = 0
+        t01 = n01 = tp01 = fp01 = tn01 = fn01 = 0
+        t00 = n00 =tp00 = fp00 = tn00 = fn00 = 0
+
+        for i, row in s.iterrows():
+            if self.y[i] == 1:
+                t += 1
+                if row['A'] == row['B'] == 1:
+                    t11 += 1
+                if row['A'] == row['B'] == 0:
+                    t00 += 1
+                if row['A'] == 1 and row['B'] == 0:
+                    t10 += 1
+                if row['A'] == 0 and row['B'] == 1:
+                    t01 += 1
+                if self.y_pred[i] == 1:
+                    tp += 1
+                    if row['A'] == row['B'] == 1:
+                        tp11 += 1
+                    if row['A'] == row['B'] == 0:
+                        tp00 += 1
+                    if row['A'] == 1 and row['B'] == 0:
+                        tp10 += 1
+                    if row['A'] == 0 and row['B'] == 1:
+                        tp01 += 1
+                if self.y_pred[i] == -1:
+                    fn += 1
+                    if row['A'] == row['B'] == 1:
+                        fn11 += 1
+                    if row['A'] == row['B'] == 0:
+                        fn00 += 1
+                    if row['A'] == 1 and row['B'] == 0:
+                        fn10 += 1
+                    if row['A'] == 0 and row['B'] == 1:
+                        fn01 += 1
+            elif self.y[i] == -1:
+                n += 1
+                if row['A'] == row['B'] == 1:
+                    n11 += 1
+                if row['A'] == row['B'] == 0:
+                    n00 += 1
+                if row['A'] == 1 and row['B'] == 0:
+                    n10 += 1
+                if row['A'] == 0 and row['B'] == 1:
+                    n01 += 1
+                if self.y_pred[i] == 1:
+                    fp += 1
+                    if row['A'] == row['B'] == 1:
+                        fp11 += 1
+                    if row['A'] == row['B'] == 0:
+                        fp00 += 1
+                    if row['A'] == 1 and row['B'] == 0:
+                        fp10 += 1
+                    if row['A'] == 0 and row['B'] == 1:
+                        fp01 += 1
+                if self.y_pred[i] == -1:
+                    tn += 1
+                    if row['A'] == row['B'] == 1:
+                        tn11 += 1
+                    if row['A'] == row['B'] == 0:
+                        tn00 += 1
+                    if row['A'] == 1 and row['B'] == 0:
+                        tn10 += 1
+                    if row['A'] == 0 and row['B'] == 1:
+                        tn01 += 1
+
+        mitp00 = np.log(tp00 / t00 / (tp / t)) * tp00 / len(s)
+        mifn00 = np.log(fn00 / t00 / (fn / t)) * fn00 / len(s)
+        mifp00 = np.log(fp00 / n00 / (fp / n)) * fp00 / len(s)
+        mitn00 = np.log(tn00 / n00 / (tn / n)) * tn00 / len(s)
+        mi00 = mitp00 + mifn00 + mifp00 + mitn00
+
+        mitp01 = np.log(tp01 / t01 / (tp / t)) * tp01 / len(s)
+        mifn01 = np.log(fn01 / t01 / (fn / t)) * fn01 / len(s)
+        mifp01 = np.log(fp01 / n01 / (fp / n)) * fp01 / len(s)
+        mitn01 = np.log(tn01 / n01 / (tn / n)) * tn01 / len(s)
+        mi01 = mitp01 + mifn01 + mifp01 + mitn01
+
+        mitp10 = np.log(tp10 / t10 / (tp / t)) * tp10 / len(s)
+        mifn10 = np.log(fn10 / t10 / (fn / t)) * fn10 / len(s)
+        mifp10 = np.log(fp10 / n10 / (fp / n)) * fp10 / len(s)
+        mitn10 = np.log(tn10 / n10 / (tn / n)) * tn10 / len(s)
+        mi10 = mitp10 + mifn10 + mifp10 + mitn10
+
+        mitp11 = np.log(tp11 / t11 / (tp / t)) * tp11 / len(s)
+        mifn11 = np.log(fn11 / t11 / (fn / t)) * fn11 / len(s)
+        mifp11 = np.log(fp11 / n11 / (fp / n)) * fp11 / len(s)
+        mitn11 = np.log(tn11 / n11 / (tn / n)) * tn11 / len(s)
+        mi11 = mitp11 + mifn11 + mifp11 + mitn11
+        mi = mi00 + mi01 + mi10 + mi11
+        return mi

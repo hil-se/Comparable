@@ -118,6 +118,7 @@ AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
 Within_comp = m.Within_comp(data_tr[["A", "B"]])
 Sep_comp = m.Sep_comp(data_tr[["A", "B"]])
 MI_comp = m.MI_comp(data_tr[["A", "B"]])
+MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
 from pdb import set_trace
 set_trace()
 print(df)
