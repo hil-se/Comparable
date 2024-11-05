@@ -38,6 +38,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     data = loadData(col=col, num_img=num_img)
     # threshold = data["Average"].describe()["std"]
     # threshold = round(threshold.item(), 3)
+
     train = data.sample(frac=0.8)
     test = data.drop(train.index)
     train.reset_index(inplace=True, drop=True)

@@ -69,18 +69,20 @@ class VGG_Pre:
         #     layer.trainable = False
 
         base_model_output = tf.keras.layers.Flatten()(base_model.layers[-4].output)
-        base_model_output = tf.keras.layers.Dense(256, activation='relu')(base_model_output)
+        base_model_output = tf.keras.layers.Dense(256, activation='sigmoid')(base_model_output)
         base_model_output = tf.keras.layers.Dense(1)(base_model_output)
 
         self.model = tf.keras.Model(inputs=base_model.input, outputs=base_model_output)
-        self.model.compile(loss=tf.keras.losses.Huber(), metrics=['mae'], optimizer='SGD')
+        self.model.compile(optimizer='adam',
+              loss=tf.keras.losses.BinaryCrossentropy(),
+              metrics=['accuracy'])
 
     def fit(self, X, y, X_val, y_val):
         # pre-trained weights of vgg-face model.
         # you can find it here: https://drive.google.com/file/d/1CPSeum3HpopfomUEK1gybeuIVoeJT_Eo/view?usp=sharing
         # related blog post: https://sefiks.com/2018/08/06/deep-face-recognition-with-keras/
         #
-        lr_reduce = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=10, verbose=0, mode='auto',
+        lr_reduce = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=10, verbose=1, mode='auto',
                                                          min_lr=5e-5)
 
         # checkpointer = tf.keras.callbacks.ModelCheckpoint(filepath='checkpoint/attractiveness.keras'
@@ -90,7 +92,7 @@ class VGG_Pre:
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
         history = self.model.fit(X, y, callbacks=[lr_reduce, early_stopping],
-                                 validation_data=(X_val, y_val), batch_size=64, epochs=100, verbose=0)
+                                 validation_data=(X_val, y_val), batch_size=256, epochs=100, verbose=1)
         # print(history.history)
 
     def predict(self, X):

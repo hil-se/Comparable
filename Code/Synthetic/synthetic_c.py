@@ -9,7 +9,7 @@ from metrics import Metrics
 def make_data0(n=500, p=0.5, l=6):
     # n is the number of data points.
     # 0 <= p <= 1 is the sampling probability of Male (sex=1).
-    keys = ["sex", "work_exp", "hair_length", "hire", "pred"]
+    keys = ["sex", "work_exp", "hair_length", "y", "pred"]
     data = {key: [] for key in keys}
     for i in range(n):
         rand = np.random.random()
@@ -20,13 +20,13 @@ def make_data0(n=500, p=0.5, l=6):
         if work_exp < 0:
             work_exp = 0
         hire_prob = 1.0/(1+np.exp(25.5-2.5*work_exp))
-        pred_prob = hire_prob + np.random.normal(0, 0.1)
+        pred_prob = hire_prob + np.random.normal(1, 0.01)
         # hire_prob = 1.0 / (1 + np.exp(15.5  +10*sex - 2.5 * work_exp))
         # hire_prob = 1.0 / (1 + np.exp(8 - work_exp))
         data["sex"].append(sex)
         data["work_exp"].append(work_exp)
         data["hair_length"].append(hair_length)
-        data["hire"].append(hire_prob)
+        data["y"].append(hire_prob)
         data["pred"].append(pred_prob)
     df = pd.DataFrame(data, columns = keys)
     return df
@@ -34,7 +34,7 @@ def make_data0(n=500, p=0.5, l=6):
 def make_data1(n=500, p=0.5, l=6):
     # n is the number of data points.
     # 0 <= p <= 1 is the sampling probability of Male (sex=1).
-    keys = ["sex", "work_exp", "hair_length", "hire", "pred"]
+    keys = ["sex", "work_exp", "hair_length", "y", "pred"]
     data = {key: [] for key in keys}
     for i in range(n):
         rand = np.random.random()
@@ -51,16 +51,37 @@ def make_data1(n=500, p=0.5, l=6):
         data["sex"].append(sex)
         data["work_exp"].append(work_exp)
         data["hair_length"].append(hair_length)
-        data["hire"].append(hire_prob)
+        data["y"].append(hire_prob)
         data["pred"].append(pred_prob)
     df = pd.DataFrame(data, columns = keys)
     return df
 
+def make_data2(n=500, p=0.5):
+    # n is the number of data points.
+    # 0 <= p <= 1 is the sampling probability of Male (sex=1).
+    keys = ["sex", "power", "height", "y", "pred"]
+    data = {key: [] for key in keys}
+    y = []
+    for i in range(n):
+        rand = np.random.random()
+        sex = 1 if rand < p else 0
+        height = np.random.normal(1.65 + 0.1 * sex, 0.1 + 0.05 * sex)
+        power = np.random.normal(0.5 + 0.1 * sex, 0.1 + 0.05 * sex)
+        jump = height + power
+        pred_prob = jump + 0.1
+        data["sex"].append(sex)
+        data["power"].append(power)
+        data["height"].append(height)
+        data["y"].append(jump)
+        data["pred"].append(pred_prob)
+    data = pd.DataFrame(data, columns=keys)
+    return data
 
 
-df1 = make_data0(n=1000, p=0.5, l=6)
+
+df1 = make_data0(n=500, p=0.5)
 df1["A"] = df1["sex"]
-df1["Y"] = df1["hire"]
+df1["Y"] = df1["y"]
 df1["Y_pred"] = df1["pred"]
 
 df = df1
@@ -79,8 +100,16 @@ from pdb import set_trace
 data_tr = generate_pairs(df)
 
 m = Metrics(data_tr["Label"], data_tr["pred"])
-# AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
-# Within_comp = m.Within_comp(data_tr[["A", "B"]])
-# Sep_comp = m.Sep_comp(data_tr[["A", "B"]])
-MI_comp = m.MI_comp(data_tr[["A", "B"]])
+AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
+Within_comp = m.Within_comp(data_tr[["A", "B"]])
+Sep_comp = m.Sep_comp(data_tr[["A", "B"]])
+# MI_comp = m.MI_comp(data_tr[["A", "B"]])
+result = {"gAOD": gAOD,
+                 "gWithin": gWithin, "gSep": gSep, "MI": MI, "AOD_comp": AOD_comp,
+                 "Within_comp": Within_comp, "Sep_comp": Sep_comp}
+
+result = pd.DataFrame(result,index=[0])
+
+result.to_csv("df1_c.csv", index=False)
+
 set_trace()
