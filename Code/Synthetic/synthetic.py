@@ -16,7 +16,7 @@ def retrievePixels(path, height, width):
     x = tf.keras.utils.img_to_array(img)
     return x
 
-num_comp = 5
+num_comp = 1
 col = "income"
 
 # 1,2,3,4
@@ -178,39 +178,42 @@ def make_df5(n=1000, p1=0.5, p2=0.5, p3=0.5):
     return df
 
 df6 = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
-# df6 = df6.sample(frac=0.1)
 df6 = df6[["Filename", "P1"]]
-protected_tr_sex = []
-
 df6['pixels'] = df6['Filename'].apply(DataProcessing.retrievePixels)
-train = df6.head(int((len(df6) * 0.8)))
-val = df6.drop(train.index)
 
-for file in train["Filename"]:
-    if file[1] == 'M':
-        protected_tr_sex.append(1)
-    else:
-        protected_tr_sex.append(0)
+train_val = df6.sample(frac=0.8)
+test = df6.drop(train_val.index)
+train = train_val.sample(frac=0.8)
+val = train_val.drop(train.index)
 
-train['gender'] = protected_tr_sex
-
+features_ts = np.array([pixel for pixel in test['pixels']]) / 255.0
 features_tr = np.array([pixel for pixel in train['pixels']]) / 255.0
 features_val = np.array([pixel for pixel in val['pixels']]) / 255.0
 
 X_train = features_tr
 X_val = features_val
+X_test = features_ts
 
 model = vgg_pre.VGG_Pre()
 
 model.fit(X_train, train["P1"], X_val, val["P1"])
 
-pred = model.decision_function(X_train)
-pred = (pred >= 3).astype(int)
-train['income'] = (train["P1"] >= 3).astype(int)
-train['pred'] = pred
-train.reset_index(inplace=True, drop=True)
+protected_ts_sex = []
+for file in test["Filename"]:
+    if file[1] == 'M':
+        protected_ts_sex.append(1)
+    else:
+        protected_ts_sex.append(0)
 
-df = train[["income","gender","pred"]]
+test['gender'] = protected_ts_sex
+
+pred = model.decision_function(X_test)
+pred = (pred >= 3).astype(int)
+test['income'] = (test["P1"] >= 3).astype(int)
+test['pred'] = pred
+test.reset_index(inplace=True, drop=True)
+
+df = test[["income","gender","pred"]]
 
 m = Metrics(df["income"], df["pred"])
 AOD = m.AOD(df["gender"])
