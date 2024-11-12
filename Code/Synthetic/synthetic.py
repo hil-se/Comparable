@@ -16,7 +16,7 @@ def retrievePixels(path, height, width):
     x = tf.keras.utils.img_to_array(img)
     return x
 
-num_comp = 1
+num_comp = 10
 col = "income"
 
 # 1,2,3,4
