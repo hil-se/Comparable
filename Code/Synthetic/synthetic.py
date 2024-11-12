@@ -16,7 +16,7 @@ def retrievePixels(path, height, width):
     x = tf.keras.utils.img_to_array(img)
     return x
 
-num_comp = 10
+num_comp = 1
 col = "income"
 
 # 1,2,3,4
@@ -177,8 +177,10 @@ def make_df5(n=1000, p1=0.5, p2=0.5, p3=0.5):
     df = pd.DataFrame(data, columns = keys)
     return df
 
+
 df6 = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
-df6 = df6[["Filename", "P1"]]
+P = "P3"
+df6 = df6[["Filename", P]]
 df6['pixels'] = df6['Filename'].apply(DataProcessing.retrievePixels)
 
 train_val = df6.sample(frac=0.8)
@@ -196,7 +198,7 @@ X_test = features_ts
 
 model = vgg_pre.VGG_Pre()
 
-model.fit(X_train, train["P1"], X_val, val["P1"])
+model.fit(X_train, train[P], X_val, val[P])
 
 protected_ts_sex = []
 for file in test["Filename"]:
@@ -209,7 +211,7 @@ test['gender'] = protected_ts_sex
 
 pred = model.decision_function(X_test)
 pred = (pred >= 3).astype(int)
-test['income'] = (test["P1"] >= 3).astype(int)
+test['income'] = (test[P] >= 3).astype(int)
 test['pred'] = pred
 test.reset_index(inplace=True, drop=True)
 
@@ -271,7 +273,7 @@ for i in range(20):
 results = pd.DataFrame(results)
 results.loc[len(results.index)] = results.mean()
 results.loc[len(results.index)] = results.std()
-results.to_csv("scut_" + str(len(comp)) + ".csv", index=False)
+results.to_csv("scut_" + str(P) + "_" + str(len(comp)) + ".csv", index=False)
 
 # experiment with the num of comparison (repeat 20 times and get mean and std)
 # repeated trail on df1-df3 and add more data points
