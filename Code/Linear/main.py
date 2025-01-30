@@ -14,7 +14,7 @@ import metrics
 final_results = []
 final_results_encoder = []
 
-dataName = "SCUT"
+dataName = "Boston"
 iterations = 5
 num_comp = 1
 global col
