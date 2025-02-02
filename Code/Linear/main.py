@@ -3,7 +3,7 @@ import random
 
 import pandas as pd
 from sklearn.svm import LinearSVC
-
+from transformers import GPT2Tokenizer
 import Classification
 
 path = "../../Data/landmark_txt/"
@@ -14,13 +14,50 @@ import metrics
 final_results = []
 final_results_encoder = []
 
-dataName = "Boston"
+dataName = "Issue"
 iterations = 5
 num_comp = 1
 global col
+SEQUENCE_LEN = 50
+
+def GPTencode(tokenizer, sentence):
+    # sentence = filter(sentence)
+    encoded = tokenizer.encode(sentence)
+    if len(encoded) > SEQUENCE_LEN:
+        encoded = encoded[:SEQUENCE_LEN]
+    elif len(encoded) < SEQUENCE_LEN:
+        padding = SEQUENCE_LEN - len(encoded)
+        for _ in range(padding):
+            encoded.append(3)
+    return encoded
 
 for i in range(iterations):
     print("Iteration:", i + 1, "/", iterations)
+
+    if dataName == "Issue":
+        datas = ["appceleratorstudio", "aptanastudio", "bamboo", "clover", "datamanagement", "duracloud",
+                 "jirasoftware",
+                 "mesos", "moodle", "mule", "mulestudio", "springxd", "talenddataquality", "talendesb", "titanium",
+                 "usergrid"]
+
+        dataName = "aptanastudio"
+        datatype = "train"
+        path = "../../Data/GPT2SP Data/Split/"
+        df = pd.read_csv(path + dataName + "_" + datatype + ".csv")
+        col = 'Storypoint'
+
+        model = GPT2Tokenizer.from_pretrained('gpt2')
+        model.pad_token = '[PAD]'
+
+        features = []
+        for index, row in df.iterrows():
+            embA = GPTencode(model, row["Issue"])
+            features.append(embA)
+        features = pd.DataFrame(features)
+        features.insert(0, col, df[col])
+        df = features
+
+
 
     if dataName == "Boston":
         df = pd.read_csv("../../Data/Boston.csv")
@@ -189,29 +226,29 @@ for i in range(iterations):
 
     final_results.append(result)
 
-    train_encoder = data_tr_encoder.sample(frac=0.85)
-    y_true = train_encoder["Label"].tolist()
-    val = data_tr_encoder.drop(train_encoder.index)
-
-    dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500)
-
-    recall, precision, F1, accuracy = Classification.test_model(data_ts_encoder, dual_encoder)
-    spearmanr, sp_pvalue, pearsonr, p_pvalue = Classification.generateLists(test_list, dual_encoder)
-
-    result_encoder = {"Full data size": len(train), "Testing data size": len(test),
-                      "Recall": recall, "Precision": precision, "F1": F1,
-                      "Accuracy": accuracy, "Spearman coef": spearmanr,
-                      "Spearman P": sp_pvalue,
-                      "Pearson coef": pearsonr, "Pearson P": p_pvalue}
-
-    final_results_encoder.append(result_encoder)
+    # train_encoder = data_tr_encoder.sample(frac=0.85)
+    # y_true = train_encoder["Label"].tolist()
+    # val = data_tr_encoder.drop(train_encoder.index)
+    #
+    # dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500)
+    #
+    # recall, precision, F1, accuracy = Classification.test_model(data_ts_encoder, dual_encoder)
+    # spearmanr, sp_pvalue, pearsonr, p_pvalue = Classification.generateLists(test_list, dual_encoder)
+    #
+    # result_encoder = {"Full data size": len(train), "Testing data size": len(test),
+    #                   "Recall": recall, "Precision": precision, "F1": F1,
+    #                   "Accuracy": accuracy, "Spearman coef": spearmanr,
+    #                   "Spearman P": sp_pvalue,
+    #                   "Pearson coef": pearsonr, "Pearson P": p_pvalue}
+    #
+    # final_results_encoder.append(result_encoder)
 
 final_results = pd.DataFrame(final_results)
 final_results.to_csv("../../Results/" + dataName + " SVM_" + col + "_" + str(num_comp) + ".csv", index=False)
 
-final_results_encoder = pd.DataFrame(final_results_encoder)
-final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "_" + str(num_comp) + ".csv",
-                             index=False)
+# final_results_encoder = pd.DataFrame(final_results_encoder)
+# final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "_" + str(num_comp) + ".csv",
+#                              index=False)
 
 # debug the encoder
 # experiment on face beauty data
