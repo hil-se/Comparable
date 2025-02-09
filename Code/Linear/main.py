@@ -16,7 +16,7 @@ final_results_encoder = []
 
 dataName = "Issue"
 iterations = 5
-num_comp = 10
+num_comp = 5
 global col
 SEQUENCE_LEN = 50
 
@@ -43,21 +43,32 @@ for d in datas:
 
         if dataName == "Issue":
             dataset = d
-            datatype = "train"
             path = "../../Data/GPT2SP Data/Split/"
-            df = pd.read_csv(path + dataset + "_" + datatype + ".csv")
+            df_train = pd.read_csv(path + dataset + "_" + "train" + ".csv")
+            df_val = pd.read_csv(path + dataset + "_" + "val" + ".csv")
+            df_test = pd.read_csv(path + dataset + "_" + "test" + ".csv")
             col = 'Storypoint'
+
+            df_train = pd.concat([df_train, df_val], ignore_index=True)
 
             model = GPT2Tokenizer.from_pretrained('gpt2')
             model.pad_token = '[PAD]'
 
             features = []
-            for index, row in df.iterrows():
+            for index, row in df_train.iterrows():
                 embA = GPTencode(model, row["Issue"])
                 features.append(embA)
             features = pd.DataFrame(features)
-            features.insert(0, col, df[col])
-            df = features
+            features.insert(0, col, df_train[col])
+            df_train = features
+
+            features = []
+            for index, row in df_test.iterrows():
+                embA = GPTencode(model, row["Issue"])
+                features.append(embA)
+            features = pd.DataFrame(features)
+            features.insert(0, col, df_test[col])
+            df_test = features
 
 
 
@@ -112,8 +123,8 @@ for d in datas:
                 if feature != col:
                     df[feature] = (df[feature] - df[feature].min()) / (df[feature].max() - df[feature].min())
 
-        train = df.sample(frac=0.8)
-        test = df.drop(train.index)
+        train = df_train
+        test = df_test
         train.reset_index(inplace=True, drop=True)
         test.reset_index(inplace=True, drop=True)
 
