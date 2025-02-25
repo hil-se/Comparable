@@ -15,8 +15,8 @@ final_results = []
 final_results_encoder = []
 
 dataName = "Issue"
-iterations = 5
-num_comp = 5
+iterations = 1
+num_comp = 1
 global col
 SEQUENCE_LEN = 50
 
@@ -232,8 +232,10 @@ for d in datas:
         # compare with our cnn model
 
         result = {"Full data size": len(train), "Testing data size": len(test),
-                  "Recall": m_comp.recall(), "Precision": m_comp.precision(), "F1": m_comp.f1(),
-                  "Accuracy": m_comp.accuracy(), "Spearman coef": m_reg.spearmanr_coefficient(),
+                  # "Recall": m_comp.recall(), "Precision": m_comp.precision(), "F1": m_comp.f1(),
+                  # "Accuracy": m_comp.accuracy(),
+                  "MAE": m_reg.mae(), "MDAE": m_reg.mdae(),
+                  "Spearman coef": m_reg.spearmanr_coefficient(),
                   "Spearman P": m_reg.spearmanr_value(),
                   "Pearson coef": m_reg.pearsonr_coefficient(), "Pearson P": m_reg.pearsonr_value()}
 

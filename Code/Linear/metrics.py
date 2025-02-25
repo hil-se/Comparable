@@ -17,6 +17,9 @@ class Metrics:
     def mse(self):
         return sklearn.metrics.mean_squared_error(self.y, self.y_pred)
 
+    def mdae(self):
+        return sklearn.metrics.median_absolute_error(self.y, self.y_pred)
+
     def mae(self):
         return sklearn.metrics.mean_absolute_error(self.y, self.y_pred)
 
