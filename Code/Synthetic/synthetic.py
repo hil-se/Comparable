@@ -23,7 +23,7 @@ def retrievePixels(path, height, width):
     return x
 
 
-num_comp = 10
+num_comp = 20
 col = "income"
 
 
@@ -267,6 +267,7 @@ def make_scut(P="P3"):
 
 
 def make_adult():
+    seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
@@ -281,11 +282,13 @@ def make_adult():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2)
+        X, y, test_size=0.2, random_state=seed)
 
-    clf = LogisticRegression().fit(X_train, y_train)
+    clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
 
     predictions = clf.predict(X_test)
+
+    accuracy = accuracy_score(y_test, predictions)
 
     X_test['pred'] = predictions
     X_test['income'] = y_test
@@ -295,6 +298,7 @@ def make_adult():
     return df, "adult"
 
 def make_german():
+    seed =42
     df = pd.read_csv("../../Data/german_credit_data.csv", index_col=0)
     df = df.dropna()
     df['Sex'] = df['Sex'].apply(lambda x: 1 if x == "male" else 0)
@@ -309,9 +313,9 @@ def make_german():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2)
+        X, y, test_size=0.2, random_state=seed)
 
-    clf = LogisticRegression().fit(X_train, y_train)
+    clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
 
     predictions = clf.predict(X_test)
 
@@ -326,6 +330,7 @@ def make_german():
     return df, "german"
 
 def make_heart():
+    seed = 42
     df = pd.read_csv("../../Data/heart.csv")
     df = df.dropna()
 
@@ -335,9 +340,9 @@ def make_heart():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2)
+        X, y, test_size=0.2,random_state=seed)
 
-    clf = LogisticRegression().fit(X_train, y_train)
+    clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
 
     predictions = clf.predict(X_test)
 
@@ -353,14 +358,15 @@ def make_heart():
 
 
 results = []
+df, df_name = make_heart()
 
 for i in range(10):
-    df, df_name = make_heart()
 
     m = Metrics(df["income"], df["pred"])
     AOD = m.AOD(df["gender"])
-    gAOD = m.gAOD(df["gender"])
-    MI = m.MI_b(df["gender"])
+    EOD = m.EOD(df["gender"])
+    # gAOD = m.gAOD(df["gender"])
+    # MI = m.MI_b(df["gender"])
 
     res_tr = []
     for indexA in range(0, len(df)):
@@ -401,8 +407,7 @@ for i in range(10):
     # MI_comp = m.MI_comp(data_tr[["A", "B"]])
     # MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
 
-    result = {"AOD": AOD, "gAOD": gAOD,
-              "MI": MI, "AOD_comp": AOD_comp, "Within_comp": Within_comp, "Sep_comp": Sep_comp,
+    result = {"# of comparisons": len(data_tr), "AOD": AOD, "EOD": EOD, "AOD_comp": AOD_comp, "Within_comp": Within_comp, "EOD_comp": AOD_comp+Within_comp,
               # "MI_comp": MI_comp, "MI_comp2": MI_comp2, "Ratio": MI / MI_comp
               }
     results.append(result)
