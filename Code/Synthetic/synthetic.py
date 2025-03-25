@@ -1,21 +1,19 @@
 import random
-from os import access
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from keras.src.metrics import accuracy
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
+import Classification
 from Code.ImageExp import DataProcessing, vgg_pre
 from metrics import Metrics
-from sklearn.linear_model import LogisticRegression
-
 
 
 def retrievePixels(path, height, width):
-    # img = tf.keras.utils.load_img("../data/images/"+path, grayscale=False)
+    # img = tf.keras.utils.load_img("../data/images/"+path, grayscale=False
     folder_path = "../../Data/Images/"
     # folder_path = "../../../XAI_Image/data/images/"
     img = tf.keras.utils.load_img(folder_path + path, target_size=(height, width))
@@ -23,7 +21,7 @@ def retrievePixels(path, height, width):
     return x
 
 
-num_comp = 20
+num_comp = 1
 col = "income"
 
 
@@ -275,8 +273,8 @@ def make_adult():
     dependent = 'income'
 
     df = pd.get_dummies(df, columns=['workclass', 'education', 'marital-status', 'occupation',
-                                                    'relationship', 'race', 'native-country'], dtype=float,
-                                       drop_first=True)
+                                     'relationship', 'race', 'native-country'], dtype=float,
+                        drop_first=True)
 
     X = df.drop([dependent], axis=1)
     y = np.array(df[dependent])
@@ -288,17 +286,26 @@ def make_adult():
 
     predictions = clf.predict(X_test)
 
+    index_pos = 1 - clf.classes_[0]
+    pred_prob = clf.predict_proba(X_test)[:, index_pos]
+
     accuracy = accuracy_score(y_test, predictions)
 
-    X_test['pred'] = predictions
-    X_test['income'] = y_test
-    X_test.reset_index(inplace=True, drop=True)
+    X_test_cp = X_test.copy()
+    X_test_cp['pred_con'] = pred_prob
+    X_test_cp['pred'] = predictions
+    X_test_cp['income'] = y_test
+    X_test_cp.reset_index(inplace=True, drop=True)
 
-    df = X_test[["income", "gender", "pred"]]
-    return df, "adult"
+    X_train[col] = y_train
+    X_test[col] = y_test
+
+    df = X_test_cp[["income", "gender", "pred", "pred_con"]]
+    return df, "adult", X_train, X_test
+
 
 def make_german():
-    seed =42
+    seed = 42
     df = pd.read_csv("../../Data/german_credit_data.csv", index_col=0)
     df = df.dropna()
     df['Sex'] = df['Sex'].apply(lambda x: 1 if x == "male" else 0)
@@ -307,7 +314,7 @@ def make_german():
     dependent = 'Risk'
 
     df = pd.get_dummies(df, columns=['Housing', 'Saving accounts', 'Checking account', 'Purpose'], dtype=float,
-                                       drop_first=True)
+                        drop_first=True)
 
     X = df.drop([dependent], axis=1)
     y = np.array(df[dependent])
@@ -319,15 +326,24 @@ def make_german():
 
     predictions = clf.predict(X_test)
 
+    index_pos = 1 - clf.classes_[0]
+    pred_prob = clf.predict_proba(X_test)[:, index_pos]
+
     accuracy = accuracy_score(y_test, predictions)
 
-    X_test['gender'] = X_test['Sex']
-    X_test['pred'] = predictions
-    X_test['income'] = y_test
-    X_test.reset_index(inplace=True, drop=True)
+    X_test_cp = X_test.copy()
+    X_test_cp['gender'] = X_test['Sex']
+    X_test_cp['pred_con'] = pred_prob
+    X_test_cp['pred'] = predictions
+    X_test_cp['income'] = y_test
+    X_test_cp.reset_index(inplace=True, drop=True)
 
-    df = X_test[["income", "gender", "pred"]]
-    return df, "german"
+    X_train[col] = y_train
+    X_test[col] = y_test
+
+    df = X_test_cp[["income", "gender", "pred", "pred_con"]]
+    return df, "german", X_train, X_test
+
 
 def make_heart():
     seed = 42
@@ -340,25 +356,35 @@ def make_heart():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2,random_state=seed)
+        X, y, test_size=0.2, random_state=seed)
 
     clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
 
     predictions = clf.predict(X_test)
 
+    index_pos = 1 - clf.classes_[0]
+    pred_prob = clf.predict_proba(X_test)[:, index_pos]
+
     accuracy = accuracy_score(y_test, predictions)
 
-    X_test['gender'] = X_test['sex']
-    X_test['pred'] = predictions
-    X_test['income'] = y_test
-    X_test.reset_index(inplace=True, drop=True)
+    X_test_cp = X_test.copy()
+    X_test_cp['gender'] = X_test['sex']
+    X_test_cp['pred_con'] = pred_prob
+    X_test_cp['pred'] = predictions
+    X_test_cp['income'] = y_test
+    X_test_cp.reset_index(inplace=True, drop=True)
 
-    df = X_test[["income", "gender", "pred"]]
-    return df, "heart"
+    X_train[col] = y_train
+    X_test[col] = y_test
+
+    df = X_test_cp[["income", "gender", "pred", "pred_con"]]
+    return df, "heart", X_train, X_test
 
 
 results = []
-df, df_name = make_heart()
+df, df_name, train, test = make_adult()
+train.reset_index(inplace=True, drop=True)
+test.reset_index(inplace=True, drop=True)
 
 for i in range(10):
 
@@ -368,46 +394,134 @@ for i in range(10):
     # gAOD = m.gAOD(df["gender"])
     # MI = m.MI_b(df["gender"])
 
-    res_tr = []
-    for indexA in range(0, len(df)):
+    res_tr_encoder = []
+    res_ts_encoder = []
+    test_list = []
+
+    for indexA, rowA in train.iterrows():
         comp = []
-        rowA = df.iloc[indexA]
-        while len(comp) < num_comp:
-            indexB = random.randint(0, len(df) - 1)
-            # for indexB in range(0, len(df)):
-            #     if (indexB in comp):
-            #         continue
-            rowB = df.iloc[indexB]
+        train_cp = train.copy()
+        comp_count = 0
+        while comp_count < num_comp:
+            rowB = train_cp.sample()
+            indexB = rowB.index[0]
+            if (indexB == indexA):
+                    continue
+            rowB = rowB.iloc[0]
             ratingA = rowA[col]
             ratingB = rowB[col]
-            predA = rowA["pred"]
-            predB = rowB["pred"]
             label = 0
-            pred = 0
             if ratingA > ratingB:
                 label = 1
             elif ratingA < ratingB:
                 label = -1
-            if predA > predB:
-                pred = 1
-            elif predA < predB:
-                pred = -1
-            res_tr.append({"A": rowA["gender"],
-                           "B": rowB["gender"],
-                           "Label": label,
-                           "pred": pred
-                           })
-            comp.append(indexB)
-    data_tr = pd.DataFrame(res_tr)
+            if label != 0:
+                # if label is not None:
+                trainA = rowA.drop(labels=[col])
+                trainB = rowB.drop(labels=[col])
 
-    m = Metrics(data_tr["Label"], data_tr["pred"])
-    AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
-    Within_comp = m.Within_comp(data_tr[["A", "B"]])
-    Sep_comp = m.Sep_comp(data_tr[["A", "B"]])
-    # MI_comp = m.MI_comp(data_tr[["A", "B"]])
-    # MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
+                res_tr_encoder.append({"A": trainA.to_list(),
+                                       "B": trainB.to_list(),
+                                       "Label": label
+                                       })
+                train_cp.drop(indexB, inplace=True)
+                comp_count += 1
 
-    result = {"# of comparisons": len(data_tr), "AOD": AOD, "EOD": EOD, "AOD_comp": AOD_comp, "Within_comp": Within_comp, "EOD_comp": AOD_comp+Within_comp,
+    data_tr_encoder = pd.DataFrame(res_tr_encoder)
+
+    for indexA, rowA in test.iterrows():
+        comp = []
+        test_cp = test.copy()
+        comp_count = 0
+        while comp_count < num_comp:
+            rowB = test_cp.sample()
+            indexB = rowB.index[0]
+            if (indexB == indexA):
+                continue
+            rowB = rowB.iloc[0]
+            ratingA = rowA[col]
+            ratingB = rowB[col]
+            label = 0
+            if ratingA > ratingB:
+                label = 1
+            elif ratingA < ratingB:
+                label = -1
+            if label != 0:
+                # if label is not None:
+                testA = rowA.drop(labels=[col])
+                testB = rowB.drop(labels=[col])
+
+                res_ts_encoder.append({"A": testA.to_list(),
+                                       "B": testB.to_list(),
+                                       "Label": label
+                                       })
+                test_list.append({"A": testA['gender'],
+                                  "B": testB['gender'],
+                                  "Label": label
+                                  })
+                test_cp.drop(indexB, inplace=True)
+                comp_count += 1
+
+    data_ts_encoder = pd.DataFrame(res_ts_encoder)
+    test_list = pd.DataFrame(test_list)
+
+    train_encoder = data_tr_encoder.sample(frac=0.85)
+    y_true = train_encoder["Label"].tolist()
+    val = data_tr_encoder.drop(train_encoder.index)
+
+    dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500)
+
+    predictions = Classification.predict(data_ts_encoder, dual_encoder)
+
+# res_tr = []
+# comp = []
+# for indexA in range(0, len(df)):
+#     df_cp = df.copy()
+#     comp_count = 0
+#     rowA = df.iloc[indexA]
+#     while comp_count < num_comp:
+#         # for indexB in range(0, len(df)):
+#         #     indexB = random.randint(0, len(df_cp) - 1)
+#         rowB = df_cp.sample()
+#         indexB = rowB.index[0]
+#         if (indexB == indexA):
+#                 continue
+#         rowB = rowB.iloc[0]
+#         ratingA = rowA[col]
+#         ratingB = rowB[col]
+#         predA = rowA["pred"]
+#         predB = rowB["pred"]
+#         label = 0
+#         pred = 0
+#         if ratingA > ratingB:
+#             label = 1
+#         elif ratingA < ratingB:
+#             label = -1
+#         if predA > predB:
+#             pred = 1
+#         elif predA < predB:
+#             pred = -1
+#         res_tr.append({"A": rowA["gender"],
+#                        "B": rowB["gender"],
+#                        "Label": label,
+#                        "pred_con": pred
+#                        })
+#         # comp.append(indexB)
+#         df_cp.drop(indexB, inplace=True)
+#         comp_count += 1
+
+# data_tr = pd.DataFrame(res_tr)
+
+    test_list["pred"] = predictions
+    m = Metrics(test_list["Label"], test_list["pred"])
+    AOD_comp = m.AOD_comp(test_list[["A", "B"]])
+    Within_comp = m.Within_comp(test_list[["A", "B"]])
+    Sep_comp = m.Sep_comp(test_list[["A", "B"]])
+# MI_comp = m.MI_comp(data_tr[["A", "B"]])
+# MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
+
+    result = {"# of comparisons": len(test_list), "AOD": AOD, "EOD": EOD, "AOD_comp": AOD_comp,
+              "Within_comp": Within_comp, "EOD_comp": AOD_comp + Within_comp,
               # "MI_comp": MI_comp, "MI_comp2": MI_comp2, "Ratio": MI / MI_comp
               }
     results.append(result)
@@ -415,7 +529,7 @@ for i in range(10):
 results = pd.DataFrame(results)
 results.loc[len(results.index)] = results.mean()
 results.loc[len(results.index)] = results.std()
-results.to_csv(df_name + "_" + str(num_comp) + ".csv", index=False)
+results.to_csv(df_name + "_encoder_" + str(num_comp) + ".csv", index=False)
 
 # experiment with the num of comparison (repeat 20 times and get mean and std)
 # repeated trail on df1-df3 and add more data points
