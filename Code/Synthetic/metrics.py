@@ -266,8 +266,8 @@ class Metrics:
         # X_with_intercept[:, 1:p] = joint.values
         #
         # keys = ['Lagrange Multiplier statistic:', 'LM test\'s p-value:', 'F-statistic:', 'F-test\'s p-value:']
-        # results = het_white(resid, X_with_intercept)
-        # print(lzip(keys, results))
+        # Results = het_white(resid, X_with_intercept)
+        # print(lzip(keys, Results))
         rse_joint = np.std(pred_joint - s)
         rse_margin = np.std(pred_margin - s)
 
