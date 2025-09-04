@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -269,6 +267,7 @@ def make_scut(P="P3"):
 def make_adult():
     seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
+    df = df.sample(frac=0.01)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
@@ -278,11 +277,11 @@ def make_adult():
 
     df = df.rename(columns={sa: 'sa'})
 
-    df = pd.get_dummies(df, columns=['workclass', 'education', 'marital-status', 'occupation',
-                                     'relationship', 'race', 'native-country'], dtype=float,
+    df = pd.get_dummies(df, columns=['workclass', 'marital-status', 'occupation',
+                                     'relationship', 'race'], dtype=float,
                         drop_first=True)
 
-    X = df.drop([dependent], axis=1)
+    X = df.drop([dependent, 'education', 'native-country'], axis=1)
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -399,18 +398,23 @@ df, df_name, train, test = make_adult()
 train.reset_index(inplace=True, drop=True)
 test.reset_index(inplace=True, drop=True)
 
+y_test = test['output']
+test = test.drop(columns=['output'])
+
 res_tr_encoder = []
+res_tr_sa = []
 
 for indexA, rowA in train.iterrows():
     comp = []
-    train_cp = train.copy()
+    # train_cp = train.copy()
     comp_count = 0
-    while comp_count < num_comp_train:
-        rowB = train_cp.sample()
-        indexB = rowB.index[0]
+    # while comp_count < num_comp_train:
+    for indexB, rowB in train.iterrows():
+        # rowB = train_cp.sample()
+        # indexB = rowB.index[0]
         if (indexB == indexA):
             continue
-        rowB = rowB.iloc[0]
+        # rowB = rowB.iloc[0]
         ratingA = rowA[col]
         ratingB = rowB[col]
         label = 0
@@ -427,65 +431,102 @@ for indexA, rowA in train.iterrows():
                                    "B": trainB.to_list(),
                                    "Label": label
                                    })
-            train_cp.drop(indexB, inplace=True)
-            comp_count += 1
+
+            res_tr_sa.append({"A": trainA['sa'],
+                              "B": trainB['sa'],
+                              "AB":(trainA['sa'], trainB['sa']),
+                              "Label": label,
+                              "AY": ((trainA['sa'], trainB['sa']),label)})
+
+            # train_cp.drop(indexB, inplace=True)
+            # comp_count += 1
 
 data_tr_encoder = pd.DataFrame(res_tr_encoder)
+res_tr_sa = pd.DataFrame(res_tr_sa)
 
 train_encoder = data_tr_encoder.sample(frac=0.85)
 y_true = train_encoder["Label"].tolist()
 val = data_tr_encoder.drop(train_encoder.index)
 
-dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500)
+weights = []
 
-for i in range(10):
+for index,row in res_tr_sa.iterrows():
+    if row['AB'] == (0.0, 0.0) or row['AB'] == (1.0, 1.0):
+        weights.append(1)
+    else:
+        P_aij =  res_tr_sa['AB'].value_counts(True)[row['AB']]
+        P_aij_yij = res_tr_sa['AY'].value_counts(True)[row['AY']]
 
-    # m = Metrics(df["income"], df["pred"])
-    # AOD = m.AOD(df["gender"])
-    # EOD = m.EOD(df["gender"])
-    # gAOD = m.gAOD(df["gender"])
-    # MI = m.MI_b(df["gender"])
+        weights.append(P_aij/ (2*P_aij_yij))
 
-    res_ts_encoder = []
-    test_list = []
+dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
+                                          weights=None)
 
-    for indexA, rowA in test.iterrows():
-        comp = []
-        test_cp = test.copy()
-        comp_count = 0
-        while comp_count < num_comp_test:
-            rowB = test_cp.sample()
-            indexB = rowB.index[0]
-            if (indexB == indexA):
-                continue
-            rowB = rowB.iloc[0]
-            ratingA = rowA[col]
-            ratingB = rowB[col]
-            label = 0
-            if ratingA > ratingB:
-                label = 1
-            elif ratingA < ratingB:
-                label = -1
-            if label != 0:
-                # if label is not None:
-                testA = rowA.drop(labels=[col])
-                testB = rowB.drop(labels=[col])
+dual_encoder_weighted = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
+                                          weights=weights)
+predictions = []
+predictions_weighted = []
 
-                res_ts_encoder.append({"A": testA.to_list(),
-                                       "B": testB.to_list(),
-                                       "Label": label
-                                       })
-                test_list.append({"A": testA['sa'],
-                                  "B": testB['sa'],
-                                  "Label": label
-                                  })
-                test_cp.drop(indexB, inplace=True)
-                comp_count += 1
+for index, row in test.iterrows():
+    row = np.array(row)
+    row = np.expand_dims(row, axis=0)
+    predictions.append(dual_encoder.score(row).numpy()[0][0].item())
+    predictions_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
 
-    data_ts_encoder = pd.DataFrame(res_ts_encoder)
-    test_list = pd.DataFrame(test_list)
+m = Metrics(y_test, predictions)
+m_weighted = Metrics(y_test, predictions_weighted)
 
-    predictions = Classification.predict(data_ts_encoder, dual_encoder)
+I_sep = m.MI_con_info(test['sa'])
+I_sep_weighted = m_weighted.MI_con_info(test['sa'])
+
+a = 1
+# for i in range(10):
+# # m = Metrics(df["income"], df["pred"])
+# # AOD = m.AOD(df["gender"])
+# # EOD = m.EOD(df["gender"])
+# # gAOD = m.gAOD(df["gender"])
+# # MI = m.MI_b(df["gender"])
+#
+#     res_ts_encoder = []
+# test_list = []
+#
+# for indexA, rowA in test.iterrows():
+#     comp = []
+# test_cp = test.copy()
+# comp_count = 0
+# while comp_count < num_comp_test:
+#     rowB = test_cp.sample()
+#     indexB = rowB.index[0]
+#     if (indexB == indexA):
+#         continue
+#     rowB = rowB.iloc[0]
+#     ratingA = rowA[col]
+#     ratingB = rowB[col]
+#     label = 0
+#     if ratingA > ratingB:
+#         label = 1
+#     elif ratingA < ratingB:
+#         label = -1
+#     if label != 0:
+#         # if label is not None:
+#         testA = rowA.drop(labels=[col])
+#         testB = rowB.drop(labels=[col])
+#
+#         res_ts_encoder.append({"A": testA.to_list(),
+#                                "B": testB.to_list(),
+#                                "Label": label
+#                                })
+#         test_list.append({"A": testA['sa'],
+#                           "B": testB['sa'],
+#                           "Label": label
+#                           })
+#         test_cp.drop(indexB, inplace=True)
+#         comp_count += 1
+#
+# data_ts_encoder = pd.DataFrame(res_ts_encoder)
+# test_list = pd.DataFrame(test_list)
+#
+# predictions = Classification.predict(train_encoder, dual_encoder)
 
 # res_tr = []
 # comp = []
@@ -526,24 +567,24 @@ for i in range(10):
 
 # data_tr = pd.DataFrame(res_tr)
 
-    test_list["pred"] = predictions
-    m = Metrics(test_list["Label"], test_list["pred"])
-    AOD_comp = m.AOD_comp(test_list[["A", "B"]])
-    Within_comp = m.Within_comp(test_list[["A", "B"]])
-    Sep_comp = m.Sep_comp(test_list[["A", "B"]])
+test_list["pred"] = predictions
+m = Metrics(test_list["Label"], test_list["pred"])
+AOD_comp = m.AOD_comp(test_list[["A", "B"]])
+Within_comp = m.Within_comp(test_list[["A", "B"]])
+Sep_comp = m.Sep_comp(test_list[["A", "B"]])
 # MI_comp = m.MI_comp(data_tr[["A", "B"]])
 # MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
 
-    result = {"# of comparisons": len(test_list), "AOD_comp": AOD_comp,
-              "Within_comp": Within_comp, "EOD_comp": AOD_comp + Within_comp,
-              # "MI_comp": MI_comp, "MI_comp2": MI_comp2, "Ratio": MI / MI_comp
-              }
-    results.append(result)
+result = {"# of comparisons": len(test_list), "AOD_comp": AOD_comp,
+          "Within_comp": Within_comp, "EOD_comp": AOD_comp + Within_comp,
+          # "MI_comp": MI_comp, "MI_comp2": MI_comp2, "Ratio": MI / MI_comp
+          }
+results.append(result)
 
 results = pd.DataFrame(results)
 results.loc[len(results.index)] = results.mean()
 results.loc[len(results.index)] = results.std()
-results.to_csv(df_name + "_encoder_" + str(num_comp_train) + '_' + str(num_comp_test) +".csv", index=False)
+results.to_csv(df_name + "_encoder_" + str(num_comp_train) + '_' + str(num_comp_test) + ".csv", index=False)
 
 # experiment with the num of comparison (repeat 20 times and get mean and std)
 # repeated trail on df1-df3 and add more data points

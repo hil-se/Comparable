@@ -14,7 +14,8 @@ def learn(train_data,
           y_true=[],
           patience=10,
           batch_size=256,
-          shared=False):
+          shared=False,
+          weights=None):
     td_s = train_data["A"].to_list()
     td_t = train_data["B"].to_list()
     train_y = np.array(train_data["Label"].tolist())
@@ -44,20 +45,30 @@ def learn(train_data,
     dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=1e-3))
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
-    dual_encoder.fit(
-        x=train_dataset,
-        epochs=epochs,
-        validation_data=val_dataset,
-        callbacks=[early_stopping],
-        verbose=1
-    )
+    if weights == True:
+        dual_encoder.fit(
+            x=train_dataset,
+            epochs=epochs,
+            validation_data=val_dataset,
+            callbacks=[early_stopping],
+            verbose=1,
+            sample_weight=weights,
+        )
+    else:
+        dual_encoder.fit(
+            x=train_dataset,
+            epochs=epochs,
+            validation_data=val_dataset,
+            callbacks=[early_stopping],
+            verbose=1
+        )
     return dual_encoder
 
 
-def train_model(train, val, y_true, epochs=100, shared=False):
+def train_model(train, val, y_true, epochs=100, shared=False, weights=None):
     np.random.shuffle(train.values)
     np.random.shuffle(val.values)
-    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared)
+    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared, weights=None)
     return dual_encoder
 
 def predict(test, dual_encoder):

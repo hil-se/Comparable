@@ -36,12 +36,6 @@
 ## Job script goes below this line
 
 spack unload -a
-## Load modules with spack
-## Tensorflow
-## spack load /xi3pch3
-## keras
-## spack load py-keras
-
 spack env activate default-ml-24022101
 
 ## Execute target code

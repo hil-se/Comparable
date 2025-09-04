@@ -14,16 +14,18 @@ import metrics
 final_results = []
 final_results_encoder = []
 
-dataName = "Issue"
+dataName = "Adult"
 iterations = 1
 num_comp = 1
 global col
 SEQUENCE_LEN = 50
 
-datas = ["appceleratorstudio", "aptanastudio", "bamboo", "clover", "datamanagement", "duracloud",
-                     "jirasoftware",
-                     "mesos", "moodle", "mule", "mulestudio", "springxd", "talenddataquality", "talendesb", "titanium",
-                     "usergrid"]
+# datas = ["appceleratorstudio", "aptanastudio", "bamboo", "clover", "datamanagement", "duracloud",
+#                      "jirasoftware",
+#                      "mesos", "moodle", "mule", "mulestudio", "springxd", "talenddataquality", "talendesb", "titanium",
+#                      "usergrid"]
+
+datas = ["Adult"]
 
 def GPTencode(tokenizer, sentence):
     # sentence = filter(sentence)
@@ -75,6 +77,14 @@ for d in datas:
         if dataName == "Boston":
             df = pd.read_csv("../../Data/Boston.csv")
             col = "MEDV"
+            features = list(df.columns)
+            for feature in features:
+                if feature != col:
+                    df[feature] = (df[feature] - df[feature].min()) / (df[feature].max() - df[feature].min())
+
+        if dataName == "Adult":
+            df = pd.read_csv("../../Data/adult.csv")
+            col = "income"
             features = list(df.columns)
             for feature in features:
                 if feature != col:
