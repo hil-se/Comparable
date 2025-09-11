@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_curve, auc, RocCurveDisplay
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 import Classification
 from Code.ImageExp import DataProcessing, vgg_pre
@@ -265,9 +266,9 @@ def make_scut(P="P3"):
 
 
 def make_adult():
-    seed = 18
+    # seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
-    df = df.sample(frac=0.01)
+    df = df.sample(frac=0.5)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
@@ -285,30 +286,20 @@ def make_adult():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=seed)
+        X, y, test_size=0.2)
 
-    clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
-
-    predictions = clf.predict(X_test)
-
-    index_pos = 1 - clf.classes_[0]
-    pred_prob = clf.predict_proba(X_test)[:, index_pos]
-
-    accuracy = accuracy_score(y_test, predictions)
-
-    X_test_cp = X_test.copy()
-    X_test_cp['sa'] = X_test['sa']
-    X_test_cp['pred_con'] = pred_prob
-    X_test_cp['pred'] = predictions
-    X_test_cp[col] = y_test
-    X_test_cp.reset_index(inplace=True, drop=True)
+    # X_test_cp = X_test.copy()
+    # X_test_cp['sa'] = X_test['sa']
+    # X_test_cp['pred_con'] = pred_prob
+    # X_test_cp['pred'] = predictions
+    # X_test_cp[col] = y_test
+    # X_test_cp.reset_index(inplace=True, drop=True)
 
     X_train[col] = y_train
     X_test[col] = y_test
 
-    df = X_test_cp[[col, "sa", "pred", "pred_con"]]
+    # df = X_test_cp[[col, "sa", "pred", "pred_con"]]
     return df, "adult", X_train, X_test
-
 
 def make_german():
     seed = 42
@@ -392,7 +383,6 @@ def make_heart():
     df = X_test_cp[[col, "sa", "pred", "pred_con"]]
     return df, "heart", X_train, X_test
 
-
 results = []
 df, df_name, train, test = make_adult()
 train.reset_index(inplace=True, drop=True)
@@ -406,15 +396,15 @@ res_tr_sa = []
 
 for indexA, rowA in train.iterrows():
     comp = []
-    # train_cp = train.copy()
+    train_cp = train.copy()
     comp_count = 0
-    # while comp_count < num_comp_train:
-    for indexB, rowB in train.iterrows():
-        # rowB = train_cp.sample()
-        # indexB = rowB.index[0]
+    while comp_count < num_comp_train:
+    # for indexB, rowB in train.iterrows():
+        rowB = train_cp.sample()
+        indexB = rowB.index[0]
         if (indexB == indexA):
             continue
-        # rowB = rowB.iloc[0]
+        rowB = rowB.iloc[0]
         ratingA = rowA[col]
         ratingB = rowB[col]
         label = 0
@@ -438,8 +428,8 @@ for indexA, rowA in train.iterrows():
                               "Label": label,
                               "AY": ((trainA['sa'], trainB['sa']),label)})
 
-            # train_cp.drop(indexB, inplace=True)
-            # comp_count += 1
+            train_cp.drop(indexB, inplace=True)
+            comp_count += 1
 
 data_tr_encoder = pd.DataFrame(res_tr_encoder)
 res_tr_sa = pd.DataFrame(res_tr_sa)
@@ -464,6 +454,33 @@ dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y
 
 dual_encoder_weighted = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
                                           weights=weights)
+
+y_train= train['output']
+train = train.drop(columns=['output'])
+
+clf = LogisticRegression().fit(train, y_train)
+predictions = clf.predict(test)
+
+y_score = clf.predict_proba(test)[:, 1]
+accuracy = accuracy_score(y_test, predictions)
+
+fpr, tpr, thresholds = roc_curve(y_test, y_score)
+roc_auc = auc(fpr, tpr)
+
+plt.figure(figsize=(8, 6))
+roc_display = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc, estimator_name='Logistic Regression')
+roc_display.plot(ax=plt.gca())  # Plots on the current axes
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random Classifier')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend(loc='lower right')
+plt.grid(True)
+plt.show()
+
+m_lr = Metrics(y_test, predictions)
+AOD_lr = m_lr.AOD(test['sa'])
+EOD_lr = m_lr.EOD(test['sa'])
+I_sep_lr = m_lr.MI_con_info(test['sa'])
+
 predictions = []
 predictions_weighted = []
 
@@ -473,13 +490,64 @@ for index, row in test.iterrows():
     predictions.append(dual_encoder.score(row).numpy()[0][0].item())
     predictions_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
 
+fpr, tpr, thresholds = roc_curve(y_test, predictions)
+roc_auc = auc(fpr, tpr)
+
+fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
+roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
+
+plt.figure()
+plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+plt.plot(fpr_weighted, tpr_weighted, color='red', lw=2, label=f'ROC_weighted curve (area = {roc_auc_weighted:.2f})')
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic')
+plt.legend(loc="lower right")
+plt.show()
+
+res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
+res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
+
+threshold = thresholds[res_index]
+threshold_weighted = threshold_weighted[res_index_weighted]
+
+for index, item in enumerate(predictions):
+    if item >= threshold:
+        predictions[index] = 1
+    else:
+        predictions[index] = 0
+
+for index, item in enumerate(predictions_weighted):
+    if item >= threshold_weighted:
+        predictions_weighted[index] = 1
+    else:
+        predictions_weighted[index] = 0
+
 m = Metrics(y_test, predictions)
 m_weighted = Metrics(y_test, predictions_weighted)
 
+AOD = m.AOD(test['sa'])
+EOD = m.EOD(test['sa'])
+AOD_weighted = m_weighted.AOD(test['sa'])
+EOD_weighted = m_weighted.EOD(test['sa'])
 I_sep = m.MI_con_info(test['sa'])
 I_sep_weighted = m_weighted.MI_con_info(test['sa'])
 
-a = 1
+result = [['LR',AOD_lr,EOD_lr,I_sep_lr],
+        ['Unweight',AOD,EOD,I_sep],
+        ['Weighted',AOD_weighted,EOD_weighted,I_sep_weighted]]
+
+results = pd.DataFrame(result, columns=['Treatment','AOD', 'EOD', 'I_sep'])
+
+results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", index=False)
+
+# changed encoder structure
+# use one pair for every training entry
+# Compare AUC, AOD, EOD with logistic regression
+
 # for i in range(10):
 # # m = Metrics(df["income"], df["pred"])
 # # AOD = m.AOD(df["gender"])
@@ -567,24 +635,24 @@ a = 1
 
 # data_tr = pd.DataFrame(res_tr)
 
-test_list["pred"] = predictions
-m = Metrics(test_list["Label"], test_list["pred"])
-AOD_comp = m.AOD_comp(test_list[["A", "B"]])
-Within_comp = m.Within_comp(test_list[["A", "B"]])
-Sep_comp = m.Sep_comp(test_list[["A", "B"]])
-# MI_comp = m.MI_comp(data_tr[["A", "B"]])
-# MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
-
-result = {"# of comparisons": len(test_list), "AOD_comp": AOD_comp,
-          "Within_comp": Within_comp, "EOD_comp": AOD_comp + Within_comp,
-          # "MI_comp": MI_comp, "MI_comp2": MI_comp2, "Ratio": MI / MI_comp
-          }
-results.append(result)
-
-results = pd.DataFrame(results)
-results.loc[len(results.index)] = results.mean()
-results.loc[len(results.index)] = results.std()
-results.to_csv(df_name + "_encoder_" + str(num_comp_train) + '_' + str(num_comp_test) + ".csv", index=False)
+# test_list["pred"] = predictions
+# m = Metrics(test_list["Label"], test_list["pred"])
+# AOD_comp = m.AOD_comp(test_list[["A", "B"]])
+# Within_comp = m.Within_comp(test_list[["A", "B"]])
+# Sep_comp = m.Sep_comp(test_list[["A", "B"]])
+# # MI_comp = m.MI_comp(data_tr[["A", "B"]])
+# # MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
+#
+# result = {"# of comparisons": len(test_list), "AOD_comp": AOD_comp,
+#           "Within_comp": Within_comp, "EOD_comp": AOD_comp + Within_comp,
+#           # "MI_comp": MI_comp, "MI_comp2": MI_comp2, "Ratio": MI / MI_comp
+#           }
+# results.append(result)
+#
+# results = pd.DataFrame(results)
+# results.loc[len(results.index)] = results.mean()
+# results.loc[len(results.index)] = results.std()
+# results.to_csv(df_name + "_encoder_" + str(num_comp_train) + '_' + str(num_comp_test) + ".csv", index=False)
 
 # experiment with the num of comparison (repeat 20 times and get mean and std)
 # repeated trail on df1-df3 and add more data points
