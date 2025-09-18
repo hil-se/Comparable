@@ -384,165 +384,171 @@ def make_heart():
     return df, "heart", X_train, X_test
 
 results = []
-df, df_name, train, test = make_adult()
-train.reset_index(inplace=True, drop=True)
-test.reset_index(inplace=True, drop=True)
 
-y_test = test['output']
-test = test.drop(columns=['output'])
+for i in range(5):
+    df, df_name, train, test = make_adult()
+    train.reset_index(inplace=True, drop=True)
+    test.reset_index(inplace=True, drop=True)
 
-res_tr_encoder = []
-res_tr_sa = []
+    y_test = test['output']
+    test = test.drop(columns=['output'])
 
-for indexA, rowA in train.iterrows():
-    comp = []
-    train_cp = train.copy()
-    comp_count = 0
-    while comp_count < num_comp_train:
-    # for indexB, rowB in train.iterrows():
-        rowB = train_cp.sample()
-        indexB = rowB.index[0]
-        if (indexB == indexA):
-            continue
-        rowB = rowB.iloc[0]
-        ratingA = rowA[col]
-        ratingB = rowB[col]
-        label = 0
-        if ratingA > ratingB:
-            label = 1
-        elif ratingA < ratingB:
-            label = -1
-        if label != 0:
-            # if label is not None:
-            trainA = rowA.drop(labels=[col])
-            trainB = rowB.drop(labels=[col])
+    res_tr_encoder = []
+    res_tr_sa = []
 
-            res_tr_encoder.append({"A": trainA.to_list(),
-                                   "B": trainB.to_list(),
-                                   "Label": label
-                                   })
+    for indexA, rowA in train.iterrows():
+        comp = []
+        train_cp = train.copy()
+        comp_count = 0
+        while comp_count < num_comp_train:
+        # for indexB, rowB in train.iterrows():
+            rowB = train_cp.sample()
+            indexB = rowB.index[0]
+            if (indexB == indexA):
+                continue
+            rowB = rowB.iloc[0]
+            ratingA = rowA[col]
+            ratingB = rowB[col]
+            label = 0
+            if ratingA > ratingB:
+                label = 1
+            elif ratingA < ratingB:
+                label = -1
+            if label != 0:
+                # if label is not None:
+                trainA = rowA.drop(labels=[col])
+                trainB = rowB.drop(labels=[col])
 
-            res_tr_sa.append({"A": trainA['sa'],
-                              "B": trainB['sa'],
-                              "AB":(trainA['sa'], trainB['sa']),
-                              "Label": label,
-                              "AY": ((trainA['sa'], trainB['sa']),label)})
+                res_tr_encoder.append({"A": trainA.to_list(),
+                                       "B": trainB.to_list(),
+                                       "Label": label
+                                       })
 
-            train_cp.drop(indexB, inplace=True)
-            comp_count += 1
+                res_tr_sa.append({"A": trainA['sa'],
+                                  "B": trainB['sa'],
+                                  "AB":(trainA['sa'], trainB['sa']),
+                                  "Label": label,
+                                  "AY": ((trainA['sa'], trainB['sa']),label)})
 
-data_tr_encoder = pd.DataFrame(res_tr_encoder)
-res_tr_sa = pd.DataFrame(res_tr_sa)
+                train_cp.drop(indexB, inplace=True)
+                comp_count += 1
 
-train_encoder = data_tr_encoder.sample(frac=0.85)
-y_true = train_encoder["Label"].tolist()
-val = data_tr_encoder.drop(train_encoder.index)
+    data_tr_encoder = pd.DataFrame(res_tr_encoder)
+    res_tr_sa = pd.DataFrame(res_tr_sa)
 
-weights = []
+    train_encoder = data_tr_encoder.sample(frac=0.85)
+    y_true = train_encoder["Label"].tolist()
+    val = data_tr_encoder.drop(train_encoder.index)
 
-for index,row in res_tr_sa.iterrows():
-    if row['AB'] == (0.0, 0.0) or row['AB'] == (1.0, 1.0):
-        weights.append(1)
-    else:
-        P_aij =  res_tr_sa['AB'].value_counts(True)[row['AB']]
-        P_aij_yij = res_tr_sa['AY'].value_counts(True)[row['AY']]
+    weights = []
 
-        weights.append(P_aij/ (2*P_aij_yij))
+    for index,row in res_tr_sa.iterrows():
+        if row['AB'] == (0.0, 0.0) or row['AB'] == (1.0, 1.0):
+            weights.append(1)
+        else:
+            P_aij =  res_tr_sa['AB'].value_counts(True)[row['AB']]
+            P_aij_yij = res_tr_sa['AY'].value_counts(True)[row['AY']]
 
-dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
-                                          weights=None)
+            weights.append(P_aij/ (2*P_aij_yij))
 
-dual_encoder_weighted = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
-                                          weights=weights)
+    dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
+                                              weights=None)
 
-y_train= train['output']
-train = train.drop(columns=['output'])
+    dual_encoder_weighted = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
+                                              weights=weights)
 
-clf = LogisticRegression().fit(train, y_train)
-predictions = clf.predict(test)
+    y_train= train['output']
+    train = train.drop(columns=['output'])
 
-y_score = clf.predict_proba(test)[:, 1]
-accuracy = accuracy_score(y_test, predictions)
+    clf = LogisticRegression().fit(train, y_train)
+    predictions = clf.predict(test)
 
-fpr, tpr, thresholds = roc_curve(y_test, y_score)
-roc_auc = auc(fpr, tpr)
+    y_score = clf.predict_proba(test)[:, 1]
+    accuracy = accuracy_score(y_test, predictions)
 
-plt.figure(figsize=(8, 6))
-roc_display = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc, estimator_name='Logistic Regression')
-roc_display.plot(ax=plt.gca())  # Plots on the current axes
-plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random Classifier')
-plt.title('Receiver Operating Characteristic (ROC) Curve')
-plt.legend(loc='lower right')
-plt.grid(True)
-plt.show()
+    fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
+    roc_auc_lr = auc(fpr_lr, tpr_lr)
 
-m_lr = Metrics(y_test, predictions)
-AOD_lr = m_lr.AOD(test['sa'])
-EOD_lr = m_lr.EOD(test['sa'])
-I_sep_lr = m_lr.MI_con_info(test['sa'])
+    m_lr = Metrics(y_test, predictions)
+    AOD_lr = m_lr.AOD(test['sa'])
+    EOD_lr = m_lr.EOD(test['sa'])
+    I_sep_lr = m_lr.MI_con_info(test['sa'])
 
-predictions = []
-predictions_weighted = []
+    predictions = []
+    predictions_weighted = []
 
-for index, row in test.iterrows():
-    row = np.array(row)
-    row = np.expand_dims(row, axis=0)
-    predictions.append(dual_encoder.score(row).numpy()[0][0].item())
-    predictions_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
+    for index, row in test.iterrows():
+        row = np.array(row)
+        row = np.expand_dims(row, axis=0)
+        predictions.append(dual_encoder.score(row).numpy()[0][0].item())
+        predictions_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
 
-fpr, tpr, thresholds = roc_curve(y_test, predictions)
-roc_auc = auc(fpr, tpr)
+    fpr, tpr, thresholds = roc_curve(y_test, predictions)
+    roc_auc = auc(fpr, tpr)
 
-fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
-roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
+    fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
+    roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
 
-plt.figure()
-plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-plt.plot(fpr_weighted, tpr_weighted, color='red', lw=2, label=f'ROC_weighted curve (area = {roc_auc_weighted:.2f})')
-plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('Receiver Operating Characteristic')
-plt.legend(loc="lower right")
-plt.show()
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot(fpr_lr, tpr_lr, color='blue', lw=2, label=f'ROC_lr curve (area = {roc_auc_lr:.2f})')
+    plt.plot(fpr_weighted, tpr_weighted, color='red', lw=2, label=f'ROC_weighted curve (area = {roc_auc_weighted:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+    # plt.show()
 
-res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
-res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
+    res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
+    res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
 
-threshold = thresholds[res_index]
-threshold_weighted = threshold_weighted[res_index_weighted]
+    threshold = thresholds[res_index]
+    threshold_weighted = threshold_weighted[res_index_weighted]
 
-for index, item in enumerate(predictions):
-    if item >= threshold:
-        predictions[index] = 1
-    else:
-        predictions[index] = 0
+    predictions_bi = []
+    predictions_weighted_bi = []
 
-for index, item in enumerate(predictions_weighted):
-    if item >= threshold_weighted:
-        predictions_weighted[index] = 1
-    else:
-        predictions_weighted[index] = 0
+    for index, item in enumerate(predictions):
+        if item >= threshold:
+            predictions_bi.append(1)
+        else:
+            predictions_bi.append(0)
 
-m = Metrics(y_test, predictions)
-m_weighted = Metrics(y_test, predictions_weighted)
+    for index, item in enumerate(predictions_weighted):
+        if item >= threshold_weighted:
+            predictions_weighted_bi.append(1)
+        else:
+            predictions_weighted_bi.append(0)
 
-AOD = m.AOD(test['sa'])
-EOD = m.EOD(test['sa'])
-AOD_weighted = m_weighted.AOD(test['sa'])
-EOD_weighted = m_weighted.EOD(test['sa'])
-I_sep = m.MI_con_info(test['sa'])
-I_sep_weighted = m_weighted.MI_con_info(test['sa'])
+    m = Metrics(y_test, predictions)
+    m_bi = Metrics(y_test, predictions_bi)
+    m_weighted = Metrics(y_test, predictions_weighted)
+    m_weighted_bi = Metrics(y_test, predictions_weighted_bi)
 
-result = [['LR',AOD_lr,EOD_lr,I_sep_lr],
-        ['Unweight',AOD,EOD,I_sep],
-        ['Weighted',AOD_weighted,EOD_weighted,I_sep_weighted]]
 
-results = pd.DataFrame(result, columns=['Treatment','AOD', 'EOD', 'I_sep'])
+    AOD = m_bi.AOD(test['sa'])
+    EOD = m_bi.EOD(test['sa'])
+    AOD_weighted = m_weighted_bi.AOD(test['sa'])
+    EOD_weighted = m_weighted_bi.EOD(test['sa'])
+    I_sep = m.MI_con_info(test['sa'])
+    I_sep_weighted = m_weighted.MI_con_info(test['sa'])
+    I_sep_bi = m_bi.MI_con_info(test['sa'])
+    I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
 
-results.to_csv('FairReweighing_no_hidden_layer_' + df_name + '_' + str(len(train)) + ".csv", index=False)
+
+    result = {'AOD_lr':AOD_lr,'AOD_unweight': AOD, 'AOD_weighted':AOD_weighted,
+              'EOD_lr': EOD_lr,  'EOD_unweight':EOD,'EOD_weighted':EOD_weighted,
+              'I_sep_lr': I_sep_lr, 'I_sep_unweight':I_sep, 'I_sep_weighted':I_sep_weighted,
+              'I_sep_bi':I_sep_bi,
+              'I_sep_weighted_bi':I_sep_weighted_bi}
+
+    results.append(result)
+
+results = pd.DataFrame(results)
+results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
