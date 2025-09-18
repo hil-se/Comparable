@@ -268,7 +268,7 @@ def make_scut(P="P3"):
 def make_adult():
     # seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
-    # df = df.sample(frac=0.1)
+    df = df.sample(frac=0.05)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
@@ -286,7 +286,7 @@ def make_adult():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+        X, y, test_size=0.8)
 
     # X_test_cp = X_test.copy()
     # X_test_cp['sa'] = X_test['sa']
@@ -398,15 +398,15 @@ for i in range(5):
 
     for indexA, rowA in train.iterrows():
         comp = []
-        train_cp = train.copy()
-        comp_count = 0
-        while comp_count < num_comp_train:
-        # for indexB, rowB in train.iterrows():
-            rowB = train_cp.sample()
-            indexB = rowB.index[0]
+        # train_cp = train.copy()
+        # comp_count = 0
+        # while comp_count < num_comp_train:
+        for indexB, rowB in train.iterrows():
+            # rowB = train_cp.sample()
+            # indexB = rowB.index[0]
             if (indexB == indexA):
                 continue
-            rowB = rowB.iloc[0]
+            # rowB = rowB.iloc[0]
             ratingA = rowA[col]
             ratingB = rowB[col]
             label = 0
@@ -430,8 +430,8 @@ for i in range(5):
                                   "Label": label,
                                   "AY": ((trainA['sa'], trainB['sa']),label)})
 
-                train_cp.drop(indexB, inplace=True)
-                comp_count += 1
+                # train_cp.drop(indexB, inplace=True)
+                # comp_count += 1
 
     data_tr_encoder = pd.DataFrame(res_tr_encoder)
     res_tr_sa = pd.DataFrame(res_tr_sa)
@@ -548,7 +548,7 @@ for i in range(5):
     results.append(result)
 
 results = pd.DataFrame(results)
-results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", index=False)
+results.to_csv('FairReweighing_all_pairs_' + df_name + '_' + str(len(train)) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
