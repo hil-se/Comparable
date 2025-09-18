@@ -268,7 +268,7 @@ def make_scut(P="P3"):
 def make_adult():
     # seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
-    df = df.sample(frac=0.5)
+    # df = df.sample(frac=0.1)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
@@ -286,14 +286,14 @@ def make_adult():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2)
+        X, y, test_size=0.5)
 
     # X_test_cp = X_test.copy()
     # X_test_cp['sa'] = X_test['sa']
     # X_test_cp['pred_con'] = pred_prob
     # X_test_cp['pred'] = predictions
     # X_test_cp[col] = y_test
-    # X_test_cp.reset_index(inplace=True, drop=True)
+    # X_test_cp.reset_index(inplace=True, drop=True)®
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -542,11 +542,13 @@ result = [['LR',AOD_lr,EOD_lr,I_sep_lr],
 
 results = pd.DataFrame(result, columns=['Treatment','AOD', 'EOD', 'I_sep'])
 
-results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", index=False)
+results.to_csv('FairReweighing_no_hidden_layer_' + df_name + '_' + str(len(train)) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
 # Compare AUC, AOD, EOD with logistic regression
+# Build models on the whole adult dataset
+# I_sep when comparing linea output
 
 # for i in range(10):
 # # m = Metrics(df["income"], df["pred"])

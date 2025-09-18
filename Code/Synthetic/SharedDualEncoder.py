@@ -24,7 +24,7 @@ def create_encoder(input_size):
             # keras.layers.GlobalAveragePooling1D(),
             # keras.layers.Dropout(0.5),
             # keras.layers.Dense(100, activation='relu'),
-            keras.layers.Dense(1, activation="linear"),
+            keras.layers.Dense(1, activation="sigmoid"),
         ]
     )
 
