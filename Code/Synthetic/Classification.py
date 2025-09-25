@@ -15,20 +15,29 @@ def learn(train_data,
           patience=10,
           batch_size=256,
           shared=False,
-          weights=None):
+          train_weights=None,
+          val_weights=None):
     td_s = train_data["A"].to_list()
     td_t = train_data["B"].to_list()
     train_y = np.array(train_data["Label"].tolist())
     source = np.array([emb for emb in td_s])
     target = np.array([emb for emb in td_t])
-    tr_feature = {"A": source, "B": target, "Label": train_y}
+
+    if train_weights:
+        tr_feature = {"A": source, "B": target, "Label": train_y, "Weights": train_weights}
+    else:
+        tr_feature = {"A": source, "B": target, "Label": train_y}
 
     v_s = validation_data["A"].to_list()
     v_t = validation_data["B"].to_list()
     val_y = np.array(validation_data["Label"].tolist())
     source = np.array([emb for emb in v_s])
     target = np.array([emb for emb in v_t])
-    v_feature = {"A": source, "B": target, "Label": val_y}
+
+    if val_weights:
+        v_feature = {"A": source, "B": target, "Label": val_y, "Weights": val_weights}
+    else:
+        v_feature = {"A": source, "B": target, "Label": val_y}
 
     train_dataset = tf.data.Dataset.from_tensor_slices(tr_feature)
     val_dataset = tf.data.Dataset.from_tensor_slices(v_feature)
@@ -45,31 +54,22 @@ def learn(train_data,
     dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=1e-3))
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
-    if weights == True:
-        dual_encoder.fit(
-            x=train_dataset,
-            epochs=epochs,
-            validation_data=val_dataset,
-            callbacks=[early_stopping],
-            verbose=0,
-            sample_weight=weights,
-        )
-    else:
-        dual_encoder.fit(
-            x=train_dataset,
-            epochs=epochs,
-            validation_data=val_dataset,
-            callbacks=[early_stopping],
-            verbose=0
-        )
+    dual_encoder.fit(
+        x=train_dataset,
+        epochs=epochs,
+        validation_data=val_dataset,
+        callbacks=[early_stopping],
+        verbose=0)
+
     return dual_encoder
 
 
-def train_model(train, val, y_true, epochs=100, shared=False, weights=None):
+def train_model(train, val, y_true, epochs=100, shared=False, train_weights=None, val_weights=None):
     np.random.shuffle(train.values)
     np.random.shuffle(val.values)
-    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared, weights=None)
+    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared, train_weights=train_weights, val_weights=val_weights)
     return dual_encoder
+
 
 def predict(test, dual_encoder):
     dataA = test["A"].tolist()
@@ -97,10 +97,10 @@ def predict(test, dual_encoder):
         #     prediction = 0
 
         # Labels: -1, 1
-        if prediction<0:
-            prediction=-1
+        if prediction < 0:
+            prediction = -1
         else:
-            prediction=1
+            prediction = 1
 
         predictions.append(prediction)
     return predictions
@@ -132,10 +132,10 @@ def test_model(test, dual_encoder):
         #     prediction = 0
 
         # Labels: -1, 1
-        if prediction<0:
-            prediction=-1
+        if prediction < 0:
+            prediction = -1
         else:
-            prediction=1
+            prediction = 1
 
         predictions.append(prediction)
     return predictions, evaluate(labels, predictions)

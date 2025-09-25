@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, roc_curve, auc, RocCurveDisplay
+from sklearn.metrics import accuracy_score, roc_curve, auc, RocCurveDisplay, f1_score
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
@@ -286,7 +286,7 @@ def make_adult():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.8)
+        X, y, test_size=0.5)
 
     # X_test_cp = X_test.copy()
     # X_test_cp['sa'] = X_test['sa']
@@ -398,15 +398,15 @@ for i in range(5):
 
     for indexA, rowA in train.iterrows():
         comp = []
-        # train_cp = train.copy()
-        # comp_count = 0
-        # while comp_count < num_comp_train:
-        for indexB, rowB in train.iterrows():
-            # rowB = train_cp.sample()
-            # indexB = rowB.index[0]
+        train_cp = train.copy()
+        comp_count = 0
+        while comp_count < num_comp_train:
+        # for indexB, rowB in train.iterrows():
+            rowB = train_cp.sample()
+            indexB = rowB.index[0]
             if (indexB == indexA):
                 continue
-            # rowB = rowB.iloc[0]
+            rowB = rowB.iloc[0]
             ratingA = rowA[col]
             ratingB = rowB[col]
             label = 0
@@ -430,8 +430,8 @@ for i in range(5):
                                   "Label": label,
                                   "AY": ((trainA['sa'], trainB['sa']),label)})
 
-                # train_cp.drop(indexB, inplace=True)
-                # comp_count += 1
+                train_cp.drop(indexB, inplace=True)
+                comp_count += 1
 
     data_tr_encoder = pd.DataFrame(res_tr_encoder)
     res_tr_sa = pd.DataFrame(res_tr_sa)
@@ -451,11 +451,14 @@ for i in range(5):
 
             weights.append(P_aij/ (2*P_aij_yij))
 
+    train_weights = list(np.array(weights)[train_encoder.index])
+    val_weights = list(np.array(weights)[val.index])
+
     dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
-                                              weights=None)
+                                              train_weights=None, val_weights=None)
 
     dual_encoder_weighted = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
-                                              weights=weights)
+                                              train_weights=train_weights, val_weights=val_weights)
 
     y_train= train['output']
     train = train.drop(columns=['output'])
@@ -464,7 +467,8 @@ for i in range(5):
     predictions = clf.predict(test)
 
     y_score = clf.predict_proba(test)[:, 1]
-    accuracy = accuracy_score(y_test, predictions)
+    accuracy_lr = accuracy_score(y_test, predictions)
+    f1_score_lr = f1_score(y_test, predictions)
 
     fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
     roc_auc_lr = auc(fpr_lr, tpr_lr)
@@ -500,7 +504,7 @@ for i in range(5):
     plt.ylabel('True Positive Rate')
     plt.title('Receiver Operating Characteristic')
     plt.legend(loc="lower right")
-    # plt.show()
+    plt.show()
 
     res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
     res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
@@ -528,18 +532,25 @@ for i in range(5):
     m_weighted = Metrics(y_test, predictions_weighted)
     m_weighted_bi = Metrics(y_test, predictions_weighted_bi)
 
+    accuracy_bi = accuracy_score(y_test, predictions_bi)
+    accuracy_weighted = accuracy_score(y_test, predictions_weighted_bi)
+    f1_score_bi = f1_score(y_test, predictions_bi)
+    f1_score_weighted = f1_score(y_test, predictions_weighted_bi)
 
     AOD = m_bi.AOD(test['sa'])
     EOD = m_bi.EOD(test['sa'])
     AOD_weighted = m_weighted_bi.AOD(test['sa'])
     EOD_weighted = m_weighted_bi.EOD(test['sa'])
+
     I_sep = m.MI_con_info(test['sa'])
     I_sep_weighted = m_weighted.MI_con_info(test['sa'])
     I_sep_bi = m_bi.MI_con_info(test['sa'])
     I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
 
 
-    result = {'AOD_lr':AOD_lr,'AOD_unweight': AOD, 'AOD_weighted':AOD_weighted,
+    result = {'Acc_lr':accuracy_lr,'Acc_unweight': accuracy_bi, 'Acc_weighted':accuracy_weighted,
+              'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
+              'AOD_lr':AOD_lr,'AOD_unweight': AOD, 'AOD_weighted':AOD_weighted,
               'EOD_lr': EOD_lr,  'EOD_unweight':EOD,'EOD_weighted':EOD_weighted,
               'I_sep_lr': I_sep_lr, 'I_sep_unweight':I_sep, 'I_sep_weighted':I_sep_weighted,
               'I_sep_bi':I_sep_bi,
@@ -548,13 +559,16 @@ for i in range(5):
     results.append(result)
 
 results = pd.DataFrame(results)
-results.to_csv('FairReweighing_all_pairs_' + df_name + '_' + str(len(train)) + ".csv", index=False)
+results.to_csv('FairReweighing' + df_name + '_' + str(len(train)) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
 # Compare AUC, AOD, EOD with logistic regression
 # Build models on the whole adult dataset
 # I_sep when comparing linea output
+# Switch to German and Heart
+# including accuracy (F1,precision...) and mAOD from FairBalance
+# try linearSVC/ SVC (fit_intercept=False, loss='hinge') with entry A minus entry B, make prediction on individual and calculate accuracy.
 
 # for i in range(10):
 # # m = Metrics(df["income"], df["pred"])
