@@ -1,10 +1,11 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, roc_curve, auc, RocCurveDisplay, f1_score
+from sklearn.metrics import accuracy_score, roc_curve, auc, f1_score
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
+from sklearn.svm import LinearSVC
 
 import Classification
 from Code.ImageExp import DataProcessing, vgg_pre
@@ -268,7 +269,7 @@ def make_scut(P="P3"):
 def make_adult():
     # seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
-    df = df.sample(frac=0.05)
+    df = df.sample(frac=0.01)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
@@ -301,8 +302,9 @@ def make_adult():
     # df = X_test_cp[[col, "sa", "pred", "pred_con"]]
     return df, "adult", X_train, X_test
 
+
 def make_german():
-    seed = 42
+    # seed = 42
     df = pd.read_csv("../../Data/german_credit_data.csv", index_col=0)
     df = df.dropna()
     df['Sex'] = df['Sex'].apply(lambda x: 1 if x == "male" else 0)
@@ -320,33 +322,24 @@ def make_german():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=seed)
+        X, y, test_size=0.5)
 
-    clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
-
-    predictions = clf.predict(X_test)
-
-    index_pos = 1 - clf.classes_[0]
-    pred_prob = clf.predict_proba(X_test)[:, index_pos]
-
-    accuracy = accuracy_score(y_test, predictions)
-
-    X_test_cp = X_test.copy()
-    X_test_cp['sa'] = X_test['sa']
-    X_test_cp['pred_con'] = pred_prob
-    X_test_cp['pred'] = predictions
-    X_test_cp[col] = y_test
-    X_test_cp.reset_index(inplace=True, drop=True)
+    # X_test_cp = X_test.copy()
+    # X_test_cp['sa'] = X_test['sa']
+    # X_test_cp['pred_con'] = pred_prob
+    # X_test_cp['pred'] = predictions
+    # X_test_cp[col] = y_test
+    # X_test_cp.reset_index(inplace=True, drop=True)
 
     X_train[col] = y_train
     X_test[col] = y_test
 
-    df = X_test_cp[[col, "sa", "pred", "pred_con"]]
+    # df = X_test_cp[[col, "sa", "pred", "pred_con"]]
     return df, "german", X_train, X_test
 
 
 def make_heart():
-    seed = 42
+    # seed = 42
     df = pd.read_csv("../../Data/heart.csv")
     df = df.dropna()
 
@@ -359,29 +352,20 @@ def make_heart():
     y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=seed)
+        X, y, test_size=0.5)
 
-    clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
-
-    predictions = clf.predict(X_test)
-
-    index_pos = 1 - clf.classes_[0]
-    pred_prob = clf.predict_proba(X_test)[:, index_pos]
-
-    accuracy = accuracy_score(y_test, predictions)
-
-    X_test_cp = X_test.copy()
-    X_test_cp['sa'] = X_test['sa']
-    X_test_cp['pred_con'] = pred_prob
-    X_test_cp['pred'] = predictions
-    X_test_cp[col] = y_test
-    X_test_cp.reset_index(inplace=True, drop=True)
+    # X_test_cp = X_test.copy()
+    # X_test_cp['sa'] = X_test['sa']
+    # X_test_cp['pred_con'] = pred_prob
+    # X_test_cp['pred'] = predictions
+    # X_test_cp[col] = y_test
+    # X_test_cp.reset_index(inplace=True, drop=True)
 
     X_train[col] = y_train
     X_test[col] = y_test
 
-    df = X_test_cp[[col, "sa", "pred", "pred_con"]]
     return df, "heart", X_train, X_test
+
 
 results = []
 
@@ -394,6 +378,7 @@ for i in range(5):
     test = test.drop(columns=['output'])
 
     res_tr_encoder = []
+    svc_encoder = []
     res_tr_sa = []
 
     for indexA, rowA in train.iterrows():
@@ -401,7 +386,7 @@ for i in range(5):
         train_cp = train.copy()
         comp_count = 0
         while comp_count < num_comp_train:
-        # for indexB, rowB in train.iterrows():
+            # for indexB, rowB in train.iterrows():
             rowB = train_cp.sample()
             indexB = rowB.index[0]
             if (indexB == indexA):
@@ -424,17 +409,20 @@ for i in range(5):
                                        "Label": label
                                        })
 
+                svc_encoder.append(pd.concat([trainA - trainB, pd.Series(label, index=["label"])]))
+
                 res_tr_sa.append({"A": trainA['sa'],
                                   "B": trainB['sa'],
-                                  "AB":(trainA['sa'], trainB['sa']),
+                                  "AB": (trainA['sa'], trainB['sa']),
                                   "Label": label,
-                                  "AY": ((trainA['sa'], trainB['sa']),label)})
+                                  "AY": ((trainA['sa'], trainB['sa']), label)})
 
                 train_cp.drop(indexB, inplace=True)
                 comp_count += 1
 
     data_tr_encoder = pd.DataFrame(res_tr_encoder)
     res_tr_sa = pd.DataFrame(res_tr_sa)
+    svc_encoder = pd.DataFrame(svc_encoder)
 
     train_encoder = data_tr_encoder.sample(frac=0.85)
     y_true = train_encoder["Label"].tolist()
@@ -442,14 +430,14 @@ for i in range(5):
 
     weights = []
 
-    for index,row in res_tr_sa.iterrows():
+    for index, row in res_tr_sa.iterrows():
         if row['AB'] == (0.0, 0.0) or row['AB'] == (1.0, 1.0):
             weights.append(1)
         else:
-            P_aij =  res_tr_sa['AB'].value_counts(True)[row['AB']]
+            P_aij = res_tr_sa['AB'].value_counts(True)[row['AB']]
             P_aij_yij = res_tr_sa['AY'].value_counts(True)[row['AY']]
 
-            weights.append(P_aij/ (2*P_aij_yij))
+            weights.append(P_aij / (2 * P_aij_yij))
 
     train_weights = list(np.array(weights)[train_encoder.index])
     val_weights = list(np.array(weights)[val.index])
@@ -457,11 +445,27 @@ for i in range(5):
     dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
                                               train_weights=None, val_weights=None)
 
-    dual_encoder_weighted = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500,
-                                              train_weights=train_weights, val_weights=val_weights)
+    dual_encoder_weighted = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True,
+                                                       epochs=500,
+                                                       train_weights=train_weights, val_weights=val_weights)
 
-    y_train= train['output']
+    y_train = train['output']
     train = train.drop(columns=['output'])
+
+    y_svc = svc_encoder['label']
+    svc_train = svc_encoder.drop(columns=['label'])
+
+    svc = LinearSVC(fit_intercept=False, loss='hinge')
+    svc.fit(svc_train, y_svc)
+    svc_predictions = svc.predict(test)
+    svc_predictions = [0 if x == -1 else 1 for x in svc_predictions]
+
+    accuracy_svc = accuracy_score(y_test, svc_predictions)
+    f1_score_svc = f1_score(y_test, svc_predictions)
+    m_svc = Metrics(y_test, svc_predictions)
+    AOD_svc = m_svc.AOD(test['sa'])
+    EOD_svc = m_svc.EOD(test['sa'])
+    I_sep_svc = m_svc.MI_con_info(test['sa'])
 
     clf = LogisticRegression().fit(train, y_train)
     predictions = clf.predict(test)
@@ -504,7 +508,7 @@ for i in range(5):
     plt.ylabel('True Positive Rate')
     plt.title('Receiver Operating Characteristic')
     plt.legend(loc="lower right")
-    plt.show()
+    # plt.show()
 
     res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
     res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
@@ -547,19 +551,20 @@ for i in range(5):
     I_sep_bi = m_bi.MI_con_info(test['sa'])
     I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
 
-
-    result = {'Acc_lr':accuracy_lr,'Acc_unweight': accuracy_bi, 'Acc_weighted':accuracy_weighted,
+    result = {'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
+              'Acc_svc': accuracy_svc,
               'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
-              'AOD_lr':AOD_lr,'AOD_unweight': AOD, 'AOD_weighted':AOD_weighted,
-              'EOD_lr': EOD_lr,  'EOD_unweight':EOD,'EOD_weighted':EOD_weighted,
-              'I_sep_lr': I_sep_lr, 'I_sep_unweight':I_sep, 'I_sep_weighted':I_sep_weighted,
-              'I_sep_bi':I_sep_bi,
-              'I_sep_weighted_bi':I_sep_weighted_bi}
+              'F1_svc': f1_score_svc,
+              'AOD_lr': AOD_lr, 'AOD_unweight': AOD, 'AOD_weighted': AOD_weighted, 'AOD_svc': AOD_svc,
+              'EOD_lr': EOD_lr, 'EOD_unweight': EOD, 'EOD_weighted': EOD_weighted, 'EOD_svc': EOD_svc,
+              'I_sep_lr': I_sep_lr, 'I_sep_unweight': I_sep, 'I_sep_weighted': I_sep_weighted,
+              'I_sep_bi': I_sep_bi,
+              'I_sep_weighted_bi': I_sep_weighted_bi, 'I_sep_svc': I_sep_svc}
 
     results.append(result)
 
 results = pd.DataFrame(results)
-results.to_csv('FairReweighing' + df_name + '_' + str(len(train)) + ".csv", index=False)
+results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
