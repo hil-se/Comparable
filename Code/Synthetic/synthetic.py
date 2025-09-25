@@ -370,7 +370,7 @@ def make_heart():
 results = []
 
 for i in range(5):
-    df, df_name, train, test = make_adult()
+    df, df_name, train, test = make_heart()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -455,7 +455,7 @@ for i in range(5):
     y_svc = svc_encoder['label']
     svc_train = svc_encoder.drop(columns=['label'])
 
-    svc = LinearSVC(fit_intercept=False, loss='hinge')
+    svc = LinearSVC(fit_intercept=False, loss='hinge', max_iter=100000)
     svc.fit(svc_train, y_svc)
     svc_predictions = svc.predict(test)
     svc_predictions = [0 if x == -1 else 1 for x in svc_predictions]
@@ -467,7 +467,7 @@ for i in range(5):
     EOD_svc = m_svc.EOD(test['sa'])
     I_sep_svc = m_svc.MI_con_info(test['sa'])
 
-    clf = LogisticRegression().fit(train, y_train)
+    clf = LogisticRegression(max_iter=10000).fit(train, y_train)
     predictions = clf.predict(test)
 
     y_score = clf.predict_proba(test)[:, 1]
