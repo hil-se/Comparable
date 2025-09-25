@@ -269,7 +269,7 @@ def make_scut(P="P3"):
 def make_adult():
     # seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
-    df = df.sample(frac=0.01)
+    # df = df.sample(frac=0.01)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
