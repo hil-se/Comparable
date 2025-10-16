@@ -5,6 +5,7 @@ import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, roc_curve, auc, f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.cluster import KMeans
 from sklearn.svm import LinearSVC
 
 import Classification
@@ -269,7 +270,7 @@ def make_scut(P="P3"):
 def make_adult():
     # seed = 18
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
-    # df = df.sample(frac=0.01)
+    # df = df.sample(frac=0.1)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
@@ -367,10 +368,82 @@ def make_heart():
     return df, "heart", X_train, X_test
 
 
+def make_comm():
+    # seed = 42
+    df = pd.read_csv("../../Data/communities.csv")
+    df = df.fillna(0)
+    B = "racepctblack"
+    W = "racePctWhite"
+    A = "racePctAsian"
+    H = "racePctHisp"
+    sens_features = [2, 3, 4, 5]
+    df_sens = df.iloc[:, sens_features]
+
+    maj = majority_pop(df_sens)
+
+    a = maj.map({B: 0, W: 1, A: 0, H: 0})
+
+    df['race'] = a
+    df = df.drop(H, axis=1)
+    df = df.drop(B, axis=1)
+    df = df.drop(W, axis=1)
+    df = df.drop(A, axis=1)
+
+    dependent = 'ViolentCrimesPerPop'
+    sa = 'race'
+
+    df = df.rename(columns={sa: 'sa'})
+
+    X = df.drop([dependent], axis=1)
+    y = np.array(df[dependent])
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.5)
+
+    # X_test_cp = X_test.copy()
+    # X_test_cp['sa'] = X_test['sa']
+    # X_test_cp['pred_con'] = pred_prob
+    # X_test_cp['pred'] = predictions
+    # X_test_cp[col] = y_test
+    # X_test_cp.reset_index(inplace=True, drop=True)
+
+    X_train[col] = y_train
+    X_test[col] = y_test
+
+    return df, "comm", X_train, X_test
+
+
+def majority_pop(a):
+    B = "racepctblack"
+    W = "racePctWhite"
+    A = "racePctAsian"
+    H = "racePctHisp"
+    maj = a.apply(pd.Series.idxmax, axis=1)
+    return maj
+
+def remove_outliers(data):
+    """
+    Performs 1D k-means after removing outliers using the IQR method.
+    """
+    # Reshape the data for scikit-learn
+    X = data.reshape(-1, 1)
+
+    # Calculate Q1, Q3, and IQR
+    Q1, Q3 = np.percentile(X, [25, 75])
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+
+    # Filter out the outliers
+    X_filtered = X[(X >= lower_bound) & (X <= upper_bound)]
+    outliers = X[(X < lower_bound) | (X > upper_bound)]
+
+    return X_filtered
+
 results = []
 
 for i in range(5):
-    df, df_name, train, test = make_heart()
+    df, df_name, train, test = make_adult()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -458,6 +531,7 @@ for i in range(5):
     svc = LinearSVC(fit_intercept=False, loss='hinge', max_iter=100000)
     svc.fit(svc_train, y_svc)
     svc_predictions = svc.predict(test)
+    svc_predictions_reg = svc.decision_function(test)
     svc_predictions = [0 if x == -1 else 1 for x in svc_predictions]
 
     accuracy_svc = accuracy_score(y_test, svc_predictions)
@@ -491,55 +565,74 @@ for i in range(5):
         predictions.append(dual_encoder.score(row).numpy()[0][0].item())
         predictions_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
 
-    fpr, tpr, thresholds = roc_curve(y_test, predictions)
-    roc_auc = auc(fpr, tpr)
-
-    fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
-    roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
-
-    plt.figure()
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot(fpr_lr, tpr_lr, color='blue', lw=2, label=f'ROC_lr curve (area = {roc_auc_lr:.2f})')
-    plt.plot(fpr_weighted, tpr_weighted, color='red', lw=2, label=f'ROC_weighted curve (area = {roc_auc_weighted:.2f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
-    plt.legend(loc="lower right")
+    # plt.hist(predictions, bins=np.linspace(-1, 1, 50))
+    # plt.show()
+    #
+    # plt.hist(predictions_weighted, bins=np.linspace(-1, 1, 50))
     # plt.show()
 
-    res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
-    res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
+    predictions = np.array(predictions)
+    predictions_weighted = np.array(predictions_weighted)
 
-    threshold = thresholds[res_index]
-    threshold_weighted = threshold_weighted[res_index_weighted]
+    predictions_filtered = remove_outliers(predictions)
+    predictions_weighted_filtered = remove_outliers(predictions_weighted)
 
-    predictions_bi = []
-    predictions_weighted_bi = []
+    kmeans_unweighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_filtered.reshape(-1, 1))
+    predictions_kmeans = kmeans_unweighted.predict(predictions.reshape(-1, 1))
 
-    for index, item in enumerate(predictions):
-        if item >= threshold:
-            predictions_bi.append(1)
-        else:
-            predictions_bi.append(0)
+    kmeans_weighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_weighted_filtered.reshape(-1, 1))
+    predictions_kmeans_weighted = kmeans_weighted.predict(predictions_weighted.reshape(-1, 1))
 
-    for index, item in enumerate(predictions_weighted):
-        if item >= threshold_weighted:
-            predictions_weighted_bi.append(1)
-        else:
-            predictions_weighted_bi.append(0)
+
+    # fpr, tpr, thresholds = roc_curve(y_test, predictions)
+    # roc_auc = auc(fpr, tpr)
+    #
+    # fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
+    # roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
+
+    # plt.figure()
+    # plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    # plt.plot(fpr_lr, tpr_lr, color='blue', lw=2, label=f'ROC_lr curve (area = {roc_auc_lr:.2f})')
+    # plt.plot(fpr_weighted, tpr_weighted, color='red', lw=2, label=f'ROC_weighted curve (area = {roc_auc_weighted:.2f})')
+    # plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('Receiver Operating Characteristic')
+    # plt.legend(loc="lower right")
+    # plt.show()
+
+    # res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
+    # res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
+    #
+    # threshold = thresholds[res_index]
+    # threshold_weighted = threshold_weighted[res_index_weighted]
+    #
+    # predictions_bi = []
+    # predictions_weighted_bi = []
+    #
+    # for index, item in enumerate(predictions):
+    #     if item >= threshold:
+    #         predictions_bi.append(1)
+    #     else:
+    #         predictions_bi.append(0)
+    #
+    # for index, item in enumerate(predictions_weighted):
+    #     if item >= threshold_weighted:
+    #         predictions_weighted_bi.append(1)
+    #     else:
+    #         predictions_weighted_bi.append(0)
 
     m = Metrics(y_test, predictions)
-    m_bi = Metrics(y_test, predictions_bi)
+    m_bi = Metrics(y_test, predictions_kmeans)
     m_weighted = Metrics(y_test, predictions_weighted)
-    m_weighted_bi = Metrics(y_test, predictions_weighted_bi)
+    m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
 
-    accuracy_bi = accuracy_score(y_test, predictions_bi)
-    accuracy_weighted = accuracy_score(y_test, predictions_weighted_bi)
-    f1_score_bi = f1_score(y_test, predictions_bi)
-    f1_score_weighted = f1_score(y_test, predictions_weighted_bi)
+    accuracy_bi = accuracy_score(y_test, predictions_kmeans)
+    accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
+    f1_score_bi = f1_score(y_test, predictions_kmeans)
+    f1_score_weighted = f1_score(y_test, predictions_kmeans_weighted)
 
     AOD = m_bi.AOD(test['sa'])
     EOD = m_bi.EOD(test['sa'])
@@ -564,7 +657,7 @@ for i in range(5):
     results.append(result)
 
 results = pd.DataFrame(results)
-results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", index=False)
+results.to_csv('FairReweighing_kmeans_' + df_name + '_' + str(len(train)) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
@@ -574,6 +667,9 @@ results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", ind
 # Switch to German and Heart
 # including accuracy (F1,precision...) and mAOD from FairBalance
 # try linearSVC/ SVC (fit_intercept=False, loss='hinge') with entry A minus entry B, make prediction on individual and calculate accuracy.
+# bin continuous results and plot a histogram on the training data
+# focus more on regression datasets like communities, lsac and SCUT
+# put FairReiweghing paper on arxiv
 
 # for i in range(10):
 # # m = Metrics(df["income"], df["pred"])
