@@ -476,7 +476,7 @@ def remove_outliers(data):
 results = []
 
 for i in range(5):
-    df, df_name, train, test = make_adult()
+    df, df_name, train, test = make_german()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -491,13 +491,13 @@ for i in range(5):
         comp = []
         train_cp = train.copy()
         comp_count = 0
-        while comp_count < num_comp_train:
-            # for indexB, rowB in train.iterrows():
-            rowB = train_cp.sample()
-            indexB = rowB.index[0]
+        # while comp_count < num_comp_train:
+        for indexB, rowB in train.iterrows():
+            # rowB = train_cp.sample()
+            # indexB = rowB.index[0]
             if (indexB == indexA):
                 continue
-            rowB = rowB.iloc[0]
+            # rowB = rowB.iloc[0]
             ratingA = rowA[col]
             ratingB = rowB[col]
             label = 0
@@ -684,21 +684,21 @@ for i in range(5):
     threshold = thresholds[res_index]
     threshold_weighted = threshold_weighted[res_index_weighted]
 
-    # plt.hist(group0_unweighted, bins=np.linspace(-1, 1, 50), label='Group 0')
-    # plt.hist(group1_unweighted, bins=np.linspace(-1, 1, 50), label='Group 1')
-    # plt.scatter(kmeans_unweighted.cluster_centers_,[0,0], c='r')
-    # plt.scatter(threshold,0,c='g', label='ROC Threshold')
-    # plt.legend()
-    # plt.title('predictions on test data')
-    # plt.show()
-    #
-    # plt.hist(group0_weighted, bins=np.linspace(-1, 1, 50), label='Group 0')
-    # plt.hist(group1_weighted, bins=np.linspace(-1, 1, 50), label='Group 1')
-    # plt.scatter(kmeans_weighted.cluster_centers_,[0,0], c='r')
-    # plt.scatter(threshold_weighted,0,c='g', label='ROC Threshold')
-    # plt.legend()
-    # plt.title('predictions on weighted test data')
-    # plt.show()
+    plt.hist(group0_unweighted, bins=np.linspace(-1, 1, 50), label='Group 0')
+    plt.hist(group1_unweighted, bins=np.linspace(-1, 1, 50), label='Group 1')
+    plt.scatter(kmeans_unweighted.cluster_centers_,[0,0], c='r')
+    plt.scatter(threshold,0,c='g', label='ROC Threshold')
+    plt.legend()
+    plt.title('predictions on test data')
+    plt.show()
+
+    plt.hist(group0_weighted, bins=np.linspace(-1, 1, 50), label='Group 0')
+    plt.hist(group1_weighted, bins=np.linspace(-1, 1, 50), label='Group 1')
+    plt.scatter(kmeans_weighted.cluster_centers_,[0,0], c='r')
+    plt.scatter(threshold_weighted,0,c='g', label='ROC Threshold')
+    plt.legend()
+    plt.title('predictions on weighted test data')
+    plt.show()
 
 
     #
@@ -763,7 +763,7 @@ for i in range(5):
     results.append(result)
 
 results = pd.DataFrame(results)
-results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", index=False)
+results.to_csv('FairReweighing_' + df_name + '_' + str(len(data_tr_encoder)) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
@@ -782,6 +782,10 @@ results.to_csv('FairReweighing_' + df_name + '_' + str(len(train)) + ".csv", ind
 # historgram for training and test data and both
 # cutoff with ROC curve
 # sample weight implementation
+
+# increasing the numbers of comparison for better accuracy (german & heart)
+# check MSE, spearman for regression
+# new ways to preprocessing reweighing
 
 # for i in range(10):
 # # m = Metrics(df["income"], df["pred"])
