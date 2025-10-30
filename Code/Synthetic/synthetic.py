@@ -476,7 +476,7 @@ def remove_outliers(data):
 results = []
 
 for i in range(5):
-    df, df_name, train, test = make_german()
+    df, df_name, train, test = make_comm()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -567,32 +567,35 @@ for i in range(5):
     svc_predictions_reg = svc.decision_function(test)
     svc_predictions = [0 if x == -1 else 1 for x in svc_predictions]
 
-    accuracy_svc = accuracy_score(y_test, svc_predictions)
-    f1_score_svc = f1_score(y_test, svc_predictions)
+    # accuracy_svc = accuracy_score(y_test, svc_predictions)
+    # f1_score_svc = f1_score(y_test, svc_predictions)
     m_svc = Metrics(y_test, svc_predictions_reg)
-    AOD_svc = m_svc.AOD(test['sa'])
-    EOD_svc = m_svc.EOD(test['sa'])
-    # spearman_svc = m_svc.spearmanr_coefficient()
-    # pearson_svc = m_svc.pearsonr_coefficient()
+    # AOD_svc = m_svc.AOD(test['sa'])
+    # EOD_svc = m_svc.EOD(test['sa'])
+    spearman_svc = m_svc.spearmanr_coefficient()
+    pearson_svc = m_svc.pearsonr_coefficient()
+    MSE_svc = m_svc.mse()
     I_sep_svc = m_svc.MI_con_info(test['sa'])
 
-    # clf = LinearRegression().fit(train, y_train)
-    # predictions = clf.predict(test)
-
-    clf = LogisticRegression(max_iter=10000).fit(train, y_train)
+    clf = LinearRegression().fit(train, y_train)
     predictions = clf.predict(test)
 
-    y_score = clf.predict_proba(test)[:, 1]
-    accuracy_lr = accuracy_score(y_test, predictions)
-    f1_score_lr = f1_score(y_test, predictions)
-    #
-    fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
-    roc_auc_lr = auc(fpr_lr, tpr_lr)
+    # clf = LogisticRegression(max_iter=10000).fit(train, y_train)
+    # predictions = clf.predict(test)
 
+    # y_score = clf.predict_proba(test)[:, 1]
+    # accuracy_lr = accuracy_score(y_test, predictions)
+    # f1_score_lr = f1_score(y_test, predictions)
+    # #
+    # fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
+    # roc_auc_lr = auc(fpr_lr, tpr_lr)
+    #
     m_lr = Metrics(y_test, predictions)
-    AOD_lr = m_lr.AOD(test['sa'])
-    EOD_lr = m_lr.EOD(test['sa'])
+    # AOD_lr = m_lr.AOD(test['sa'])
+    # EOD_lr = m_lr.EOD(test['sa'])
     mse_lr = m_lr.mse()
+    spearman_lr = m_lr.spearmanr_coefficient()
+    pearson_lr = m_lr.pearsonr_coefficient()
     I_sep_lr = m_lr.MI_con_info(test['sa'])
 
     predictions = []
@@ -629,41 +632,41 @@ for i in range(5):
     # plt.title('predictions on weighted train data')
     # plt.show()
 
-    predictions = np.array(predictions)
-    predictions_weighted = np.array(predictions_weighted)
-
-    predictions_filtered = remove_outliers(predictions)
-    predictions_weighted_filtered = remove_outliers(predictions_weighted)
-
-    kmeans_unweighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_filtered.reshape(-1, 1))
-    predictions_kmeans = kmeans_unweighted.predict(predictions.reshape(-1, 1))
-
-    if kmeans_unweighted.cluster_centers_[0]> kmeans_unweighted.cluster_centers_[1]:
-        predictions_kmeans = 1-predictions_kmeans
-
-    kmeans_weighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_weighted_filtered.reshape(-1, 1))
-    predictions_kmeans_weighted = kmeans_weighted.predict(predictions_weighted.reshape(-1, 1))
-
-    if kmeans_weighted.cluster_centers_[0]> kmeans_weighted.cluster_centers_[1]:
-        predictions_kmeans_weighted = 1-predictions_kmeans_weighted
-
-    combined_unweighted = np.column_stack((predictions, predictions_kmeans))
-    combined_weighted = np.column_stack((predictions_weighted, predictions_kmeans_weighted))
-
-    df_unweighted = pd.DataFrame(combined_unweighted, columns=['predictions', 'kmeans'])
-    df_weighted = pd.DataFrame(combined_weighted, columns=['predictions', 'kmeans'])
-
-    group0_unweighted = df_unweighted[df_unweighted['kmeans'] == 0]['predictions']
-    group1_unweighted = df_unweighted[df_unweighted['kmeans'] == 1]['predictions']
-
-    group0_weighted = df_weighted[df_weighted['kmeans'] == 0]['predictions']
-    group1_weighted = df_weighted[df_weighted['kmeans'] == 1]['predictions']
-
-    fpr, tpr, thresholds = roc_curve(y_test, predictions)
-    roc_auc = auc(fpr, tpr)
-
-    fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
-    roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
+    # predictions = np.array(predictions)
+    # predictions_weighted = np.array(predictions_weighted)
+    #
+    # predictions_filtered = remove_outliers(predictions)
+    # predictions_weighted_filtered = remove_outliers(predictions_weighted)
+    #
+    # kmeans_unweighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_filtered.reshape(-1, 1))
+    # predictions_kmeans = kmeans_unweighted.predict(predictions.reshape(-1, 1))
+    #
+    # if kmeans_unweighted.cluster_centers_[0]> kmeans_unweighted.cluster_centers_[1]:
+    #     predictions_kmeans = 1-predictions_kmeans
+    #
+    # kmeans_weighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_weighted_filtered.reshape(-1, 1))
+    # predictions_kmeans_weighted = kmeans_weighted.predict(predictions_weighted.reshape(-1, 1))
+    #
+    # if kmeans_weighted.cluster_centers_[0]> kmeans_weighted.cluster_centers_[1]:
+    #     predictions_kmeans_weighted = 1-predictions_kmeans_weighted
+    #
+    # combined_unweighted = np.column_stack((predictions, predictions_kmeans))
+    # combined_weighted = np.column_stack((predictions_weighted, predictions_kmeans_weighted))
+    #
+    # df_unweighted = pd.DataFrame(combined_unweighted, columns=['predictions', 'kmeans'])
+    # df_weighted = pd.DataFrame(combined_weighted, columns=['predictions', 'kmeans'])
+    #
+    # group0_unweighted = df_unweighted[df_unweighted['kmeans'] == 0]['predictions']
+    # group1_unweighted = df_unweighted[df_unweighted['kmeans'] == 1]['predictions']
+    #
+    # group0_weighted = df_weighted[df_weighted['kmeans'] == 0]['predictions']
+    # group1_weighted = df_weighted[df_weighted['kmeans'] == 1]['predictions']
+    #
+    # fpr, tpr, thresholds = roc_curve(y_test, predictions)
+    # roc_auc = auc(fpr, tpr)
+    #
+    # fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
+    # roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
 
     # plt.figure()
     # plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
@@ -678,27 +681,27 @@ for i in range(5):
     # plt.legend(loc="lower right")
     # plt.show()
 
-    res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
-    res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
+    # res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
+    # res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
+    #
+    # threshold = thresholds[res_index]
+    # threshold_weighted = threshold_weighted[res_index_weighted]
 
-    threshold = thresholds[res_index]
-    threshold_weighted = threshold_weighted[res_index_weighted]
-
-    plt.hist(group0_unweighted, bins=np.linspace(-1, 1, 50), label='Group 0')
-    plt.hist(group1_unweighted, bins=np.linspace(-1, 1, 50), label='Group 1')
-    plt.scatter(kmeans_unweighted.cluster_centers_,[0,0], c='r')
-    plt.scatter(threshold,0,c='g', label='ROC Threshold')
-    plt.legend()
-    plt.title('predictions on test data')
-    plt.show()
-
-    plt.hist(group0_weighted, bins=np.linspace(-1, 1, 50), label='Group 0')
-    plt.hist(group1_weighted, bins=np.linspace(-1, 1, 50), label='Group 1')
-    plt.scatter(kmeans_weighted.cluster_centers_,[0,0], c='r')
-    plt.scatter(threshold_weighted,0,c='g', label='ROC Threshold')
-    plt.legend()
-    plt.title('predictions on weighted test data')
-    plt.show()
+    # plt.hist(group0_unweighted, bins=np.linspace(-1, 1, 50), label='Group 0')
+    # plt.hist(group1_unweighted, bins=np.linspace(-1, 1, 50), label='Group 1')
+    # plt.scatter(kmeans_unweighted.cluster_centers_,[0,0], c='r')
+    # plt.scatter(threshold,0,c='g', label='ROC Threshold')
+    # plt.legend()
+    # plt.title('predictions on test data')
+    # plt.show()
+    #
+    # plt.hist(group0_weighted, bins=np.linspace(-1, 1, 50), label='Group 0')
+    # plt.hist(group1_weighted, bins=np.linspace(-1, 1, 50), label='Group 1')
+    # plt.scatter(kmeans_weighted.cluster_centers_,[0,0], c='r')
+    # plt.scatter(threshold_weighted,0,c='g', label='ROC Threshold')
+    # plt.legend()
+    # plt.title('predictions on weighted test data')
+    # plt.show()
 
 
     #
@@ -718,46 +721,48 @@ for i in range(5):
     #         predictions_weighted_bi.append(0)
 
     m = Metrics(y_test, predictions)
-    m_bi = Metrics(y_test, predictions_kmeans)
+    # m_bi = Metrics(y_test, predictions_kmeans)
     m_weighted = Metrics(y_test, predictions_weighted)
-    m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
+    # m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
 
-    accuracy_bi = accuracy_score(y_test, predictions_kmeans)
-    accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
-    f1_score_bi = f1_score(y_test, predictions_kmeans)
-    f1_score_weighted = f1_score(y_test, predictions_kmeans_weighted)
+    # accuracy_bi = accuracy_score(y_test, predictions_kmeans)
+    # accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
+    # f1_score_bi = f1_score(y_test, predictions_kmeans)
+    # f1_score_weighted = f1_score(y_test, predictions_kmeans_weighted)
+    #
+    # AOD = m_bi.AOD(test['sa'])
+    # EOD = m_bi.EOD(test['sa'])
+    # AOD_weighted = m_weighted_bi.AOD(test['sa'])
+    # EOD_weighted = m_weighted_bi.EOD(test['sa'])
 
-    AOD = m_bi.AOD(test['sa'])
-    EOD = m_bi.EOD(test['sa'])
-    AOD_weighted = m_weighted_bi.AOD(test['sa'])
-    EOD_weighted = m_weighted_bi.EOD(test['sa'])
-
+    MSE_unweighted = m.mse()
+    MSE_weighted = m_weighted.mse()
     I_sep = m.MI_con_info(test['sa'])
     I_sep_weighted = m_weighted.MI_con_info(test['sa'])
-    I_sep_bi = m_bi.MI_con_info(test['sa'])
-    I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
+    # I_sep_bi = m_bi.MI_con_info(test['sa'])
+    # I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
 
-    # spearman_unweighted = m.spearmanr_coefficient()
-    # pearson_unweighted = m.pearsonr_coefficient()
-    #
-    # spearman_weighted = m_weighted.spearmanr_coefficient()
-    # pearson_weighted = m_weighted.pearsonr_coefficient()
+    spearman_unweighted = m.spearmanr_coefficient()
+    pearson_unweighted = m.pearsonr_coefficient()
+
+    spearman_weighted = m_weighted.spearmanr_coefficient()
+    pearson_weighted = m_weighted.pearsonr_coefficient()
 
     result = {
-        # 'MSE': mse_lr,
-        'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
-              'Acc_svc': accuracy_svc,
-              'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
-              'F1_svc': f1_score_svc,
-              'AOD_lr': AOD_lr, 'AOD_unweight': AOD, 'AOD_weighted': AOD_weighted, 'AOD_svc': AOD_svc,
-              'EOD_lr': EOD_lr, 'EOD_unweight': EOD, 'EOD_weighted': EOD_weighted, 'EOD_svc': EOD_svc,
+        'MSE_lr': mse_lr, "MSE_svc": MSE_svc, "MSE_unweight": MSE_unweighted, "MSE_weight" : MSE_weighted,
+        # 'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
+        #       'Acc_svc': accuracy_svc,
+        #       'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
+        #       'F1_svc': f1_score_svc,
+        #       'AOD_lr': AOD_lr, 'AOD_unweight': AOD, 'AOD_weighted': AOD_weighted, 'AOD_svc': AOD_svc,
+        #       'EOD_lr': EOD_lr, 'EOD_unweight': EOD, 'EOD_weighted': EOD_weighted, 'EOD_svc': EOD_svc,
         'I_sep_lr': I_sep_lr, 'I_sep_unweight': I_sep, 'I_sep_weighted': I_sep_weighted,
-        'I_sep_bi': I_sep_bi,
-        'I_sep_weighted_bi': I_sep_weighted_bi,
+        # 'I_sep_bi': I_sep_bi,
+        # 'I_sep_weighted_bi': I_sep_weighted_bi,
         'I_sep_svc': I_sep_svc,
-        # 'spearman_svc': spearman_svc, 'pearson_svc': pearson_svc, 'spearman_unweighted': spearman_unweighted,
-        # 'pearson_unweighted': pearson_unweighted, 'spearman_weighted': spearman_weighted,
-        # 'pearson_weighted': pearson_weighted,
+        'spearman_lr': spearman_lr, 'pearson_lr': pearson_lr, 'spearman_svc': spearman_svc, 'pearson_svc': pearson_svc, 'spearman_unweighted': spearman_unweighted,
+        'pearson_unweighted': pearson_unweighted, 'spearman_weighted': spearman_weighted,
+        'pearson_weighted': pearson_weighted,
     }
 
     results.append(result)
