@@ -25,8 +25,8 @@ def retrievePixels(path, height, width):
     return x
 
 
-num_comp_train = 1
-num_comp_test = 1
+num_comp_train = 10
+num_comp_test = 5
 
 col = "output"
 
@@ -491,13 +491,13 @@ for i in range(5):
         comp = []
         train_cp = train.copy()
         comp_count = 0
-        # while comp_count < num_comp_train:
-        for indexB, rowB in train.iterrows():
-            # rowB = train_cp.sample()
-            # indexB = rowB.index[0]
+        while comp_count < num_comp_train:
+        # for indexB, rowB in train.iterrows():
+            rowB = train_cp.sample()
+            indexB = rowB.index[0]
             if (indexB == indexA):
                 continue
-            # rowB = rowB.iloc[0]
+            rowB = rowB.iloc[0]
             ratingA = rowA[col]
             ratingB = rowB[col]
             label = 0
