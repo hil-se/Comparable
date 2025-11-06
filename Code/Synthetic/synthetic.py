@@ -1,3 +1,5 @@
+from collections import Counter
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -10,6 +12,7 @@ from sklearn.metrics import accuracy_score, f1_score, roc_curve, auc
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KernelDensity
 from sklearn.svm import LinearSVC
+from scipy.stats import norm
 
 import Classification
 from Code.ImageExp import DataProcessing, vgg_pre
@@ -25,10 +28,68 @@ def retrievePixels(path, height, width):
     return x
 
 
-num_comp_train = 10
-num_comp_test = 5
+num_comp_train = 1
+num_comp_test = 1
 
 col = "output"
+
+
+alpha = 0.05
+r = 100
+nc = 2000
+
+def comp_pred(test, dual_encoder):
+    dataA = test["A"].tolist()
+    dataB = test["B"].tolist()
+    ln = len(dataA)
+    predictions = []
+    for i in range(ln):
+        datapoint_A = np.array(dataA[i])
+        datapoint_B = np.array(dataB[i])
+        datapoint_A = np.expand_dims(datapoint_A, axis=0)
+        datapoint_B = np.expand_dims(datapoint_B, axis=0)
+        prediction = dual_encoder.predict(datapoint_A, datapoint_B)
+
+        # prediction = round(prediction.numpy()[0][0].item()) # Labels in [0, 1]
+
+        prediction = prediction.numpy()[0][0].item()
+
+        # Labels: -1, 0, 1
+        # if prediction < -0.33:
+        #     prediction = -1
+        # elif prediction > 0.33:
+        #     prediction = 1
+        # else:
+        #     prediction = 0
+
+        # Labels: -1, 1
+        if prediction < 0:
+            prediction = 0
+        else:
+            prediction = 1
+
+        predictions.append(prediction)
+
+    return predictions
+
+
+def cal_comp(xt1, x1, xt2, x2):
+    mu = (xt1 + xt2) / (x1 + x2)
+    var = mu * (1 - mu) / (x1 + x2)
+    return mu, var
+
+
+def comparative_separation(x):
+    mut11, vart11 = cal_comp(x["1111"], x["1111"] + x["0111"] + x["x111"], x["0011"], x["0011"] + x["1011"] + x["x011"])
+    mut00, vart00 = cal_comp(x["1100"], x["1100"] + x["0100"] + x["x100"], x["0000"], x["0000"] + x["1000"] + x["x000"])
+    mut10, vart10 = cal_comp(x["1110"], x["1110"] + x["0110"] + x["x110"], x["0001"], x["0001"] + x["1001"] + x["x001"])
+    mut01, vart01 = cal_comp(x["1101"], x["1101"] + x["0101"] + x["x101"], x["0010"], x["0010"] + x["1010"] + x["x010"])
+    zc = (mut10 - mut01) / np.sqrt(vart10 + vart01)
+    zw = (mut11 - mut00) / np.sqrt(vart11 + vart00)
+    pc = norm.sf(np.abs(zc)) * 2
+    pw = norm.sf(np.abs(zw)) * 2
+
+    return [pc, pw]
 
 
 # 1,2,3,4
@@ -475,8 +536,8 @@ def remove_outliers(data):
 
 results = []
 
-for i in range(5):
-    df, df_name, train, test = make_comm()
+for i in range(10):
+    df, df_name, train, test = make_adult()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -484,15 +545,17 @@ for i in range(5):
     test = test.drop(columns=['output'])
 
     res_tr_encoder = []
+    res_ts_encoder = []
     svc_encoder = []
     res_tr_sa = []
+    res_ts_sa = []
 
     for indexA, rowA in train.iterrows():
         comp = []
         train_cp = train.copy()
         comp_count = 0
         while comp_count < num_comp_train:
-        # for indexB, rowB in train.iterrows():
+            # for indexB, rowB in train.iterrows():
             rowB = train_cp.sample()
             indexB = rowB.index[0]
             if (indexB == indexA):
@@ -526,6 +589,41 @@ for i in range(5):
                 train_cp.drop(indexB, inplace=True)
                 comp_count += 1
 
+    # for indexA, rowA in test.iterrows():
+    #     comp = []
+    #     comp_count = 0
+    #     test_cp = test.copy()
+    #     while comp_count < num_comp_test:
+    #         # for indexB, rowB in test.iterrows():
+    #         rowB = test_cp.sample()
+    #         indexB = rowB.index[0]
+    #         if (indexB == indexA):
+    #             continue
+    #         rowB = rowB.iloc[0]
+    #         ratingA = rowA[col]
+    #         ratingB = rowB[col]
+    #         label = -1
+    #         if ratingA > ratingB:
+    #             label = 1
+    #         elif ratingA < ratingB:
+    #             label = 0
+    #         if label != -1:
+    #             # if label is not None:
+    #             testA = rowA.drop(labels=[col])
+    #             testB = rowB.drop(labels=[col])
+    #
+    #             res_ts_encoder.append({"A": testA.to_list(),
+    #                                    "B": testB.to_list(),
+    #                                    })
+    #
+    #
+    #             res_ts_sa.append({"A": testA['sa'],
+    #                               "B": testB['sa'],
+    #                               "Label": label})
+    #
+    #             test_cp.drop(indexB, inplace=True)
+    #             comp_count += 1
+
     data_tr_encoder = pd.DataFrame(res_tr_encoder)
     res_tr_sa = pd.DataFrame(res_tr_sa)
     svc_encoder = pd.DataFrame(svc_encoder)
@@ -555,30 +653,33 @@ for i in range(5):
                                                        epochs=100,
                                                        train_weights=train_weights, val_weights=val_weights)
 
-    y_train = train['output']
-    train = train.drop(columns=['output'])
-    #
-    y_svc = svc_encoder['label']
-    svc_train = svc_encoder.drop(columns=['label'])
+    # predictions = comp_pred(data_ts_encoder, dual_encoder)
+    # predictions_weighted = comp_pred(data_ts_encoder, dual_encoder_weighted)
 
-    svc = LinearSVC(fit_intercept=False, loss='hinge', max_iter=100000)
-    svc.fit(svc_train, y_svc)
-    svc_predictions = svc.predict(test)
-    svc_predictions_reg = svc.decision_function(test)
-    svc_predictions = [0 if x == -1 else 1 for x in svc_predictions]
+    # y_train = train['output']
+    # train = train.drop(columns=['output'])
+    # #
+    # y_svc = svc_encoder['label']
+    # svc_train = svc_encoder.drop(columns=['label'])
+    #
+    # svc = LinearSVC(fit_intercept=False, loss='hinge', max_iter=100000)
+    # svc.fit(svc_train, y_svc)
+    # svc_predictions = svc.predict(test)
+    # svc_predictions_reg = svc.decision_function(test)
+    # svc_predictions = [0 if x == -1 else 1 for x in svc_predictions]
 
     # accuracy_svc = accuracy_score(y_test, svc_predictions)
     # f1_score_svc = f1_score(y_test, svc_predictions)
-    m_svc = Metrics(y_test, svc_predictions_reg)
+    # m_svc = Metrics(y_test, svc_predictions_reg)
     # AOD_svc = m_svc.AOD(test['sa'])
     # EOD_svc = m_svc.EOD(test['sa'])
-    spearman_svc = m_svc.spearmanr_coefficient()
-    pearson_svc = m_svc.pearsonr_coefficient()
-    MSE_svc = m_svc.mse()
-    I_sep_svc = m_svc.MI_con_info(test['sa'])
-
-    clf = LinearRegression().fit(train, y_train)
-    predictions = clf.predict(test)
+    # spearman_svc = m_svc.spearmanr_coefficient()
+    # pearson_svc = m_svc.pearsonr_coefficient()
+    # MSE_svc = m_svc.mse()
+    # I_sep_svc = m_svc.MI_con_info(test['sa'])
+    #
+    # clf = LinearRegression().fit(train, y_train)
+    # predictions = clf.predict(test)
 
     # clf = LogisticRegression(max_iter=10000).fit(train, y_train)
     # predictions = clf.predict(test)
@@ -590,13 +691,13 @@ for i in range(5):
     # fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
     # roc_auc_lr = auc(fpr_lr, tpr_lr)
     #
-    m_lr = Metrics(y_test, predictions)
+    # m_lr = Metrics(y_test, predictions)
     # AOD_lr = m_lr.AOD(test['sa'])
     # EOD_lr = m_lr.EOD(test['sa'])
-    mse_lr = m_lr.mse()
-    spearman_lr = m_lr.spearmanr_coefficient()
-    pearson_lr = m_lr.pearsonr_coefficient()
-    I_sep_lr = m_lr.MI_con_info(test['sa'])
+    # mse_lr = m_lr.mse()
+    # spearman_lr = m_lr.spearmanr_coefficient()
+    # pearson_lr = m_lr.pearsonr_coefficient()
+    # I_sep_lr = m_lr.MI_con_info(test['sa'])
 
     predictions = []
     predictions_train = []
@@ -609,11 +710,11 @@ for i in range(5):
         predictions.append(dual_encoder.score(row).numpy()[0][0].item())
         predictions_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
 
-    for index, row in train.iterrows():
-        row = np.array(row)
-        row = np.expand_dims(row, axis=0)
-        predictions_train.append(dual_encoder.score(row).numpy()[0][0].item())
-        predictions_train_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
+    # for index, row in train.iterrows():
+    #     row = np.array(row)
+    #     row = np.expand_dims(row, axis=0)
+    #     predictions_train.append(dual_encoder.score(row).numpy()[0][0].item())
+    #     predictions_train_weighted.append(dual_encoder_weighted.score(row).numpy()[0][0].item())
     #
     # plt.hist(predictions, bins=np.linspace(-1, 1, 50))
     # plt.title('predictions on test data')
@@ -623,7 +724,6 @@ for i in range(5):
     # plt.title('predictions on weighted test data')
     # plt.show()
 
-
     # plt.hist(predictions_train, bins=np.linspace(-1, 1, 50))
     # plt.title('predictions on train data')
     # plt.show()
@@ -632,24 +732,75 @@ for i in range(5):
     # plt.title('predictions on weighted train data')
     # plt.show()
 
-    # predictions = np.array(predictions)
-    # predictions_weighted = np.array(predictions_weighted)
-    #
-    # predictions_filtered = remove_outliers(predictions)
-    # predictions_weighted_filtered = remove_outliers(predictions_weighted)
-    #
-    # kmeans_unweighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_filtered.reshape(-1, 1))
-    # predictions_kmeans = kmeans_unweighted.predict(predictions.reshape(-1, 1))
-    #
-    # if kmeans_unweighted.cluster_centers_[0]> kmeans_unweighted.cluster_centers_[1]:
-    #     predictions_kmeans = 1-predictions_kmeans
-    #
-    # kmeans_weighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_weighted_filtered.reshape(-1, 1))
-    # predictions_kmeans_weighted = kmeans_weighted.predict(predictions_weighted.reshape(-1, 1))
-    #
-    # if kmeans_weighted.cluster_centers_[0]> kmeans_weighted.cluster_centers_[1]:
-    #     predictions_kmeans_weighted = 1-predictions_kmeans_weighted
-    #
+    predictions = np.array(predictions)
+    predictions_weighted = np.array(predictions_weighted)
+
+    predictions_filtered = remove_outliers(predictions)
+    predictions_weighted_filtered = remove_outliers(predictions_weighted)
+
+    kmeans_unweighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_filtered.reshape(-1, 1))
+    predictions_kmeans = kmeans_unweighted.predict(predictions.reshape(-1, 1))
+
+    if kmeans_unweighted.cluster_centers_[0] > kmeans_unweighted.cluster_centers_[1]:
+        predictions_kmeans = 1 - predictions_kmeans
+
+    kmeans_weighted = KMeans(n_clusters=2, n_init="auto").fit(predictions_weighted_filtered.reshape(-1, 1))
+    predictions_kmeans_weighted = kmeans_weighted.predict(predictions_weighted.reshape(-1, 1))
+
+    if kmeans_weighted.cluster_centers_[0] > kmeans_weighted.cluster_centers_[1]:
+        predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
+
+    df_comp = pd.DataFrame({'C': pd.Series(predictions_kmeans), 'Y': y_test, 'A': test['sa']})
+    df_comp_w = pd.DataFrame({'C': pd.Series(predictions_kmeans_weighted), 'Y': y_test, 'A': test['sa']})
+
+    violate = 0
+    violate_w = 0
+
+    for i in range(r):
+        x = []
+        x_w = []
+        for j in range(nc):
+            c1 = df_comp.sample()
+            c2 = df_comp.sample()
+            if c1['Y'].item() == c2['Y'].item():
+                continue
+            if c1['C'].item() == c2['C'].item():
+                cij = "x"
+            elif c1['C'].item() > c2['C'].item():
+                cij = "1"
+            else:
+                cij = "0"
+            aij = str(c1['A'].item()) + str(c2['A'].item())
+            xij = cij + str(c1['Y'].item()) + aij
+            x.append(xij)
+
+            c1_w = df_comp_w.sample()
+            c2_w = df_comp_w.sample()
+            if c1_w['Y'].item() == c2_w['Y'].item():
+                continue
+            if c1_w['C'].item() == c2_w['C'].item():
+                cij_w = "x"
+            elif c1_w['C'].item() > c2_w['C'].item():
+                cij_w = "1"
+            else:
+                cij_w = "0"
+            aij_w = str(c1_w['A'].item()) + str(c2_w['A'].item())
+            xij_w = cij_w + str(c1_w['Y'].item()) + aij_w
+            x_w.append(xij_w)
+
+        count = Counter(x)
+        count_w = Counter(x_w)
+
+        ps = comparative_separation(count)
+        ps_w = comparative_separation(count_w)
+        if min((ps)) < alpha:
+            violate += 1
+        if min((ps_w)) < alpha:
+            violate_w += 1
+
+    violate_r = (violate / r)
+    violate_r_w = (violate_w / r)
+
     # combined_unweighted = np.column_stack((predictions, predictions_kmeans))
     # combined_weighted = np.column_stack((predictions_weighted, predictions_kmeans_weighted))
     #
@@ -661,7 +812,7 @@ for i in range(5):
     #
     # group0_weighted = df_weighted[df_weighted['kmeans'] == 0]['predictions']
     # group1_weighted = df_weighted[df_weighted['kmeans'] == 1]['predictions']
-    #
+
     # fpr, tpr, thresholds = roc_curve(y_test, predictions)
     # roc_auc = auc(fpr, tpr)
     #
@@ -703,7 +854,6 @@ for i in range(5):
     # plt.title('predictions on weighted test data')
     # plt.show()
 
-
     #
     # predictions_bi = []
     # predictions_weighted_bi = []
@@ -720,9 +870,9 @@ for i in range(5):
     #     else:
     #         predictions_weighted_bi.append(0)
 
-    m = Metrics(y_test, predictions)
+    # m = Metrics(y_test, predictions)
     # m_bi = Metrics(y_test, predictions_kmeans)
-    m_weighted = Metrics(y_test, predictions_weighted)
+    # m_weighted = Metrics(y_test, predictions_weighted)
     # m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
 
     # accuracy_bi = accuracy_score(y_test, predictions_kmeans)
@@ -735,40 +885,42 @@ for i in range(5):
     # AOD_weighted = m_weighted_bi.AOD(test['sa'])
     # EOD_weighted = m_weighted_bi.EOD(test['sa'])
 
-    MSE_unweighted = m.mse()
-    MSE_weighted = m_weighted.mse()
-    I_sep = m.MI_con_info(test['sa'])
-    I_sep_weighted = m_weighted.MI_con_info(test['sa'])
+    # MSE_unweighted = m.mse()
+    # MSE_weighted = m_weighted.mse()
+    # I_sep = m.MI_con_info(test['sa'])
+    # I_sep_weighted = m_weighted.MI_con_info(test['sa'])
     # I_sep_bi = m_bi.MI_con_info(test['sa'])
     # I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
 
-    spearman_unweighted = m.spearmanr_coefficient()
-    pearson_unweighted = m.pearsonr_coefficient()
-
-    spearman_weighted = m_weighted.spearmanr_coefficient()
-    pearson_weighted = m_weighted.pearsonr_coefficient()
+    # spearman_unweighted = m.spearmanr_coefficient()
+    # pearson_unweighted = m.pearsonr_coefficient()
+    #
+    # spearman_weighted = m_weighted.spearmanr_coefficient()
+    # pearson_weighted = m_weighted.pearsonr_coefficient()
 
     result = {
-        'MSE_lr': mse_lr, "MSE_svc": MSE_svc, "MSE_unweight": MSE_unweighted, "MSE_weight" : MSE_weighted,
+        # 'MSE_lr': mse_lr, "MSE_svc": MSE_svc, "MSE_unweight": MSE_unweighted, "MSE_weight" : MSE_weighted,
         # 'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
         #       'Acc_svc': accuracy_svc,
         #       'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
         #       'F1_svc': f1_score_svc,
         #       'AOD_lr': AOD_lr, 'AOD_unweight': AOD, 'AOD_weighted': AOD_weighted, 'AOD_svc': AOD_svc,
         #       'EOD_lr': EOD_lr, 'EOD_unweight': EOD, 'EOD_weighted': EOD_weighted, 'EOD_svc': EOD_svc,
-        'I_sep_lr': I_sep_lr, 'I_sep_unweight': I_sep, 'I_sep_weighted': I_sep_weighted,
+        # 'I_sep_lr': I_sep_lr, 'I_sep_unweight': I_sep, 'I_sep_weighted': I_sep_weighted,
         # 'I_sep_bi': I_sep_bi,
         # 'I_sep_weighted_bi': I_sep_weighted_bi,
-        'I_sep_svc': I_sep_svc,
-        'spearman_lr': spearman_lr, 'pearson_lr': pearson_lr, 'spearman_svc': spearman_svc, 'pearson_svc': pearson_svc, 'spearman_unweighted': spearman_unweighted,
-        'pearson_unweighted': pearson_unweighted, 'spearman_weighted': spearman_weighted,
-        'pearson_weighted': pearson_weighted,
+        # 'I_sep_svc': I_sep_svc,
+        # 'spearman_lr': spearman_lr, 'pearson_lr': pearson_lr, 'spearman_svc': spearman_svc, 'pearson_svc': pearson_svc, 'spearman_unweighted': spearman_unweighted,
+        # 'pearson_unweighted': pearson_unweighted, 'spearman_weighted': spearman_weighted,
+        # 'pearson_weighted': pearson_weighted,
+        'violate_r': violate_r,
+        'violate_r_w': violate_r_w
     }
 
     results.append(result)
 
 results = pd.DataFrame(results)
-results.to_csv('FairReweighing_' + df_name + '_' + str(len(data_tr_encoder)) + ".csv", index=False)
+results.to_csv('FairReweighing_violate_r_' + df_name + '_' + str(nc) + ".csv", index=False)
 
 # changed encoder structure
 # use one pair for every training entry
@@ -791,6 +943,10 @@ results.to_csv('FairReweighing_' + df_name + '_' + str(len(data_tr_encoder)) + "
 # increasing the numbers of comparison for better accuracy (german & heart)
 # check MSE, spearman for regression
 # new ways to preprocessing reweighing
+
+# work on comp_sep paper & github repo
+# real world dataset
+# test comp_sep on comp FairReweighing
 
 # for i in range(10):
 # # m = Metrics(df["income"], df["pred"])
