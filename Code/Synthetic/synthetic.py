@@ -36,7 +36,7 @@ col = "output"
 
 alpha = 0.05
 r = 100
-nc = 2000
+nc = 20000
 
 def comp_pred(test, dual_encoder):
     dataA = test["A"].tolist()
@@ -89,7 +89,7 @@ def comparative_separation(x):
     pc = norm.sf(np.abs(zc)) * 2
     pw = norm.sf(np.abs(zw)) * 2
 
-    return [pc, pw]
+    return [pc, pw], (mut10 - mut01), (mut11 - mut00)
 
 
 # 1,2,3,4
@@ -537,7 +537,7 @@ def remove_outliers(data):
 results = []
 
 for i in range(10):
-    df, df_name, train, test = make_adult()
+    df, df_name, train, test = make_german()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -761,7 +761,9 @@ for i in range(10):
         x_w = []
         for j in range(nc):
             c1 = df_comp.sample()
+            index_c1 = c1.index[0]
             c2 = df_comp.sample()
+            index_c2 = c2.index[0]
             if c1['Y'].item() == c2['Y'].item():
                 continue
             if c1['C'].item() == c2['C'].item():
@@ -774,8 +776,8 @@ for i in range(10):
             xij = cij + str(c1['Y'].item()) + aij
             x.append(xij)
 
-            c1_w = df_comp_w.sample()
-            c2_w = df_comp_w.sample()
+            c1_w = df_comp_w.iloc[index_c1]
+            c2_w = df_comp_w.iloc[index_c2]
             if c1_w['Y'].item() == c2_w['Y'].item():
                 continue
             if c1_w['C'].item() == c2_w['C'].item():
@@ -947,6 +949,18 @@ results.to_csv('FairReweighing_violate_r_' + df_name + '_' + str(nc) + ".csv", i
 # work on comp_sep paper & github repo
 # real world dataset
 # test comp_sep on comp FairReweighing
+
+# select the same testing pairs for weighted and unweighted
+# trying using all pairs
+# report average difference between TPR and FPR
+# testing with difference number of nc
+# focus on the paper first (introduction, background)
+
+
+# split the dataset in half stratifily on SA
+# train a classification model and one with fairbalance
+# sample without replacement for a certain number of repetition
+
 
 # for i in range(10):
 # # m = Metrics(df["income"], df["pred"])
