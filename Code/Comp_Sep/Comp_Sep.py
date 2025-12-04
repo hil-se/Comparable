@@ -2,24 +2,20 @@ from collections import Counter
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from matplotlib import pyplot as plt
-from matplotlib.pyplot import plot
-from numpy import linspace
-from sklearn.cluster import KMeans
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score, roc_curve, auc
+from scipy.stats import norm
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KernelDensity
-from sklearn.svm import LinearSVC
-from scipy.stats import norm, bernoulli
 
-from Code.ImageExp import DataProcessing, vgg_pre
 from metrics import Metrics
 
 # split the dataset in half stratifily on SA
 # train a classification model and one with fairbalance
 # sample without replacement for a certain number of repetition
+
+# try different SA on adult and heart
+# try maintaining 2xnum_test
+# experiment on community and crime dataset
+# benchmmark on the training set
 
 col = "output"
 
@@ -29,7 +25,6 @@ nc = 2000
 
 
 def make_german():
-    # seed = 42
     df = pd.read_csv("../../Data/german_credit_data.csv", index_col=0)
     df = df.dropna()
     df['Sex'] = df['Sex'].apply(lambda x: 1 if x == "male" else 0)
@@ -52,16 +47,16 @@ def make_german():
     X_train[col] = y_train
     X_test[col] = y_test
 
-    return df, "german", X_train, X_test
+    return df, "german", X_train, X_test, sa
 
 
-def make_heart():
-    # seed = 42
+def make_heart(sa='sex'):
     df = pd.read_csv("../../Data/heart.csv")
     df = df.dropna()
+    if sa == 'age':
+        df['age'] = df['age'].apply(lambda x: 1 if x >=55 else 0)
 
     dependent = 'output'
-    sa = 'sex'
 
     df = df.rename(columns={sa: 'sa'})
 
@@ -71,27 +66,25 @@ def make_heart():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.5)
 
-
     X_train[col] = y_train
     X_test[col] = y_test
 
-    return df, "heart", X_train, X_test
+    return df, "heart", X_train, X_test, sa
 
 
-def make_adult():
+def make_adult(sa='gender'):
     df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
-    # df = df.sample(frac=0.1)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
-    dependent = 'income'
+    df['race'] = df['race'].apply(lambda x: 1 if x == "White" else 0)
 
-    sa = 'gender'
+    dependent = 'income'
 
     df = df.rename(columns={sa: 'sa'})
 
     df = pd.get_dummies(df, columns=['workclass', 'marital-status', 'occupation',
-                                     'relationship', 'race'], dtype=float,
+                                     'relationship'], dtype=float,
                         drop_first=True)
 
     X = df.drop([dependent, 'education', 'native-country'], axis=1)
@@ -103,20 +96,69 @@ def make_adult():
     X_train[col] = y_train
     X_test[col] = y_test
 
-    return df, "adult", X_train, X_test
+    return df, "adult", X_train, X_test, sa
 
+def make_comm():
+    df = pd.read_csv("../../Data/communities.csv")
+    df = df.fillna(0)
+    B = "racepctblack"
+    W = "racePctWhite"
+    A = "racePctAsian"
+    H = "racePctHisp"
+    sens_features = [2, 3, 4, 5]
+    df_sens = df.iloc[:, sens_features]
+
+    maj = majority_pop(df_sens)
+
+    a = maj.map({B: 0, W: 1, A: 0, H: 0})
+
+    df['race'] = a
+    df = df.drop(H, axis=1)
+    df = df.drop(B, axis=1)
+    df = df.drop(W, axis=1)
+    df = df.drop(A, axis=1)
+
+    dependent = 'ViolentCrimesPerPop'
+    sa = 'race'
+
+    df = df.rename(columns={sa: 'sa'})
+
+    X = df.drop([dependent], axis=1)
+    y = np.array(df[dependent])
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.5)
+
+    X_train[col] = y_train
+    X_test[col] = y_test
+
+    return df, "comm", X_train, X_test, sa
+
+def majority_pop(a):
+    B = "racepctblack"
+    W = "racePctWhite"
+    A = "racePctAsian"
+    H = "racePctHisp"
+    maj = a.apply(pd.Series.idxmax, axis=1)
+    return maj
 
 def density(X):
-    w = []
-    X = X.tolist()
-    df = pd.DataFrame(X)
-    for index, row in df.iterrows():
-        row = list(row)
-        if len(row) == 2:
-            w.append(X.count(row) / len(X))
-        else:
-            w.append(X.count(row[0]) / len(X))
-    return np.array(w)
+    """Calculates density efficiently using pandas value_counts."""
+    if isinstance(X, list):
+        X = np.array(X)
+
+    if X.ndim == 1:
+        s = pd.Series(X)
+        probs = s.value_counts(normalize=True)
+        return s.map(probs).to_numpy()
+    else:
+        df = pd.DataFrame(X)
+        # Calculate probability for each unique row
+        counts = df.value_counts(normalize=True, sort=False)
+        # Map probabilities back to the original rows
+        # merging on columns preserves the mapping
+        df_merged = df.merge(counts.rename('prob'), left_on=list(df.columns), right_index=True, how='left')
+        return df_merged['prob'].to_numpy()
 
 
 def weight(A, y, treatment="FairBalance"):
@@ -127,21 +169,26 @@ def weight(A, y, treatment="FairBalance"):
     wy = density(y)
 
     if treatment == "FairBalanceVariant":
-        weight = 1 / w
+        weights = 1 / w
     elif treatment == "FairBalance":
-        weight = wA / w
+        weights = wA / w
     elif treatment == "GroupBalance":
-        weight = wy / w
+        weights = wy / w
     elif treatment == "Reweighing":
-        weight = wA * wy / w
+        weights = wA * wy / w
+    else:
+        return None
 
-    weight = (len(weight) * weight / sum(weight)).flatten()
-    return weight
+    weights = (len(weights) * weights / sum(weights)).flatten()
+    return weights
 
 
 def cal_comp(xt1, x1, xt2, x2):
-    mu = (xt1 + xt2) / (x1 + x2)
-    var = mu * (1 - mu) / (x1 + x2)
+    denom = x1 + x2
+    if denom == 0:
+        return 0.0, 0.0
+    mu = (xt1 + xt2) / denom
+    var = mu * (1 - mu) / denom
     return mu, var
 
 
@@ -150,25 +197,77 @@ def comparative_separation(x):
     mut00, vart00 = cal_comp(x["1100"], x["1100"] + x["0100"] + x["x100"], x["0000"], x["0000"] + x["1000"] + x["x000"])
     mut10, vart10 = cal_comp(x["1110"], x["1110"] + x["0110"] + x["x110"], x["0001"], x["0001"] + x["1001"] + x["x001"])
     mut01, vart01 = cal_comp(x["1101"], x["1101"] + x["0101"] + x["x101"], x["0010"], x["0010"] + x["1010"] + x["x010"])
-    zc = (mut10 - mut01) / np.sqrt(vart10 + vart01)
-    zw = (mut11 - mut00) / np.sqrt(vart11 + vart00)
+
+    denom_c = np.sqrt(vart10 + vart01)
+    denom_w = np.sqrt(vart11 + vart00)
+
+    zc = (mut10 - mut01) / denom_c if denom_c > 0 else 0
+    zw = (mut11 - mut00) / denom_w if denom_w > 0 else 0
+
     pc = norm.sf(np.abs(zc)) * 2
     pw = norm.sf(np.abs(zw)) * 2
 
     return [pc, pw], (mut10 - mut01), (mut11 - mut00)
 
 
-results = []
-df_count = pd.DataFrame()
-df_pred = pd.DataFrame()
-df_AOD = pd.Series()
-df_EOD = pd.Series()
-df_violate = pd.Series()
-df_cross = pd.Series()
-df_within = pd.Series()
+def generate_batch_counter(df_result, n_samples):
+    """Vectorized generation of comparison pairs."""
+    # Oversample to account for filtering where Y1 == Y2
+    batch_size = n_samples * 4
 
-# for i in range(10):
-df, df_name, train, test = make_german()
+    # Use numpy values for speed
+    indices = np.random.randint(0, len(df_result), (2, batch_size))
+
+    y_vals = df_result['Y'].values
+    y1 = y_vals[indices[0]]
+    y2 = y_vals[indices[1]]
+
+    # Filter for different labels
+    mask = y1 != y2
+
+    # If we don't have enough samples, just take what we have (or could loop to get more)
+    valid_idx = np.where(mask)[0][:n_samples]
+
+    idx1 = indices[0][valid_idx]
+    idx2 = indices[1][valid_idx]
+
+    c_vals = df_result['C'].values
+    a_vals = df_result['A'].astype(str).values
+
+    c1 = c_vals[idx1]
+    c2 = c_vals[idx2]
+
+    # Calculate C comparison code
+    # x: C1==C2, 1: C1>C2, 0: C1<C2
+    cij = np.select([c1 == c2, c1 > c2], ['x', '1'], default='0')
+
+    y1_str = y_vals[idx1].astype(str)
+    a1_str = a_vals[idx1].astype(str)
+    a2_str = a_vals[idx2].astype(str)
+
+    # Construct strings: cij + Y1 + A1 + A2
+    xij = np.char.add(np.char.add(np.char.add(cij, y1_str), a1_str), a2_str)
+
+    return Counter(xij)
+
+
+df_count_test = pd.DataFrame()
+df_count_train = pd.DataFrame()
+df_pred_test = pd.DataFrame()
+df_pred_train = pd.DataFrame()
+df_AOD_test = {}
+df_EOD_test = {}
+df_AOD_train = {}
+df_EOD_train = {}
+df_violate_test = {}
+df_violate_train = {}
+df_cross_test = {}
+df_cross_train = {}
+df_within_test = {}
+df_within_train = {}
+
+# For a single run (loop logic removed or uncomment for multiple)
+df, df_name, train, test, sa = make_heart('sex')
 train.reset_index(inplace=True, drop=True)
 test.reset_index(inplace=True, drop=True)
 
@@ -187,63 +286,90 @@ for treatment in ['None', 'FairBalance', 'Reweighing']:
 
     clf = LogisticRegression().fit(train, y_train, sample_weight=sample_weight)
     predictions = clf.predict(test)
-    df_pred[treatment] = predictions
+    predictions_train = clf.predict(train)
+    df_pred_test[treatment] = predictions
+    df_pred_train[treatment] = predictions_train
 
-    df_result = np.stack((predictions, y_test, test['sa']), axis=1)
-    df_result = pd.DataFrame(df_result, columns=['C', 'Y', 'A'])
+    df_result_test = pd.DataFrame({
+        'C': predictions,
+        'Y': y_test,
+        'A': test['sa']
+    })
 
-    count = df_result.value_counts(normalize=True)
-    df_count[treatment] = count
+    df_result_train = pd.DataFrame({
+        'C': predictions_train,
+        'Y': y_train,
+        'A': train['sa']
+    })
 
-    m = Metrics(y_test, predictions)
-    df_AOD[treatment] = m.AOD(test['sa'])
-    df_EOD[treatment] = m.EOD(test['sa'])
+    count_test = df_result_test[['C', 'Y', 'A']].value_counts(normalize=True)
+    count_train = df_result_train[['C', 'Y', 'A']].value_counts(normalize=True)
+    df_count_test[treatment] = count_test
+    df_count_train[treatment] = count_train
 
-    violate = 0
-    avg_cross = 0
-    avg_within = 0
+    m_test = Metrics(y_test, predictions)
+    df_AOD_test[treatment] = m_test.AOD(test['sa'])
+    df_EOD_test[treatment] = m_test.EOD(test['sa'])
 
-    for i in range(r):
-        x = []
-        j = 0
-        while j < nc:
-            c1 = df_result.sample()
-            index_c1 = c1.index[0]
-            c2 = df_result.sample()
-            index_c2 = c2.index[0]
-            if c1['Y'].item() == c2['Y'].item():
-                continue
-            if c1['C'].item() == c2['C'].item():
-                cij = "x"
-            elif c1['C'].item() > c2['C'].item():
-                cij = "1"
-            else:
-                cij = "0"
-            aij = str(c1['A'].item()) + str(c2['A'].item())
-            xij = cij + str(c1['Y'].item()) + aij
-            x.append(xij)
-            j = j + 1
+    m_train = Metrics(y_train, predictions_train)
+    df_AOD_train[treatment] = m_train.AOD(train['sa'])
+    df_EOD_train[treatment] = m_train.EOD(train['sa'])
 
-        count = Counter(x)
+    # Optimized Test Simulation
+    violate_test = 0
+    avg_cross_test = 0
+    avg_within_test = 0
+
+    for _ in range(r):
+        # Generate counter efficiently
+        count = generate_batch_counter(df_result_test, 2 * len(test))
 
         ps, cross, within = comparative_separation(count)
-        if min((ps)) < alpha:
-            violate += 1
+        if min(ps) < alpha:
+            violate_test += 1
 
-        avg_cross = avg_cross + cross
-        avg_within = avg_within + within
+        avg_cross_test += cross
+        avg_within_test += within
 
-    violate_r = (violate / r)
-    avg_cross_r = (avg_cross / r)
-    avg_within_r = (avg_within / r)
+    # Optimized Train Simulation
+    violate_train = 0
+    avg_cross_train = 0
+    avg_within_train = 0
 
-    df_violate[treatment] = violate_r
-    df_cross[treatment] = avg_cross_r
-    df_within[treatment] = avg_within_r
+    for _ in range(r):
+        count = generate_batch_counter(df_result_train, 2 * len(train))
 
-df_count.to_csv('probability_' + df_name + ".csv")
-df_AOD.to_csv('AOD_' + df_name + ".csv")
-df_EOD.to_csv('EOD_' + df_name + ".csv")
-df_violate.to_csv('violate_' + df_name + '_' + str(nc) + ".csv")
-df_cross.to_csv('cross_' + df_name + '_' + str(nc) + ".csv")
-df_within.to_csv('within_' + df_name + '_' + str(nc) + ".csv")
+        ps, cross, within = comparative_separation(count)
+        if min(ps) < alpha:
+            violate_train += 1
+
+        avg_cross_train += cross
+        avg_within_train += within
+
+    df_violate_test[treatment] = violate_test / r
+    df_cross_test[treatment] = avg_cross_test / r
+    df_within_test[treatment] = avg_within_test / r
+
+    df_violate_train[treatment] = violate_train / r
+    df_cross_train[treatment] = avg_cross_train / r
+    df_within_train[treatment] = avg_within_train / r
+
+# Save results
+df_count_test.to_csv('probability_' + df_name + '_' + sa +".csv")
+df_count_train.to_csv('probability_' + df_name + '_' + sa +"_train.csv")
+
+pd.DataFrame({
+        "AOD": pd.Series(df_AOD_test),
+        "EOD": pd.Series(df_EOD_test),
+        "Violate": pd.Series(df_violate_test),
+        "Cross": pd.Series(df_cross_test),
+        "Within": pd.Series(df_within_test)
+    }).to_csv("Result_test_" + df_name + "_" + str(2 * len(test)) + '_' + sa + ".csv")
+
+pd.DataFrame({
+        "AOD": pd.Series(df_AOD_train),
+        "EOD": pd.Series(df_EOD_train),
+        "Violate": pd.Series(df_violate_train),
+        "Cross": pd.Series(df_cross_train),
+        "Within": pd.Series(df_within_train)
+    }).to_csv("Result_train_" + df_name + "_" + str(2 * len(train)) + '_' + sa + ".csv")
