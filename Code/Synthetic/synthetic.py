@@ -28,7 +28,7 @@ def retrievePixels(path, height, width):
     return x
 
 
-num_comp_train = 10
+num_comp_train = 1
 num_comp_test = 1
 
 col = "output"
@@ -565,7 +565,7 @@ results = []
 use_all_pairs = False  # Set to True to use all possible pairs (N^2)
 
 for i in range(10):
-    df, df_name, train, test = make_comm()
+    df, df_name, train, test = make_adult()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
