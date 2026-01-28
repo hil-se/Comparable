@@ -23,7 +23,7 @@ def learn(train_data,
     source = np.array([emb for emb in td_s])
     target = np.array([emb for emb in td_t])
 
-    if train_weights:
+    if train_weights is not None:
         tr_feature = {"A": source, "B": target, "Label": train_y, "Weights": train_weights}
     else:
         tr_feature = {"A": source, "B": target, "Label": train_y}
@@ -34,7 +34,7 @@ def learn(train_data,
     source = np.array([emb for emb in v_s])
     target = np.array([emb for emb in v_t])
 
-    if val_weights:
+    if val_weights is not None:
         v_feature = {"A": source, "B": target, "Label": val_y, "Weights": val_weights}
     else:
         v_feature = {"A": source, "B": target, "Label": val_y}
@@ -51,7 +51,7 @@ def learn(train_data,
         encoder_A = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
         encoder_B = DualEncoder.create_encoder(input_size=val_dataset.element_spec['A'].shape[1])
         dual_encoder = DualEncoder.DualEncoderAll(encoder_A, encoder_B, y_true=np.array(y_true))
-    dual_encoder.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3))
+    dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=1e-3))
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
     dual_encoder.fit(
