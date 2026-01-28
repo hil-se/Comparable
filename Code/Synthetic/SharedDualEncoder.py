@@ -51,15 +51,14 @@ class DualEncoderAll(tf.keras.Model):
         self.encoder.trainable = trainable
         return encodings_A, encodings_B, y
 
-    def compute_loss(self, encodings_A, encodings_B, y):
-        encodings_A = tf.squeeze(encodings_A)
-        encodings_B = tf.squeeze(encodings_B)
-        # pred = (encodings_A + encodings_B) / 2
-        pred = encodings_A - encodings_B
-        y = tf.cast(y, tf.float32)
+    def compute_loss(self, encodings_A, encodings_B, y, sample_weight=None):
+        encodings_A = tf.squeeze(encodings_A, axis=-1)
+        encodings_B = tf.squeeze(encodings_B, axis=-1)
 
-        # Absolute difference loss
-        loss = tf.math.abs(y - pred)
+        pred = encodings_A - encodings_B
+        y = tf.cast(tf.squeeze(y, axis=-1) if len(y.shape) > 1 else y, tf.float32)
+
+        per_example = tf.abs(y - pred)
 
         # Hinge loss
         # loss = tf.math.maximum(0.0, 1.0 - (y * pred))
@@ -79,22 +78,45 @@ class DualEncoderAll(tf.keras.Model):
         # Mean-squared error loss
         # mse = tf.keras.losses.MeanSquaredError()
         # loss = tf.math.abs(mse(y, pred))
+        if sample_weight is not None:
+            sw = tf.cast(tf.squeeze(sample_weight, axis=-1) if len(sample_weight.shape) > 1 else sample_weight,
+                         tf.float32)
+            per_example = per_example * sw
+            loss = tf.reduce_sum(per_example) / (tf.reduce_sum(sw) + tf.keras.backend.epsilon())
+        else:
+            loss = tf.reduce_mean(per_example)
 
         return loss
 
-    def train_step(self, feature, trainable=True):
+    def train_step(self, data):
+        if isinstance(data, tuple):
+            x = data[0]
+        else:
+            x = data
+
+        sample_weight = x.get("Weights", None) if isinstance(x, dict) else None
+
         with tf.GradientTape() as tape:
-            # Forward pass
-            encodings_A, encodings_B, y = self(feature, trainable=trainable)
-            loss = self.compute_loss(encodings_A, encodings_B, y)
+            encodings_A, encodings_B, y = self(x, trainable=True)
+            loss = self.compute_loss(encodings_A, encodings_B, y, sample_weight=sample_weight)
+
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+        # loss is now a scalar, so the Mean metric is happy.
         self.loss_tracker.update_state(loss)
         return {"loss": self.loss_tracker.result()}
 
-    def test_step(self, feature):
-        encodings_A, encodings_B, y = self(feature, trainable=self.trainable)
-        loss = self.compute_loss(encodings_A, encodings_B, y)
+    def test_step(self, data):
+        if isinstance(data, tuple):
+            x = data[0]
+        else:
+            x = data
+
+        sample_weight = x.get("Weights", None) if isinstance(x, dict) else None
+        encodings_A, encodings_B, y = self(x, trainable=False)
+        loss = self.compute_loss(encodings_A, encodings_B, y, sample_weight=sample_weight)
+
         self.loss_tracker.update_state(loss)
         return {"loss": self.loss_tracker.result()}
 

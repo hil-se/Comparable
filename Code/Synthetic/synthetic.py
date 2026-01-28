@@ -975,6 +975,7 @@ pd.DataFrame(results).to_csv(f'FairReweighing_violate_r_{df_name}_{nc}_{pair_str
 # sample without replacement for a certain number of repetition
 
 # include COMPAS and regression dataset
+# include SCUT and other fairness metrics
 
 
 # for i in range(10):
