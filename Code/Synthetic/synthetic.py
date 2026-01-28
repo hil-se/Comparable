@@ -35,7 +35,7 @@ col = "output"
 
 alpha = 0.05
 r = 100
-nc = 2000
+nc = 1000
 
 
 def comp_pred(test, dual_encoder):
@@ -432,6 +432,40 @@ def make_heart():
     return df, "heart", X_train, X_test
 
 
+def make_compas():
+    df = pd.read_csv("../../Data/compas-scores-two-years.csv")
+    features_to_keep = ['sex', 'age', 'age_cat', 'race',
+                        'juv_fel_count', 'juv_misd_count', 'juv_other_count',
+                        'priors_count', 'c_charge_degree',
+                        'two_year_recid']
+    df = df[features_to_keep]
+    # sensitive attribute names
+    A = ["sex", "race"]
+    df['sex'] = df['sex'].apply(lambda x: 1 if x == "Male" else 0)
+    # discretize race: Caucasian vs. non-Caucasian
+    df['race'] = df['race'].apply(lambda x: 1 if x == "Caucasian" else 0)
+    # prefer 0 (no recid) as label 1
+    df['two_year_recid'] = df['two_year_recid'].apply(lambda x: 1 if x==0 else 0)
+
+    sa = 'sex'
+    df = df.rename(columns={sa: 'sa'})
+
+    df = pd.get_dummies(df, columns=['age_cat', 'c_charge_degree'], dtype=float,
+                        drop_first=True)
+
+    dependent = 'two_year_recid'
+
+    X = df.drop([dependent], axis=1)
+    y = np.array(df[dependent])
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.5)
+
+    X_train[col] = y_train
+    X_test[col] = y_test
+
+    return df, "compas", X_train, X_test
+
 def make_comm():
     # seed = 42
     df = pd.read_csv("../../Data/communities.csv")
@@ -463,13 +497,6 @@ def make_comm():
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.5)
-
-    # X_test_cp = X_test.copy()
-    # X_test_cp['sa'] = X_test['sa']
-    # X_test_cp['pred_con'] = pred_prob
-    # X_test_cp['pred'] = predictions
-    # X_test_cp[col] = y_test
-    # X_test_cp.reset_index(inplace=True, drop=True)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -538,7 +565,7 @@ results = []
 use_all_pairs = False  # Set to True to use all possible pairs (N^2)
 
 for i in range(10):
-    df, df_name, train, test = make_adult()
+    df, df_name, train, test = make_comm()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -677,7 +704,9 @@ for i in range(10):
     # accuracy = accuracy_score(res_ts_sa['Label'], predictions)
 
     y_train = train['output']
-    # train = train.drop(columns=['output'])
+    train = train.drop(columns=['output'])
+    test = test.drop(columns=['output'])
+
     # #
     # y_svc = svc_encoder['label']
     # svc_train = svc_encoder.drop(columns=['label'])
@@ -698,25 +727,25 @@ for i in range(10):
     # MSE_svc = m_svc.mse()
     # I_sep_svc = m_svc.MI_con_info(test['sa'])
     #
-    # clf = LinearRegression().fit(train, y_train)
-    # predictions = clf.predict(test)
-
-    clf = LogisticRegression().fit(train, y_train)
+    clf = LinearRegression().fit(train, y_train)
     predictions = clf.predict(test)
 
+    # clf = LogisticRegression().fit(train, y_train)
+    # predictions = clf.predict(test)
+
     # y_score = clf.predict_proba(test)[:, 1]
-    accuracy_lr = accuracy_score(y_test, predictions)
-    f1_score_lr = f1_score(y_test, predictions)
+    # accuracy_lr = accuracy_score(y_test, predictions)
+    # f1_score_lr = f1_score(y_test, predictions)
     # #
     # fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
     # roc_auc_lr = auc(fpr_lr, tpr_lr)
     #
-    # m_lr = Metrics(y_test, predictions)
+    m_lr = Metrics(y_test, predictions)
     # AOD_lr = m_lr.AOD(test['sa'])
     # EOD_lr = m_lr.EOD(test['sa'])
-    # mse_lr = m_lr.mse()
-    # spearman_lr = m_lr.spearmanr_coefficient()
-    # pearson_lr = m_lr.pearsonr_coefficient()
+    mse_lr = m_lr.mse()
+    spearman_lr = m_lr.spearmanr_coefficient()
+    pearson_lr = m_lr.pearsonr_coefficient()
     # I_sep_lr = m_lr.MI_con_info(test['sa'])
 
     # Batch Prediction (Avoid row-wise loop)
@@ -724,9 +753,12 @@ for i in range(10):
     predictions = dual_encoder.score(test_vals).numpy().flatten()
     predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
 
+    predictions_kmeans = predictions
+    predictions_kmeans_weighted = predictions_weighted
+
     # Outlier removal and KMeans (Original logic kept but used vectorized arrays)
-    pred_filt = remove_outliers(predictions)
-    pred_w_filt = remove_outliers(predictions_weighted)
+    # pred_filt = remove_outliers(predictions)
+    # pred_w_filt = remove_outliers(predictions_weighted)
 
     # for index, row in train.iterrows():
     #     row = np.array(row)
@@ -750,14 +782,14 @@ for i in range(10):
     # plt.title('predictions on weighted train data')
     # plt.show()
 
-    km = KMeans(n_clusters=2, n_init="auto").fit(pred_filt.reshape(-1, 1))
-    predictions_kmeans = km.predict(predictions.reshape(-1, 1))
-    if km.cluster_centers_[0] > km.cluster_centers_[1]: predictions_kmeans = 1 - predictions_kmeans
-
-    km_w = KMeans(n_clusters=2, n_init="auto").fit(pred_w_filt.reshape(-1, 1))
-    predictions_kmeans_weighted = km_w.predict(predictions_weighted.reshape(-1, 1))
-    if km_w.cluster_centers_[0] > km_w.cluster_centers_[
-        1]: predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
+    # km = KMeans(n_clusters=2, n_init="auto").fit(pred_filt.reshape(-1, 1))
+    # predictions_kmeans = km.predict(predictions.reshape(-1, 1))
+    # if km.cluster_centers_[0] > km.cluster_centers_[1]: predictions_kmeans = 1 - predictions_kmeans
+    #
+    # km_w = KMeans(n_clusters=2, n_init="auto").fit(pred_w_filt.reshape(-1, 1))
+    # predictions_kmeans_weighted = km_w.predict(predictions_weighted.reshape(-1, 1))
+    # if km_w.cluster_centers_[0] > km_w.cluster_centers_[
+    #     1]: predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
 
     # Optimized Simulation Loop (The biggest bottleneck)
     data_raw = np.column_stack([predictions_kmeans, y_test, test['sa'].values])
@@ -775,7 +807,8 @@ for i in range(10):
             c1, y1, a1 = arr[m1, 0], arr[m1, 1], arr[m1, 2]
             c2, y2, a2 = arr[m2, 0], arr[m2, 1], arr[m2, 2]
             cij = np.where(c1 == c2, "x", np.where(c1 > c2, "1", "0"))
-            keys = [f"{cij[k]}{int(y1[k])}{int(a1[k])}{int(a2[k])}" for k in range(len(cij))]
+            yij = np.where(y1 > y2, "1", "0")
+            keys = [f"{cij[k]}{yij[k]}{int(a1[k])}{int(a2[k])}" for k in range(len(cij))]
             return Counter(keys)
 
 
@@ -851,39 +884,39 @@ for i in range(10):
     #     else:
     #         predictions_weighted_bi.append(0)
 
-    # m = Metrics(y_test, predictions)
+    m = Metrics(y_test, predictions)
     # m_bi = Metrics(y_test, predictions_kmeans)
-    # m_weighted = Metrics(y_test, predictions_weighted)
+    m_weighted = Metrics(y_test, predictions_weighted)
     # m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
 
-    accuracy_bi = accuracy_score(y_test, predictions_kmeans)
-    accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
-    f1_score_bi = f1_score(y_test, predictions_kmeans)
-    f1_score_weighted = f1_score(y_test, predictions_kmeans_weighted)
+    # accuracy_bi = accuracy_score(y_test, predictions_kmeans)
+    # accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
+    # f1_score_bi = f1_score(y_test, predictions_kmeans)
+    # f1_score_weighted = f1_score(y_test, predictions_kmeans_weighted)
     #
     # AOD = m_bi.AOD(test['sa'])
     # EOD = m_bi.EOD(test['sa'])
     # AOD_weighted = m_weighted_bi.AOD(test['sa'])
     # EOD_weighted = m_weighted_bi.EOD(test['sa'])
 
-    # MSE_unweighted = m.mse()
-    # MSE_weighted = m_weighted.mse()
+    MSE_unweighted = m.mse()
+    MSE_weighted = m_weighted.mse()
     # I_sep = m.MI_con_info(test['sa'])
     # I_sep_weighted = m_weighted.MI_con_info(test['sa'])
     # I_sep_bi = m_bi.MI_con_info(test['sa'])
     # I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
 
-    # spearman_unweighted = m.spearmanr_coefficient()
-    # pearson_unweighted = m.pearsonr_coefficient()
+    spearman_unweighted = m.spearmanr_coefficient()
+    pearson_unweighted = m.pearsonr_coefficient()
     #
-    # spearman_weighted = m_weighted.spearmanr_coefficient()
-    # pearson_weighted = m_weighted.pearsonr_coefficient()
+    spearman_weighted = m_weighted.spearmanr_coefficient()
+    pearson_weighted = m_weighted.pearsonr_coefficient()
 
     result = {
-        # 'MSE_lr': mse_lr, "MSE_svc": MSE_svc, "MSE_unweight": MSE_unweighted, "MSE_weight" : MSE_weighted,
-        'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
+        'MSE_lr': mse_lr, "MSE_unweight": MSE_unweighted, "MSE_weight" : MSE_weighted,
+        # 'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
         #       'Acc_svc': accuracy_svc,
-              'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
+        #       'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
         #       'F1_svc': f1_score_svc,
         #       'AOD_lr': AOD_lr, 'AOD_unweight': AOD, 'AOD_weighted': AOD_weighted, 'AOD_svc': AOD_svc,
         #       'EOD_lr': EOD_lr, 'EOD_unweight': EOD, 'EOD_weighted': EOD_weighted, 'EOD_svc': EOD_svc,
@@ -891,9 +924,9 @@ for i in range(10):
         # 'I_sep_bi': I_sep_bi,
         # 'I_sep_weighted_bi': I_sep_weighted_bi,
         # 'I_sep_svc': I_sep_svc,
-        # 'spearman_lr': spearman_lr, 'pearson_lr': pearson_lr, 'spearman_svc': spearman_svc, 'pearson_svc': pearson_svc, 'spearman_unweighted': spearman_unweighted,
-        # 'pearson_unweighted': pearson_unweighted, 'spearman_weighted': spearman_weighted,
-        # 'pearson_weighted': pearson_weighted,
+        'spearman_lr': spearman_lr, 'pearson_lr': pearson_lr, 'spearman_unweighted': spearman_unweighted,
+        'pearson_unweighted': pearson_unweighted, 'spearman_weighted': spearman_weighted,
+        'pearson_weighted': pearson_weighted,
         'violate_r': violate / r,
         'violate_r_w': violate_w / r
     }
