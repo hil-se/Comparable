@@ -31,7 +31,7 @@
 #SBATCH --nodes=1
 
 ## Job memory requirements in MB
-#SBATCH --mem=300g
+#SBATCH --mem=100g
 
 ## Job script goes below this line
 

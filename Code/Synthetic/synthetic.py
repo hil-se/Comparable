@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append(os.getcwd())
+
 from collections import Counter
 
 import numpy as np
@@ -17,6 +22,7 @@ from scipy.stats import norm
 import Classification
 from Code.ImageExp import DataProcessing, vgg_pre
 from metrics import Metrics
+
 
 
 def retrievePixels(path, height, width):
@@ -723,7 +729,7 @@ for i in range(10):
             (2 * res_tr_sa.loc[diff_group_mask, 'AY'].map(p_aij_yij))
     ).values
 
-    train_idx = data_tr_encoder.sample(frac=0.99).index
+    train_idx = data_tr_encoder.sample(frac=0.8).index
     val_idx = data_tr_encoder.index.difference(train_idx)
 
     dual_encoder = Classification.train_model(train=data_tr_encoder.loc[train_idx], val=data_tr_encoder.loc[val_idx],
@@ -1025,6 +1031,8 @@ pd.DataFrame(results).to_csv(f'FairReweighing_violate_r_{df_name}_{nc}_{pair_str
 
 # include COMPAS and regression dataset
 # include SCUT and other fairness metrics
+
+# include the hypothesis test for seperation
 
 
 # for i in range(10):
