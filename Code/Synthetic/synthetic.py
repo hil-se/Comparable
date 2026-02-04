@@ -1,5 +1,6 @@
 import sys
 import os
+sys.path.append(os.path.join(os.getcwd(), 'Code'))
 
 from collections import Counter
 
@@ -18,7 +19,7 @@ from sklearn.svm import LinearSVC
 from scipy.stats import norm
 
 import Classification
-from ..ImageExp import DataProcessing, vgg_pre
+from ImageExp import DataProcessing, vgg_pre
 from metrics import Metrics
 
 
