@@ -22,7 +22,7 @@
 ## Put in tier3 partition for testing small jobs, like this one
 ## But because our requested time is over 4 day, it won't run, so
 ## use any tier you have available
-#SBATCH --partition=<debug,tier3>
+#SBATCH -p debug
 
 ## Request 1 GPU for one task, note how you can put multiple commands
 ## on one line
