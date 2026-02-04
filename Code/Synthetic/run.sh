@@ -31,12 +31,12 @@
 #SBATCH --nodes=1
 
 ## Job memory requirements in MB
-#SBATCH --mem=300g
+#SBATCH --mem=150g
 
 ## Job script goes below this line
 
 spack unload -a
-spack env activate default-ml-24022101
+spack env activate default-ml-x86_64-25052701
 
 ## Execute target code
 python3 synthetic.py
