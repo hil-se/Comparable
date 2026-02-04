@@ -1,8 +1,6 @@
 import sys
 import os
 
-sys.path.append(os.path.join(os.getcwd(), 'Comparable'))
-
 from collections import Counter
 
 import numpy as np
@@ -20,7 +18,7 @@ from sklearn.svm import LinearSVC
 from scipy.stats import norm
 
 import Classification
-from Code.ImageExp import DataProcessing, vgg_pre
+from ..ImageExp import DataProcessing, vgg_pre
 from metrics import Metrics
 
 
