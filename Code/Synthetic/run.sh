@@ -17,7 +17,7 @@
 
 ## Request 5 Days, 0 Hours, 0 Minutes, 0 Seconds run time MAX,
 ## anything over will be KILLED
-#SBATCH -t 2-00:00:00
+#SBATCH -t 0-02:00:00
 
 ## Put in tier3 partition for testing small jobs, like this one
 ## But because our requested time is over 4 day, it won't run, so
@@ -31,7 +31,7 @@
 #SBATCH --nodes=1
 
 ## Job memory requirements in MB
-#SBATCH --mem=150g
+#SBATCH --mem=300g
 
 ## Job script goes below this line
 
