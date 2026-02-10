@@ -1,27 +1,19 @@
-import sys
-import os
-sys.path.append(os.path.join(os.getcwd(), 'Code'))
-
 from collections import Counter
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from matplotlib import pyplot as plt
-from matplotlib.pyplot import plot
-from numpy import linspace
+from scipy.stats import norm
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score, roc_curve, auc
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KernelDensity
-from sklearn.svm import LinearSVC
-from scipy.stats import norm
 
 import Classification
-from ImageExp import DataProcessing, vgg_pre
+from Code.ImageExp import DataProcessing
 from metrics import Metrics
 
+isBinary = True
 
 
 def retrievePixels(path, height, width):
@@ -34,6 +26,7 @@ def retrievePixels(path, height, width):
 
 
 col = "output"
+
 
 def comp_pred(test, dual_encoder):
     dataA = test["A"].tolist()
@@ -95,8 +88,10 @@ def comparative_separation(x):
 
     return [pc, pw], (mut10 - mut01), (mut11 - mut00)
 
+
 # --- New: vectorized violation counting (replaces Counter + Python loops) ---
 _CIJ_TO_CHAR = np.array(["0", "1", "x"], dtype=object)
+
 
 def _counts_dict_from_bincount(bc: np.ndarray) -> dict:
     """
@@ -117,6 +112,7 @@ def _counts_dict_from_bincount(bc: np.ndarray) -> dict:
                     out[f"{cij_char}{yij}{a1}{a2}"] = int(bc[idx])
                     idx += 1
     return out
+
 
 def count_violation_fast(arr: np.ndarray, i1: np.ndarray, i2: np.ndarray) -> dict:
     """
@@ -146,6 +142,7 @@ def count_violation_fast(arr: np.ndarray, i1: np.ndarray, i2: np.ndarray) -> dic
     bc = np.bincount(code, minlength=24)
 
     return _counts_dict_from_bincount(bc)
+
 
 # 1,2,3,4
 def make_df1():
@@ -350,6 +347,7 @@ def make_scut(P="P3"):
     df = df[["Filename", P]]
     df['pixels'] = df['Filename'].apply(DataProcessing.retrievePixels)
 
+    global isBinary
     dependent = P
 
     features = np.array([pixel for pixel in df['pixels']]) / 255.0
@@ -363,6 +361,8 @@ def make_scut(P="P3"):
     X_train[col] = y_train
     X_test[col] = y_test
 
+    isBinary = False
+
     return df, "scut" + "_" + str(P), X_train, X_test
 
 
@@ -375,6 +375,7 @@ def make_adult():
     df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
     dependent = 'income'
 
+    global isBinary
     sa = 'gender'
 
     df = df.rename(columns={sa: 'sa'})
@@ -389,17 +390,11 @@ def make_adult():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.5)
 
-    # X_test_cp = X_test.copy()
-    # X_test_cp['sa'] = X_test['sa']
-    # X_test_cp['pred_con'] = pred_prob
-    # X_test_cp['pred'] = predictions
-    # X_test_cp[col] = y_test
-    # X_test_cp.reset_index(inplace=True, drop=True)®
-
     X_train[col] = y_train
     X_test[col] = y_test
 
-    # df = X_test_cp[[col, "sa", "pred", "pred_con"]]
+    isBinary = True
+
     return df, "adult", X_train, X_test
 
 
@@ -410,6 +405,7 @@ def make_german():
     df['Sex'] = df['Sex'].apply(lambda x: 1 if x == "male" else 0)
     df['Risk'] = df['Risk'].apply(lambda x: 1 if x == "good" else 0)
 
+    global isBinary
     dependent = 'Risk'
     sa = 'Sex'
 
@@ -424,17 +420,11 @@ def make_german():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.5)
 
-    # X_test_cp = X_test.copy()
-    # X_test_cp['sa'] = X_test['sa']
-    # X_test_cp['pred_con'] = pred_prob
-    # X_test_cp['pred'] = predictions
-    # X_test_cp[col] = y_test
-    # X_test_cp.reset_index(inplace=True, drop=True)
-
     X_train[col] = y_train
     X_test[col] = y_test
 
-    # df = X_test_cp[[col, "sa", "pred", "pred_con"]]
+    isBinary = True
+
     return df, "german", X_train, X_test
 
 
@@ -443,6 +433,7 @@ def make_heart():
     df = pd.read_csv("../../Data/heart.csv")
     df = df.dropna()
 
+    global isBinary
     dependent = 'output'
     sa = 'sex'
 
@@ -454,15 +445,10 @@ def make_heart():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.5)
 
-    # X_test_cp = X_test.copy()
-    # X_test_cp['sa'] = X_test['sa']
-    # X_test_cp['pred_con'] = pred_prob
-    # X_test_cp['pred'] = predictions
-    # X_test_cp[col] = y_test
-    # X_test_cp.reset_index(inplace=True, drop=True)
-
     X_train[col] = y_train
     X_test[col] = y_test
+
+    isBinary = True
 
     return df, "heart", X_train, X_test
 
@@ -482,6 +468,7 @@ def make_compas():
     # prefer 0 (no recid) as label 1
     df['two_year_recid'] = df['two_year_recid'].apply(lambda x: 1 if x == 0 else 0)
 
+    global isBinary
     sa = 'sex'
     df = df.rename(columns={sa: 'sa'})
 
@@ -498,6 +485,8 @@ def make_compas():
 
     X_train[col] = y_train
     X_test[col] = y_test
+
+    isBinary = True
 
     return df, "compas", X_train, X_test
 
@@ -523,6 +512,7 @@ def make_comm():
     df = df.drop(W, axis=1)
     df = df.drop(A, axis=1)
 
+    global isBinary
     dependent = 'ViolentCrimesPerPop'
     sa = 'race'
 
@@ -536,6 +526,8 @@ def make_comm():
 
     X_train[col] = y_train
     X_test[col] = y_test
+
+    isBinary = False
 
     return df, "comm", X_train, X_test
 
@@ -551,6 +543,7 @@ def make_lsac():
     df['gender'] = df['gender'].map({'male': 1, 'female': 0})
     df['bar1'] = [int(grade == 'P') for grade in df['bar1']]
 
+    global isBinary
     dependent = 'ugpa'
     sa = 'race'
 
@@ -564,6 +557,8 @@ def make_lsac():
 
     X_train[col] = y_train
     X_test[col] = y_test
+
+    isBinary = False
 
     return df, "lsac", X_train, X_test
 
@@ -597,9 +592,31 @@ def remove_outliers(data):
     return X_filtered
 
 
+def stats(x1, x2):
+    mu = x1 / (x1 + x2)
+    var = mu * (1 - mu) / (x1 + x2)
+    return mu, var
+
+
+def separation(y, y_pred, s):
+    count = []
+    for i in range(len(s)):
+        count.append(str(int(y_pred[i])) + str(int(y[i])) + str(int(s[i])))
+    x = Counter(count)
+
+    mut1, vart1 = stats(x["111"], x["011"])
+    mut0, vart0 = stats(x["110"], x["010"])
+    zt = (mut1 - mut0) / np.sqrt(vart1 + vart0)
+    pt = norm.sf(np.abs(zt)) * 2
+    muf1, varf1 = stats(x["101"], x["001"])
+    muf0, varf0 = stats(x["100"], x["000"])
+    zf = (muf1 - muf0) / np.sqrt(varf1 + varf0)
+    pf = norm.sf(np.abs(zf)) * 2
+    return [pt, pf]
+
+
 results = []
-use_all_pairs = False  # Set to True to use all possible pairs (N^2)
-classification = False
+use_all_pairs = True  # Set to True to use all possible pairs (N^2)
 
 alpha = 0.05
 r = 100
@@ -608,7 +625,7 @@ num_comp_train = 1
 num_comp_test = 1
 
 for i in range(10):
-    df, df_name, train, test = make_scut()
+    df, df_name, train, test = make_german()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -770,7 +787,7 @@ for i in range(10):
     # MSE_svc = m_svc.mse()
     # I_sep_svc = m_svc.MI_con_info(test['sa'])
     #
-    if classification:
+    if isBinary:
         clf = LogisticRegression().fit(train, y_train)
         predictions = clf.predict(test)
     else:
@@ -779,7 +796,7 @@ for i in range(10):
 
     m_lr = Metrics(y_test, predictions)
 
-    if classification:
+    if isBinary:
         # y_score = clf.predict_proba(test)[:, 1]
         accuracy_lr = accuracy_score(y_test, predictions)
         f1_score_lr = f1_score(y_test, predictions)
@@ -801,7 +818,7 @@ for i in range(10):
     predictions = dual_encoder.score(test_vals).numpy().flatten()
     predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
 
-    if not classification:
+    if not isBinary:
         predictions_kmeans = predictions
         predictions_kmeans_weighted = predictions_weighted
 
@@ -839,12 +856,22 @@ for i in range(10):
     data_raw = np.column_stack([predictions_kmeans, y_test, test['sa'].values])
     data_w_raw = np.column_stack([predictions_kmeans_weighted, y_test, test['sa'].values])
 
+    violate_comp = violate_comp_w = 0
     violate = violate_w = 0
     n_rows = len(data_raw)
 
     for _ in range(r):
-        idx1 = np.random.randint(0, n_rows, size=nc * 2)
-        idx2 = np.random.randint(0, n_rows, size=nc * 2)
+        selectedr = np.random.choice(n_rows, size=n_rows // 2, replace=False)
+        ps = separation(data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2])
+        ps_w = separation(data_w_raw[selectedr, 1], data_w_raw[selectedr, 0], data_w_raw[selectedr, 2])
+        if min((ps)) < alpha:
+            violate += 1
+        if min((ps_w)) < alpha:
+            violate_w += 1
+
+    for _ in range(r):
+        idx1 = np.random.randint(0, n_rows, size=n_rows * 3)
+        idx2 = np.random.randint(0, n_rows, size=n_rows * 3)
 
         # Filter for Y1 != Y2
         mask = data_raw[idx1, 1] != data_raw[idx2, 1]
@@ -855,9 +882,9 @@ for i in range(10):
             continue
 
         if min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0]) < alpha:
-            violate += 1
+            violate_comp += 1
         if min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0]) < alpha:
-            violate_w += 1
+            violate_comp_w += 1
     # combined_unweighted = np.column_stack((predictions, predictions_kmeans))
     # combined_weighted = np.column_stack((predictions_weighted, predictions_kmeans_weighted))
     #
@@ -932,7 +959,7 @@ for i in range(10):
     # m_weighted = Metrics(y_test, predictions_weighted)
     m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
 
-    if classification:
+    if isBinary:
 
         accuracy_bi = accuracy_score(y_test, predictions_kmeans)
         accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
@@ -957,7 +984,7 @@ for i in range(10):
     I_sep_bi = m_bi.MI_con_info(test['sa'])
     I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
 
-    if classification:
+    if isBinary:
 
         result = {
             'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
@@ -968,7 +995,9 @@ for i in range(10):
             'I_sep_bi': I_sep_bi,
             'I_sep_weighted_bi': I_sep_weighted_bi,
             'violate_r': violate / r,
-            'violate_r_w': violate_w / r
+            'violate_r_weighted': violate_w / r,
+            'violate_comp_r': violate_comp / r,
+            'violate_comp_r_w': violate_comp_w / r,
         }
     else:
         result = {
@@ -982,7 +1011,9 @@ for i in range(10):
             'I_sep_bi': I_sep_bi,
             'I_sep_weighted_bi': I_sep_weighted_bi,
             'violate_r': violate / r,
-            'violate_r_w': violate_w / r
+            'violate_r_weighted': violate_w / r,
+            'violate_comp_r': violate_comp / r,
+            'violate_comp_r_w': violate_comp_w / r,
         }
 
     results.append(result)
