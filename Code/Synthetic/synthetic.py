@@ -1031,7 +1031,7 @@ for i in range(10):
 
 pair_strategy = "all" if use_all_pairs else str(num_comp_train)
 
-pd.DataFrame(results).to_csv(f'FairReweighing_violate_r_{df_name}_{nc}_{pair_strategy}.csv', index=False)
+pd.DataFrame(results).to_csv(f'../Results/FairReweighing_violate_r_{df_name}_{nc}_{pair_strategy}.csv', index=False)
 
 # changed encoder structure
 # use one pair for every training entry
