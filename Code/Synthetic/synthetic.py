@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 
 import Classification
-from Code.ImageExp import DataProcessing
+import DataProcessing
 from metrics import Metrics
 
 isBinary = True
@@ -342,7 +342,7 @@ def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
     return df, "df6"
 
 
-def make_scut(P="P3"):
+def make_scut(P="P1"):
     df = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
     df = df[["Filename", P]]
     df['pixels'] = df['Filename'].apply(DataProcessing.retrievePixels)
@@ -632,11 +632,11 @@ use_all_pairs = False  # Set to True to use all possible pairs (N^2)
 alpha = 0.05
 r = 100
 nc = 1000
-num_comp_train = 3
+num_comp_train = 1
 num_comp_test = 1
 
 for i in range(10):
-    df, df_name, train, test = make_lsac()
+    df, df_name, train, test = make_scut()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
