@@ -593,8 +593,15 @@ def remove_outliers(data):
 
 
 def stats(x1, x2):
-    mu = x1 / (x1 + x2)
-    var = mu * (1 - mu) / (x1 + x2)
+    denom = x1 + x2
+    eps = np.finfo(float).eps
+
+    # If there is no data in this slice, return a neutral mean and 0 variance
+    if denom == 0:
+        return 0.5, 0.0
+
+    mu = x1 / denom
+    var = mu * (1 - mu) / max(denom, eps)
     return mu, var
 
 
@@ -606,26 +613,30 @@ def separation(y, y_pred, s):
 
     mut1, vart1 = stats(x["111"], x["011"])
     mut0, vart0 = stats(x["110"], x["010"])
-    zt = (mut1 - mut0) / np.sqrt(vart1 + vart0)
+
+    eps = np.finfo(float).eps
+    zt = (mut1 - mut0) / np.sqrt(max(vart1 + vart0, eps))
     pt = norm.sf(np.abs(zt)) * 2
+
     muf1, varf1 = stats(x["101"], x["001"])
     muf0, varf0 = stats(x["100"], x["000"])
-    zf = (muf1 - muf0) / np.sqrt(varf1 + varf0)
+    zf = (muf1 - muf0) / np.sqrt(max(varf1 + varf0, eps))
     pf = norm.sf(np.abs(zf)) * 2
+
     return [pt, pf]
 
 
 results = []
-use_all_pairs = True  # Set to True to use all possible pairs (N^2)
+use_all_pairs = False  # Set to True to use all possible pairs (N^2)
 
 alpha = 0.05
 r = 100
 nc = 1000
-num_comp_train = 1
+num_comp_train = 3
 num_comp_test = 1
 
 for i in range(10):
-    df, df_name, train, test = make_german()
+    df, df_name, train, test = make_lsac()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
