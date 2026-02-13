@@ -345,15 +345,28 @@ def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
 def make_scut(P="P1"):
     df = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
     df = df[["Filename", P]]
-    df['pixels'] = df['Filename'].apply(DataProcessing.retrievePixels)
+    df['pixels'] = df['Filename'].apply(DataProcessing.retrievePixels) / 255.0
+
+    fn = df["Filename"].astype(str)
+    df["race"] = fn.str[0].fillna("")
+    df["gender"] = fn.str[1].fillna("")
+
+    df['gender'] = df['gender'].apply(lambda x: 1 if x == "M" else 0)
+    df['race'] = df['race'].apply(lambda x: 1 if x == "C" else 0)
+
+    sa = 'gender'
+
+    df = df.rename(columns={sa: 'sa'})
 
     global isBinary
     dependent = P
 
-    features = np.array([pixel for pixel in df['pixels']]) / 255.0
+    # features = np.array([pixel for pixel in df['pixels']]) / 255.0
+    # df['features'] = features
 
-    X = features.drop([dependent], axis=1)
-    y = np.array(features[dependent])
+    X = df[['pixels', 'sa']]
+
+    y = np.array(df[dependent])
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.5)
@@ -881,8 +894,8 @@ for i in range(10):
             violate_w += 1
 
     for _ in range(r):
-        idx1 = np.random.randint(0, n_rows, size=n_rows * 3)
-        idx2 = np.random.randint(0, n_rows, size=n_rows * 3)
+        idx1 = np.random.randint(0, n_rows, size=n_rows)
+        idx2 = np.random.randint(0, n_rows, size=n_rows)
 
         # Filter for Y1 != Y2
         mask = data_raw[idx1, 1] != data_raw[idx2, 1]
@@ -1074,6 +1087,7 @@ pd.DataFrame(results).to_csv(f'../Results/FairReweighing_violate_r_{df_name}_{nc
 # include SCUT and other fairness metrics
 
 # include the hypothesis test for seperation
+# getting rid of the validation and earlystopping
 
 
 # for i in range(10):
