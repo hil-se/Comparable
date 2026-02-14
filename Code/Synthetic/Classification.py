@@ -16,7 +16,8 @@ def learn(train_data,
           batch_size=256,
           shared=False,
           train_weights=None,
-          val_weights=None):
+          val_weights=None,
+          df_name= None):
     td_s = train_data["A"].to_list()
     td_t = train_data["B"].to_list()
     train_y = np.array(train_data["Label"].tolist())
@@ -45,7 +46,7 @@ def learn(train_data,
     train_dataset = train_dataset.batch(batch_size)
     val_dataset = val_dataset.batch(batch_size)
     if shared == True:
-        encoder = SharedDualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
+        encoder = SharedDualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1], df_name=df_name)
         dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
     else:
         encoder_A = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
@@ -64,10 +65,10 @@ def learn(train_data,
     return dual_encoder
 
 
-def train_model(train, val, y_true, epochs=100, shared=False, train_weights=None, val_weights=None):
+def train_model(train, val, y_true, epochs=100, shared=False, train_weights=None, val_weights=None, df_name= None):
     np.random.shuffle(train.values)
     np.random.shuffle(val.values)
-    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared, train_weights=train_weights, val_weights=val_weights)
+    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared, train_weights=train_weights, val_weights=val_weights, df_name=df_name)
     return dual_encoder
 
 

@@ -8,5 +8,9 @@ dependencies = [
     "pandas-stubs~=3.0.0",
     "scikit-learn>=1.8.0",
     "tensorflow==2.19.1",
-    "tensorflow-metal>=1.2.0",
+]
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]

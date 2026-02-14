@@ -774,13 +774,13 @@ for i in range(10):
 
     dual_encoder = Classification.train_model(train=data_tr_encoder.loc[train_idx], val=data_tr_encoder.loc[val_idx],
                                               y_true=data_tr_encoder.loc[train_idx, "Label"].tolist(),
-                                              shared=True, epochs=100)
+                                              shared=True, epochs=100, df_name =df_name)
 
     dual_encoder_weighted = Classification.train_model(train=data_tr_encoder.loc[train_idx],
                                                        val=data_tr_encoder.loc[val_idx],
                                                        y_true=data_tr_encoder.loc[train_idx, "Label"].tolist(),
                                                        shared=True, epochs=100,
-                                                       train_weights=weights[train_idx], val_weights=weights[val_idx])
+                                                       train_weights=weights[train_idx], val_weights=weights[val_idx], df_name = df_name)
 
     # predictions = comp_pred(data_ts_encoder, dual_encoder)
     # predictions_weighted = comp_pred(data_ts_encoder, dual_encoder_weighted)
