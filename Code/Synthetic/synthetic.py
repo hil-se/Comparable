@@ -1,14 +1,19 @@
 from collections import Counter
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from scipy.stats import norm
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
+
+# Suppress TensorFlow C++ INFO/WARNING logs (e.g., local_rendezvous messages).
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+import tensorflow as tf
 
 import Classification
 import DataProcessing
@@ -506,7 +511,7 @@ def separation(y, y_pred, s):
 
 
 results = []
-use_all_pairs = True  # Set to True to use all possible pairs (N^2)
+use_all_pairs = False  # Set to True to use all possible pairs (N^2)
 
 alpha = 0.05
 r = 100
@@ -515,8 +520,8 @@ num_comp_train = 1
 num_comp_test = 1
 WEIGHT_FORMULA = "eq15"
 
-for i in range(1):
-    df, df_name, train, test = make_german()
+for i in range(10):
+    df, df_name, train, test = make_scut()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 

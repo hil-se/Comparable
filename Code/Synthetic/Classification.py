@@ -96,7 +96,19 @@ def learn(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3), jit_compile=not is_scut
     )
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
-    dual_encoder.fit(x=train_dataset, epochs=epochs, verbose=0)
+    monitor_metric = "val_loss" if validation_data is not None else "loss"
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor=monitor_metric,
+        patience=patience,
+        min_delta=1e-4,
+        restore_best_weights=True,
+    )
+    dual_encoder.fit(
+        x=train_dataset,
+        epochs=epochs,
+        verbose=1,
+        callbacks=[early_stopping],
+    )
 
     return dual_encoder
 
