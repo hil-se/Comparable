@@ -515,7 +515,7 @@ num_comp_train = 1
 num_comp_test = 1
 
 for i in range(10):
-    df, df_name, train, test = make_german()
+    df, df_name, train, test = make_scut()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -748,31 +748,42 @@ for i in range(10):
     # MSE_svc = m_svc.mse()
     # I_sep_svc = m_svc.MI_con_info(test['sa'])
     #
-    if isBinary:
-        clf = LogisticRegression().fit(train, y_train)
-        predictions = clf.predict(test)
+    # Skip baseline linear-model training/comparison for SCUT runs.
+    if is_scut:
+        accuracy_lr = np.nan
+        f1_score_lr = np.nan
+        AOD_lr = np.nan
+        EOD_lr = np.nan
+        mse_lr = np.nan
+        spearman_lr = np.nan
+        pearson_lr = np.nan
+        I_sep_lr = np.nan
     else:
-        clf = LinearRegression().fit(train, y_train)
-        predictions = clf.predict(test)
+        if isBinary:
+            clf = LogisticRegression().fit(train, y_train)
+            predictions = clf.predict(test)
+        else:
+            clf = LinearRegression().fit(train, y_train)
+            predictions = clf.predict(test)
 
-    m_lr = Metrics(y_test, predictions)
+        m_lr = Metrics(y_test, predictions)
 
-    if isBinary:
-        # y_score = clf.predict_proba(test)[:, 1]
-        accuracy_lr = accuracy_score(y_test, predictions)
-        f1_score_lr = f1_score(y_test, predictions)
-        AOD_lr = m_lr.AOD(test["sa"])
-        EOD_lr = m_lr.EOD(test["sa"])
-    # #
-    # fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
-    # roc_auc_lr = auc(fpr_lr, tpr_lr)
-    #
-    else:
-        mse_lr = m_lr.mse()
-        spearman_lr = m_lr.spearmanr_coefficient()
-        pearson_lr = m_lr.pearsonr_coefficient()
+        if isBinary:
+            # y_score = clf.predict_proba(test)[:, 1]
+            accuracy_lr = accuracy_score(y_test, predictions)
+            f1_score_lr = f1_score(y_test, predictions)
+            AOD_lr = m_lr.AOD(test["sa"])
+            EOD_lr = m_lr.EOD(test["sa"])
+        # #
+        # fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
+        # roc_auc_lr = auc(fpr_lr, tpr_lr)
+        #
+        else:
+            mse_lr = m_lr.mse()
+            spearman_lr = m_lr.spearmanr_coefficient()
+            pearson_lr = m_lr.pearsonr_coefficient()
 
-    I_sep_lr = m_lr.MI_con_info(test["sa"])
+        I_sep_lr = m_lr.MI_con_info(test["sa"])
 
     # Batch Prediction (Single call for better performance)
     if is_scut:
