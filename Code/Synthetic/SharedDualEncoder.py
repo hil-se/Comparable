@@ -104,10 +104,19 @@ class DualEncoderAll(tf.keras.Model):
         self.encoder.trainable = trainable
         return encodings_A, encodings_B, y
 
-    def compute_loss(self, encodings_A, encodings_B, y, sample_weight=None):
-        encodings_A = tf.squeeze(encodings_A, axis=-1)
-        encodings_B = tf.squeeze(encodings_B, axis=-1)
+    @staticmethod
+    def _to_scalar(encoding):
+        """
+        Convert encoder output to one scalar per sample.
+        Handles both shape [batch, 1] and higher-dimensional outputs (e.g. [batch, 2622]).
+        """
+        encoding = tf.cast(encoding, tf.float32)
+        encoding = tf.reshape(encoding, [tf.shape(encoding)[0], -1])
+        return tf.reduce_mean(encoding, axis=1)
 
+    def compute_loss(self, encodings_A, encodings_B, y, sample_weight=None):
+        encodings_A = self._to_scalar(encodings_A)
+        encodings_B = self._to_scalar(encodings_B)
         pred = encodings_A - encodings_B
         y = tf.cast(tf.squeeze(y, axis=-1) if len(y.shape) > 1 else y, tf.float32)
 
@@ -162,7 +171,8 @@ class DualEncoderAll(tf.keras.Model):
 
 
     def predict(self, A, B):
-        return self.encoder(A) - self.encoder(B)
+        pred = self._to_scalar(self.encoder(A)) - self._to_scalar(self.encoder(B))
+        return tf.expand_dims(pred, axis=-1)
 
     def output_grad(self, inputs):
         with tf.GradientTape() as tape:
@@ -171,7 +181,8 @@ class DualEncoderAll(tf.keras.Model):
         return grad.numpy()[0]
 
     def score(self, input):
-        return self.encoder(input)
+        score = self._to_scalar(self.encoder(input))
+        return tf.expand_dims(score, axis=-1)
 
     def save(self, path):
         self.encoder.save_weights(path + "_A")
