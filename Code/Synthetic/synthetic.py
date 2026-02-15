@@ -655,7 +655,7 @@ num_comp_train = 1
 num_comp_test = 1
 
 for i in range(10):
-    df, df_name, train, test = make_german()
+    df, df_name, train, test = make_scut()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
