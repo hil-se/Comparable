@@ -5,7 +5,6 @@ from compare import generate_pairs
 from metrics import Metrics
 
 
-
 def make_data0(n=500, p=0.5, l=6):
     # n is the number of data points.
     # 0 <= p <= 1 is the sampling probability of Male (sex=1).
@@ -14,12 +13,12 @@ def make_data0(n=500, p=0.5, l=6):
     for i in range(n):
         rand = np.random.random()
         sex = 1 if rand < p else 0
-        hair_length = 35 * np.random.beta(2, 2+5*sex)
+        hair_length = 35 * np.random.beta(2, 2 + 5 * sex)
         # work_exp = int(np.random.poisson(5 + 6 * sex))
-        work_exp = int(np.random.poisson(25+l*sex) - np.random.normal(20, 0.2))
+        work_exp = int(np.random.poisson(25 + l * sex) - np.random.normal(20, 0.2))
         if work_exp < 0:
             work_exp = 0
-        hire_prob = 1.0/(1+np.exp(25.5-2.5*work_exp))
+        hire_prob = 1.0 / (1 + np.exp(25.5 - 2.5 * work_exp))
         pred_prob = hire_prob + np.random.normal(1, 0.01)
         # hire_prob = 1.0 / (1 + np.exp(15.5  +10*sex - 2.5 * work_exp))
         # hire_prob = 1.0 / (1 + np.exp(8 - work_exp))
@@ -28,8 +27,9 @@ def make_data0(n=500, p=0.5, l=6):
         data["hair_length"].append(hair_length)
         data["y"].append(hire_prob)
         data["pred"].append(pred_prob)
-    df = pd.DataFrame(data, columns = keys)
+    df = pd.DataFrame(data, columns=keys)
     return df
+
 
 def make_data1(n=500, p=0.5, l=6):
     # n is the number of data points.
@@ -39,13 +39,15 @@ def make_data1(n=500, p=0.5, l=6):
     for i in range(n):
         rand = np.random.random()
         sex = 1 if rand < p else 0
-        hair_length = 35 * np.random.beta(2, 2+5*sex)
+        hair_length = 35 * np.random.beta(2, 2 + 5 * sex)
         # work_exp = int(np.random.poisson(5 + 6 * sex))
-        work_exp = int(np.random.poisson(25+l*sex) - np.random.normal(20, 0.2))
+        work_exp = int(np.random.poisson(25 + l * sex) - np.random.normal(20, 0.2))
         if work_exp < 0:
             work_exp = 0
-        hire_prob = 1.0/(1+np.exp(25.5-2.5*work_exp))
-        pred_prob = 1.0 / (1 + np.exp(15.5  +10*sex - 2.5 * work_exp)) + np.random.normal(0, 0.1)
+        hire_prob = 1.0 / (1 + np.exp(25.5 - 2.5 * work_exp))
+        pred_prob = 1.0 / (
+            1 + np.exp(15.5 + 10 * sex - 2.5 * work_exp)
+        ) + np.random.normal(0, 0.1)
         # hire_prob = 1.0 / (1 + np.exp(15.5  +10*sex - 2.5 * work_exp))
         # hire_prob = 1.0 / (1 + np.exp(8 - work_exp))
         data["sex"].append(sex)
@@ -53,8 +55,9 @@ def make_data1(n=500, p=0.5, l=6):
         data["hair_length"].append(hair_length)
         data["y"].append(hire_prob)
         data["pred"].append(pred_prob)
-    df = pd.DataFrame(data, columns = keys)
+    df = pd.DataFrame(data, columns=keys)
     return df
+
 
 def make_data2(n=500, p=0.5):
     # n is the number of data points.
@@ -76,7 +79,6 @@ def make_data2(n=500, p=0.5):
         data["pred"].append(pred_prob)
     data = pd.DataFrame(data, columns=keys)
     return data
-
 
 
 df1 = make_data0(n=500, p=0.5)
@@ -104,11 +106,17 @@ AOD_comp = m.AOD_comp(data_tr[["A", "B"]])
 Within_comp = m.Within_comp(data_tr[["A", "B"]])
 Sep_comp = m.Sep_comp(data_tr[["A", "B"]])
 # MI_comp = m.MI_comp(data_tr[["A", "B"]])
-result = {"gAOD": gAOD,
-                 "gWithin": gWithin, "gSep": gSep, "MI": MI, "AOD_comp": AOD_comp,
-                 "Within_comp": Within_comp, "Sep_comp": Sep_comp}
+result = {
+    "gAOD": gAOD,
+    "gWithin": gWithin,
+    "gSep": gSep,
+    "MI": MI,
+    "AOD_comp": AOD_comp,
+    "Within_comp": Within_comp,
+    "Sep_comp": Sep_comp,
+}
 
-result = pd.DataFrame(result,index=[0])
+result = pd.DataFrame(result, index=[0])
 
 result.to_csv("df1_c.csv", index=False)
 

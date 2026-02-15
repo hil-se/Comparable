@@ -9,15 +9,17 @@ import metrics
 import vgg_pre
 
 
-def learn(train_data,
-          epochs=100,
-          validation_data=None,
-          y_true=None,
-          patience=10,
-          batch_size=4,
-          shared=False,
-          height=250,
-          width=250):
+def learn(
+    train_data,
+    epochs=100,
+    validation_data=None,
+    y_true=None,
+    patience=10,
+    batch_size=4,
+    shared=False,
+    height=250,
+    width=250,
+):
     if y_true is None:
         y_true = []
     td_s = train_data["A"].to_list()
@@ -48,14 +50,16 @@ def learn(train_data,
     encoder = SharedDualEncoder.create_encoder(height=height, width=width)
     dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
     dual_encoder.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.001))
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=patience, restore_best_weights=True
+    )
 
     dual_encoder.fit(
         x=train_dataset,
         epochs=epochs,
         validation_data=val_dataset,
         callbacks=[early_stopping],
-        verbose=1
+        verbose=1,
     )
     return dual_encoder
 
@@ -63,8 +67,15 @@ def learn(train_data,
 def train_model(train, val, y_true, epochs=100, shared=False, height=250, width=250):
     np.random.shuffle(train.values)
     np.random.shuffle(val.values)
-    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared, height=height,
-                         width=width)
+    dual_encoder = learn(
+        train,
+        epochs=epochs,
+        validation_data=val,
+        y_true=y_true,
+        shared=shared,
+        height=height,
+        width=width,
+    )
     return dual_encoder
 
 
@@ -136,7 +147,7 @@ def evaluate(y_true, y_pred, protected):
     F_j_i = 0
 
     for i, row in protected.iterrows():
-        if row['A'] > row['B']:
+        if row["A"] > row["B"]:
             if y_true[i] == 1:
                 T_i_j += 1
                 if y_pred[i] == 1:
@@ -146,7 +157,7 @@ def evaluate(y_true, y_pred, protected):
                 if y_pred[i] == 1:
                     FP_i_j += 1
 
-        elif row['A'] < row['B']:
+        elif row["A"] < row["B"]:
             if y_true[i] != 1:
                 T_j_i += 1
                 if y_pred[i] != 1:
@@ -194,8 +205,14 @@ def generateLists(test_dataset, dual_encoder, protected_ts_race, protected_ts_se
     # predList.sort_values(by=['Score'], inplace=True)
     # realList = realList.reset_index()
     # predList = predList.reset_index()
-    return spearmanr, sp_pvalue, pearsonr, p_pvalue, m_comp.MI_con_info(protected_ts_race), m_comp.MI_con_info(
-        protected_ts_sex)
+    return (
+        spearmanr,
+        sp_pvalue,
+        pearsonr,
+        p_pvalue,
+        m_comp.MI_con_info(protected_ts_race),
+        m_comp.MI_con_info(protected_ts_sex),
+    )
 
 
 def evaluateLists(realList, predList):
@@ -207,17 +224,27 @@ def evaluateLists(realList, predList):
     for i in range(ln):
         id = realList[i]
         j = predList.index(id)
-        diff += (abs(i - j))
-        sum_d += ((i - j) * (i - j))
+        diff += abs(i - j)
+        sum_d += (i - j) * (i - j)
     spearman_corr = 1 - ((6 * sum_d) / (ln * ((ln * ln) - 1)))
     spearman_corr = round(spearman_corr, 3)
     avg_diff = round(diff / ln, 3)
     return avg_diff, spearman_corr
 
 
-def comparabilityExperiment(protected_ts_race, protected_ts_sex, protected_ts_AB_race, protected_ts_AB_sex,
-                            dataName="FaceImage", train_val=None, test=None, testList=None, dataList=None, height=250,
-                            width=250):
+def comparabilityExperiment(
+    protected_ts_race,
+    protected_ts_sex,
+    protected_ts_AB_race,
+    protected_ts_AB_sex,
+    dataName="FaceImage",
+    train_val=None,
+    test=None,
+    testList=None,
+    dataList=None,
+    height=250,
+    width=250,
+):
     np.random.shuffle(train_val.values)
     train = train_val.head(int((len(train_val) * 0.8)))
     y_true = train["Label"].tolist()
@@ -225,17 +252,23 @@ def comparabilityExperiment(protected_ts_race, protected_ts_sex, protected_ts_AB
     np.random.shuffle(test.values)
 
     print("Training...")
-    dual_encoder = train_model(train=train, val=val, y_true=y_true, shared=True, height=height, width=width)
+    dual_encoder = train_model(
+        train=train, val=val, y_true=y_true, shared=True, height=height, width=width
+    )
     print("Finished training.")
     print("Testing...")
-    recall, precision, F1, accuracy, AOD_race = test_model(test, dual_encoder, protected_ts_AB_race)
-    recall, precision, F1, accuracy, AOD_sex = test_model(test, dual_encoder, protected_ts_AB_sex)
+    recall, precision, F1, accuracy, AOD_race = test_model(
+        test, dual_encoder, protected_ts_AB_race
+    )
+    recall, precision, F1, accuracy, AOD_sex = test_model(
+        test, dual_encoder, protected_ts_AB_sex
+    )
 
     print(recall, precision, F1, accuracy)
 
-    spearmanr, sp_pvalue, pearsonr, p_pvalue, MI_encoder_race, MI_encoder_sex = generateLists(testList, dual_encoder,
-                                                                                              protected_ts_race,
-                                                                                              protected_ts_sex)
+    spearmanr, sp_pvalue, pearsonr, p_pvalue, MI_encoder_race, MI_encoder_sex = (
+        generateLists(testList, dual_encoder, protected_ts_race, protected_ts_sex)
+    )
     # realList.to_csv("../../Results/Real Order " + dataName + ".csv", index=False)
     # predList.to_csv("../../Results/Prediction Order " + dataName + ".csv", index=False)
     # avg_diff, spearman_corr = evaluateLists(realList, predList)
@@ -247,24 +280,42 @@ def comparabilityExperiment(protected_ts_race, protected_ts_sex, protected_ts_AB
     # avg_diff_full = evaluateLists(realList, predList)
     # print(avg_diff_full)
 
-    return recall, precision, F1, accuracy, AOD_race, AOD_sex, spearmanr, sp_pvalue, pearsonr, p_pvalue, MI_encoder_race, MI_encoder_sex
+    return (
+        recall,
+        precision,
+        F1,
+        accuracy,
+        AOD_race,
+        AOD_sex,
+        spearmanr,
+        sp_pvalue,
+        pearsonr,
+        p_pvalue,
+        MI_encoder_race,
+        MI_encoder_sex,
+    )
 
 
-def regressionExperiment(train_val,
-                         test,
-                         comp_test, protected_ts_race, protected_ts_sex,
-                         height=250,
-                         width=250, col="Average"):
+def regressionExperiment(
+    train_val,
+    test,
+    comp_test,
+    protected_ts_race,
+    protected_ts_sex,
+    height=250,
+    width=250,
+    col="Average",
+):
     protected_reg = []
 
-    train_val['pixels'] = train_val['Filename'].apply(DataProcessing.retrievePixels)
-    test['pixels'] = test['Filename'].apply(DataProcessing.retrievePixels)
+    train_val["pixels"] = train_val["Filename"].apply(DataProcessing.retrievePixels)
+    test["pixels"] = test["Filename"].apply(DataProcessing.retrievePixels)
     train = train_val.head(int((len(train_val) * 0.8)))
     val = train_val.drop(train.index)
 
-    features_tr = np.array([pixel for pixel in train['pixels']]) / 255.0
-    features_val = np.array([pixel for pixel in val['pixels']]) / 255.0
-    features_ts = np.array([pixel for pixel in test['pixels']]) / 255.0
+    features_tr = np.array([pixel for pixel in train["pixels"]]) / 255.0
+    features_val = np.array([pixel for pixel in val["pixels"]]) / 255.0
+    features_ts = np.array([pixel for pixel in test["pixels"]]) / 255.0
 
     # for file in test['Filename']:
     #     if file[1] == 'M':
@@ -307,9 +358,22 @@ def regressionExperiment(train_val,
     preds = model.decision_function(X_test).flatten()
     m = metrics.Metrics(test[col], preds)
 
-    return m.mse(), m.r2(), m.pearsonr_coefficient(), m.pearsonr_value(), m.spearmanr_coefficient(), m.spearmanr_value(), m.MI_con_info(
-        protected_ts_race), m.MI_con_info(protected_ts_sex), m.r_sep(protected_ts_race), m.r_sep(
-        protected_ts_sex), m_comp.accuracy(), m_comp.f1(), m_comp.precision(), m_comp.recall()
+    return (
+        m.mse(),
+        m.r2(),
+        m.pearsonr_coefficient(),
+        m.pearsonr_value(),
+        m.spearmanr_coefficient(),
+        m.spearmanr_value(),
+        m.MI_con_info(protected_ts_race),
+        m.MI_con_info(protected_ts_sex),
+        m.r_sep(protected_ts_race),
+        m.r_sep(protected_ts_sex),
+        m_comp.accuracy(),
+        m_comp.f1(),
+        m_comp.precision(),
+        m_comp.recall(),
+    )
     # result["R2"] = m.r2()
     # result["P Coefficient"] = m.p_coefficient()
     # result["P Value"] = m.p_value()

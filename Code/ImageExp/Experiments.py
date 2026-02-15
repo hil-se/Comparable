@@ -9,7 +9,7 @@ num_img = 10
 iterations = 1
 
 
-def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
+def experiment(dataName="FaceImage", height=250, width=250, col="Average"):
     final_results = []
     final_results_reg = []
     final_results_single = []
@@ -17,10 +17,28 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
     for i in range(iterations):
         print("Iteration:", i + 1, "/", iterations)
         print("Generating data...")
-        (training_data, testing_data, training_data_single, testing_data_single, testList, dataList, full_len, test_len,
-         full_len_single, test_len_single, train, test, protected_ts_race, protected_ts_sex, protected_ts_AB_race,
-         protected_ts_AB_sex, protected_ts_AB_race_single, protected_ts_AB_sex_single) = dp.processData(
-            h=height, w=width, col=col, num_comp=num_comp, num_img=num_img)
+        (
+            training_data,
+            testing_data,
+            training_data_single,
+            testing_data_single,
+            testList,
+            dataList,
+            full_len,
+            test_len,
+            full_len_single,
+            test_len_single,
+            train,
+            test,
+            protected_ts_race,
+            protected_ts_sex,
+            protected_ts_AB_race,
+            protected_ts_AB_sex,
+            protected_ts_AB_race_single,
+            protected_ts_AB_sex_single,
+        ) = dp.processData(
+            h=height, w=width, col=col, num_comp=num_comp, num_img=num_img
+        )
         print("Data generated.")
 
         # (mse, r2, p_coef, p_value, s_coef, s_value, MI_race, MI_sex, r_sep_race, r_sep_sex, accuracy_r, f1_r,
@@ -58,9 +76,20 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
         #           "Pearson's rank correlation": pearsonr, "P value": p_pvalue,
         #           "MI_encoder_race": MI_encoder_race, "MI_encoder_sex": MI_encoder_sex}
 
-        (recall_single, precision_single, f1_single, acc_single, AOD_race_single, AOD_sex_single, spearmanr_single,
-         sp_pvalue_single, pearsonr_single, p_pvalue_single, MI_encoder_race_single,
-         MI_encoder_sex_single) = cl.comparabilityExperiment(
+        (
+            recall_single,
+            precision_single,
+            f1_single,
+            acc_single,
+            AOD_race_single,
+            AOD_sex_single,
+            spearmanr_single,
+            sp_pvalue_single,
+            pearsonr_single,
+            p_pvalue_single,
+            MI_encoder_race_single,
+            MI_encoder_sex_single,
+        ) = cl.comparabilityExperiment(
             dataName="FaceImage",
             train_val=training_data_single,
             test=testing_data_single,
@@ -68,16 +97,28 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
             dataList=dataList,
             height=height,
             width=width,
-            protected_ts_race=protected_ts_race, protected_ts_sex=protected_ts_sex,
-            protected_ts_AB_race=protected_ts_AB_race_single, protected_ts_AB_sex=protected_ts_AB_sex_single)
+            protected_ts_race=protected_ts_race,
+            protected_ts_sex=protected_ts_sex,
+            protected_ts_AB_race=protected_ts_AB_race_single,
+            protected_ts_AB_sex=protected_ts_AB_sex_single,
+        )
 
-        result_single = {"Full data size": full_len_single, "Testing data size": test_len_single,
-                         "Recall": recall_single, "Precision": precision_single, "F1": f1_single, "Accuracy": acc_single,
-                         "AOD_race": AOD_race_single, "AOD_sex": AOD_sex_single,
-                         "Spearman's rank correlation": spearmanr_single,
-                         "SP value": sp_pvalue_single,
-                         "Pearson's rank correlation": pearsonr_single, "P value": p_pvalue_single,
-                         "MI_encoder_race": MI_encoder_race_single, "MI_encoder_sex": MI_encoder_sex_single}
+        result_single = {
+            "Full data size": full_len_single,
+            "Testing data size": test_len_single,
+            "Recall": recall_single,
+            "Precision": precision_single,
+            "F1": f1_single,
+            "Accuracy": acc_single,
+            "AOD_race": AOD_race_single,
+            "AOD_sex": AOD_sex_single,
+            "Spearman's rank correlation": spearmanr_single,
+            "SP value": sp_pvalue_single,
+            "Pearson's rank correlation": pearsonr_single,
+            "P value": p_pvalue_single,
+            "MI_encoder_race": MI_encoder_race_single,
+            "MI_encoder_sex": MI_encoder_sex_single,
+        }
 
         # final_results.append(result)
         final_results_reg.append(result_reg)
@@ -95,10 +136,29 @@ def experiment(dataName="FaceImage", height=250, width=250, col='Average'):
     #     "../../Results/" + dataName + " Shared Encoder_" + col + "_" + str(num_img) + "_" + str(num_comp) + ".csv",
     #     index=False)
     final_results_reg.to_csv(
-        "../../Results/" + dataName + " Reg_" + col + "_" + str(num_img) + "_" + str(num_comp) + ".csv", index=False)
+        "../../Results/"
+        + dataName
+        + " Reg_"
+        + col
+        + "_"
+        + str(num_img)
+        + "_"
+        + str(num_comp)
+        + ".csv",
+        index=False,
+    )
     final_results_single.to_csv(
-        "../../Results/" + dataName + " Shared Encoder Single_" + col + "_" + str(num_img) + "_" + str(
-            num_comp) + ".csv", index=False)
+        "../../Results/"
+        + dataName
+        + " Shared Encoder Single_"
+        + col
+        + "_"
+        + str(num_img)
+        + "_"
+        + str(num_comp)
+        + ".csv",
+        index=False,
+    )
 
 
-experiment(dataName="FaceImage", col='3', height=250, width=250)
+experiment(dataName="FaceImage", col="3", height=250, width=250)

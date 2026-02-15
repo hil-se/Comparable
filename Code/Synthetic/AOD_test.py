@@ -10,21 +10,25 @@ seed = 18
 
 df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
 df = df.dropna()
-df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
-df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
-df['race'] = df['race'].apply(lambda x: 1 if x == "White" else 0)
+df["gender"] = df["gender"].apply(lambda x: 1 if x == "Male" else 0)
+df["income"] = df["income"].apply(lambda x: 1 if x == ">50K" else 0)
+df["race"] = df["race"].apply(lambda x: 1 if x == "White" else 0)
 
-dependent = 'income'
+dependent = "income"
 
-df = pd.get_dummies(df, columns=['workclass', 'marital-status', 'occupation',
-                                 'relationship'], dtype=float,
-                    drop_first=True)
+df = pd.get_dummies(
+    df,
+    columns=["workclass", "marital-status", "occupation", "relationship"],
+    dtype=float,
+    drop_first=True,
+)
 
-X = df.drop([dependent, 'education', 'native-country'], axis=1)
+X = df.drop([dependent, "education", "native-country"], axis=1)
 y = np.array(df[dependent])
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=seed)
+    X, y, test_size=0.2, random_state=seed
+)
 
 # clf = LogisticRegression(random_state=seed).fit(X_train, y_train)
 #
@@ -42,7 +46,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 # AOD_all = m_all.AOD(X['gender'])
 # EOD_all = m_all.EOD(X['gender'])
 
-X['target'] = y
+X["target"] = y
 # X['pred'] = predictions_all
 
 # results = []
@@ -83,15 +87,15 @@ for i in range(20):
         rowB = test_cp.sample()
         indexB = rowB.index[0]
 
-        if (indexB == indexA):
+        if indexB == indexA:
             continue
 
         rowB = rowB.iloc[0]
         rowA = rowA.iloc[0]
-        ratingA = rowA['target']
-        ratingB = rowB['target']
-        predA = rowA['pred']
-        predB = rowB['pred']
+        ratingA = rowA["target"]
+        ratingB = rowB["target"]
+        predA = rowA["pred"]
+        predB = rowB["pred"]
         label = 0
         pred = 0
 
@@ -106,17 +110,20 @@ for i in range(20):
             pred = -1
 
         if label != 0:
-            testA = rowA.drop(labels=['target'])
-            testB = rowB.drop(labels=['target'])
+            testA = rowA.drop(labels=["target"])
+            testB = rowB.drop(labels=["target"])
             # res_ts_encoder.append({"A": testA.to_list(),
             #                        "B": testB.to_list(),
             #                        "Label": label
             #                        })
-            test_list.append({"A": testA['gender'],
-                              "B": testB['gender'],
-                              "Label": label,
-                              "Pred": pred,
-                              })
+            test_list.append(
+                {
+                    "A": testA["gender"],
+                    "B": testB["gender"],
+                    "Label": label,
+                    "Pred": pred,
+                }
+            )
             test_cp.drop(indexB, inplace=True)
             comp_count += 1
 
@@ -128,7 +135,11 @@ for i in range(20):
     Within_comp = m_comp.Within_comp(test_list[["A", "B"]])
     Sep_comp = m_comp.Sep_comp(test_list[["A", "B"]])
 
-    result_comp = {"# of comparisons": "COMP", "AOD": AOD_comp, "EOD": AOD_comp + Within_comp}
+    result_comp = {
+        "# of comparisons": "COMP",
+        "AOD": AOD_comp,
+        "EOD": AOD_comp + Within_comp,
+    }
     results_comp.append(result_comp)
 
 # results_sample = pd.DataFrame(results_sample)
@@ -136,8 +147,16 @@ results_comp = pd.DataFrame(results_comp)
 
 # results_sample.loc[len(results_sample)] = ["AVG", results_sample['AOD'].mean(), results_sample["EOD"].mean()]
 # results_sample.loc[len(results_sample)] = ["STD", results_sample['AOD'].std(), results_sample["EOD"].std()]
-results_comp.loc[len(results_comp)] = ["AVG", results_comp['AOD'].mean(), results_comp["EOD"].mean()]
-results_comp.loc[len(results_comp)] = ["STD", results_comp['AOD'].std(), results_comp["EOD"].std()]
+results_comp.loc[len(results_comp)] = [
+    "AVG",
+    results_comp["AOD"].mean(),
+    results_comp["EOD"].mean(),
+]
+results_comp.loc[len(results_comp)] = [
+    "STD",
+    results_comp["AOD"].std(),
+    results_comp["EOD"].std(),
+]
 
 # results_sample.loc[len(results_sample)] = result_all
 results_comp.loc[len(results_comp)] = result_all

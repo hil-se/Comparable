@@ -86,8 +86,10 @@ class Metrics:
             var = var1 / len(bias[1]) + var0 / len(bias[0])
             if var > 0:
                 bias_diff = bias_diff / np.sqrt(var)
-                dof = var ** 2 / ((var1 / len(bias[1])) ** 2 / (len(bias[1]) - 1) + (var0 / len(bias[0])) ** 2 / (
-                        len(bias[0]) - 1))
+                dof = var**2 / (
+                    (var1 / len(bias[1])) ** 2 / (len(bias[1]) - 1)
+                    + (var0 / len(bias[0])) ** 2 / (len(bias[0]) - 1)
+                )
             else:
                 bias_diff = 0.0
                 dof = 1
@@ -112,8 +114,9 @@ class Metrics:
         return p
 
     def r_sep(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
         model_joint = LogisticRegression().fit(joint, s)
         model_margin = LogisticRegression().fit(margin, s)
@@ -123,14 +126,17 @@ class Metrics:
         ratio = 0
 
         for i in range(len(s)):
-            t = (prob_joint[i] / (1 - prob_joint[i])) * ((1 - prob_margin[i]) / prob_margin[i])
+            t = (prob_joint[i] / (1 - prob_joint[i])) * (
+                (1 - prob_margin[i]) / prob_margin[i]
+            )
             ratio = ratio + t
         ratio = ratio / len(s)
         return ratio
 
     def MI(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
         model_joint = LogisticRegression().fit(joint, s)
         model_margin = LogisticRegression().fit(margin, s)
@@ -148,8 +154,9 @@ class Metrics:
         return MI
 
     def MI_con(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
 
         model_joint = LinearRegression().fit(joint, s)
@@ -219,16 +226,16 @@ class Metrics:
         Entropy = 0
 
         for i in range(len(s)):
-            Info = Info + math.log(
-                pdf_joint[i] / pdf_margin[i])
+            Info = Info + math.log(pdf_joint[i] / pdf_margin[i])
             Entropy = Entropy + math.log(pdf_margin[i])
 
         MI = Info / (-Entropy)
         return MI
 
     def MI_con_scaled(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
 
         model_joint = LinearRegression().fit(joint, s)
@@ -255,16 +262,16 @@ class Metrics:
         Entropy = 0
 
         for i in range(len(s)):
-            Info = Info + math.log(
-                scaled_joint_pdf[i] / scaled_pdf_margin[i])
+            Info = Info + math.log(scaled_joint_pdf[i] / scaled_pdf_margin[i])
             Entropy = Entropy + math.log(scaled_pdf_margin[i])
 
         MI = Info / (-Entropy)
         return MI
 
     def MI_con_info(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
 
         model_joint = LinearRegression().fit(joint, s)
@@ -282,14 +289,12 @@ class Metrics:
         Info = 0
 
         for i in range(len(s)):
-            Info = Info + math.log(
-                pdf_joint[i] / pdf_margin[i])
+            Info = Info + math.log(pdf_joint[i] / pdf_margin[i])
 
         MI = Info / len(s)
         return MI
 
     def AOD_comp(self, s):
-
         T_i_j = 0
         TP_i_j = 0
         FP_i_j = 0

@@ -5,8 +5,8 @@ K = tf.keras.backend
 
 def create_encoder(input_size):
     input = tf.keras.layers.Input(shape=(input_size,))
-    x = tf.keras.layers.Dense(32, activation='relu')(input)
-    output = tf.keras.layers.Dense(1, activation='linear')(x)
+    x = tf.keras.layers.Dense(32, activation="relu")(input)
+    output = tf.keras.layers.Dense(1, activation="linear")(x)
     # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
     return tf.keras.models.Model(inputs=input, outputs=output)
 
@@ -65,7 +65,9 @@ class DualEncoderAll(tf.keras.Model):
     def train_step(self, feature, train_A=True, train_B=True):
         with tf.GradientTape() as tape:
             # Forward pass
-            encodings_A, encodings_B, y = self(feature, train_A=train_A, train_B=train_B)
+            encodings_A, encodings_B, y = self(
+                feature, train_A=train_A, train_B=train_B
+            )
             loss = self.compute_loss(encodings_A, encodings_B, y)
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))

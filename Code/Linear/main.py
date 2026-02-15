@@ -27,6 +27,7 @@ SEQUENCE_LEN = 50
 
 datas = ["Adult"]
 
+
 def GPTencode(tokenizer, sentence):
     # sentence = filter(sentence)
     encoded = tokenizer.encode(sentence)
@@ -38,8 +39,9 @@ def GPTencode(tokenizer, sentence):
             encoded.append(3)
     return encoded
 
+
 for d in datas:
-    final_results=[]
+    final_results = []
     for i in range(iterations):
         print("Iteration:", i + 1, "/", iterations)
 
@@ -49,12 +51,12 @@ for d in datas:
             df_train = pd.read_csv(path + dataset + "_" + "train" + ".csv")
             df_val = pd.read_csv(path + dataset + "_" + "val" + ".csv")
             df_test = pd.read_csv(path + dataset + "_" + "test" + ".csv")
-            col = 'Storypoint'
+            col = "Storypoint"
 
             df_train = pd.concat([df_train, df_val], ignore_index=True)
 
-            model = GPT2Tokenizer.from_pretrained('gpt2')
-            model.pad_token = '[PAD]'
+            model = GPT2Tokenizer.from_pretrained("gpt2")
+            model.pad_token = "[PAD]"
 
             features = []
             for index, row in df_train.iterrows():
@@ -72,15 +74,15 @@ for d in datas:
             features.insert(0, col, df_test[col])
             df_test = features
 
-
-
         if dataName == "Boston":
             df = pd.read_csv("../../Data/Boston.csv")
             col = "MEDV"
             features = list(df.columns)
             for feature in features:
                 if feature != col:
-                    df[feature] = (df[feature] - df[feature].min()) / (df[feature].max() - df[feature].min())
+                    df[feature] = (df[feature] - df[feature].min()) / (
+                        df[feature].max() - df[feature].min()
+                    )
 
         if dataName == "Adult":
             df = pd.read_csv("../../Data/adult.csv")
@@ -88,11 +90,13 @@ for d in datas:
             features = list(df.columns)
             for feature in features:
                 if feature != col:
-                    df[feature] = (df[feature] - df[feature].min()) / (df[feature].max() - df[feature].min())
+                    df[feature] = (df[feature] - df[feature].min()) / (
+                        df[feature].max() - df[feature].min()
+                    )
 
         elif dataName == "WorldHappiness":
             df = pd.read_csv("../../Data/WorldHappiness.csv")
-            col = 'WorldHappiness2022'
+            col = "WorldHappiness2022"
             df["unMember"] = df["unMember"].apply(lambda x: int(x))
             regions = df["region"].unique()
             for region in regions:
@@ -105,24 +109,40 @@ for d in datas:
             for feature in features:
                 if feature == "WorldHappiness2022" or feature == "country":
                     continue
-                df[feature] = (df[feature] - df[feature].min()) / (df[feature].max() - df[feature].min())
+                df[feature] = (df[feature] - df[feature].min()) / (
+                    df[feature].max() - df[feature].min()
+                )
             df.rename(
-                columns={"population_2024": "Population", "population_growthRate": "Growth rate", "land_area": "Land area",
-                         "unMember": "UN member", "population_density": "Density",
-                         "Hdi2021": "HDI21", "Hdi2020": "HDI20"}, inplace=True)
+                columns={
+                    "population_2024": "Population",
+                    "population_growthRate": "Growth rate",
+                    "land_area": "Land area",
+                    "unMember": "UN member",
+                    "population_density": "Density",
+                    "Hdi2021": "HDI21",
+                    "Hdi2020": "HDI20",
+                },
+                inplace=True,
+            )
 
         elif dataName == "SCUT":
-
             df = []
-            col = 'Average'
+            col = "Average"
 
             All_labels = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
 
             for file in os.listdir():
                 # Check whether file is in text format or not
                 if file.endswith(".txt"):
-                    lm = pd.read_csv(path + file, sep=" ", header=None).to_numpy().flatten().tolist()
-                    label = All_labels.loc[All_labels['Filename'] == file.replace(".txt", '.jpg')][col].values[0]
+                    lm = (
+                        pd.read_csv(path + file, sep=" ", header=None)
+                        .to_numpy()
+                        .flatten()
+                        .tolist()
+                    )
+                    label = All_labels.loc[
+                        All_labels["Filename"] == file.replace(".txt", ".jpg")
+                    ][col].values[0]
                     lm.append(label)
                     df.append(lm)
 
@@ -131,7 +151,9 @@ for d in datas:
             features = list(df.columns)
             for feature in features:
                 if feature != col:
-                    df[feature] = (df[feature] - df[feature].min()) / (df[feature].max() - df[feature].min())
+                    df[feature] = (df[feature] - df[feature].min()) / (
+                        df[feature].max() - df[feature].min()
+                    )
 
         train = df_train
         test = df_test
@@ -166,17 +188,19 @@ for d in datas:
                 if label != 0:
                     trainA = rowA.drop(labels=[col])
                     trainB = rowB.drop(labels=[col])
-                    res_tr.append(pd.concat([trainA - trainB, pd.Series(label, index=["label"])]))
-                    res_tr.append(pd.concat([trainB - trainA, pd.Series(-label, index=["label"])]))
+                    res_tr.append(
+                        pd.concat([trainA - trainB, pd.Series(label, index=["label"])])
+                    )
+                    res_tr.append(
+                        pd.concat([trainB - trainA, pd.Series(-label, index=["label"])])
+                    )
 
-                    res_tr_encoder.append({"A": trainA.to_list(),
-                                           "B": trainB.to_list(),
-                                           "Label": label
-                                           })
-                    res_tr_encoder.append({"A": trainB.to_list(),
-                                           "B": trainA.to_list(),
-                                           "Label": -label
-                                           })
+                    res_tr_encoder.append(
+                        {"A": trainA.to_list(), "B": trainB.to_list(), "Label": label}
+                    )
+                    res_tr_encoder.append(
+                        {"A": trainB.to_list(), "B": trainA.to_list(), "Label": -label}
+                    )
 
                     comp.append(indexB)
 
@@ -203,21 +227,27 @@ for d in datas:
                 if label != 0:
                     testA = rowA.drop(labels=[col])
                     testB = rowB.drop(labels=[col])
-                    res_ts.append(pd.concat([testA - testB, pd.Series(label, index=["label"])]))
-                    res_ts.append(pd.concat([testB - testA, pd.Series(-label, index=["label"])]))
+                    res_ts.append(
+                        pd.concat([testA - testB, pd.Series(label, index=["label"])])
+                    )
+                    res_ts.append(
+                        pd.concat([testB - testA, pd.Series(-label, index=["label"])])
+                    )
 
-                    res_ts_encoder.append({"A": testA.to_list(),
-                                           "B": testB.to_list(),
-                                           "Label": label
-                                           })
-                    res_ts_encoder.append({"A": testB.to_list(),
-                                           "B": testA.to_list(),
-                                           "Label": -label
-                                           })
+                    res_ts_encoder.append(
+                        {"A": testA.to_list(), "B": testB.to_list(), "Label": label}
+                    )
+                    res_ts_encoder.append(
+                        {"A": testB.to_list(), "B": testA.to_list(), "Label": -label}
+                    )
 
                     comp.append(indexB)
 
-            toAdd = {"indexA": indexA, "A": rowA.drop(labels=[col]).to_list(), "Score": rowA[col]}
+            toAdd = {
+                "indexA": indexA,
+                "A": rowA.drop(labels=[col]).to_list(),
+                "Score": rowA[col],
+            }
             test_list.append(toAdd)
 
         data_ts = pd.DataFrame(res_ts)
@@ -241,13 +271,18 @@ for d in datas:
         # use decision function on original dataset and caculate p_coef
         # compare with our cnn model
 
-        result = {"Full data size": len(train), "Testing data size": len(test),
-                  # "Recall": m_comp.recall(), "Precision": m_comp.precision(), "F1": m_comp.f1(),
-                  # "Accuracy": m_comp.accuracy(),
-                  "MAE": m_reg.mae(), "MDAE": m_reg.mdae(),
-                  "Spearman coef": m_reg.spearmanr_coefficient(),
-                  "Spearman P": m_reg.spearmanr_value(),
-                  "Pearson coef": m_reg.pearsonr_coefficient(), "Pearson P": m_reg.pearsonr_value()}
+        result = {
+            "Full data size": len(train),
+            "Testing data size": len(test),
+            # "Recall": m_comp.recall(), "Precision": m_comp.precision(), "F1": m_comp.f1(),
+            # "Accuracy": m_comp.accuracy(),
+            "MAE": m_reg.mae(),
+            "MDAE": m_reg.mdae(),
+            "Spearman coef": m_reg.spearmanr_coefficient(),
+            "Spearman P": m_reg.spearmanr_value(),
+            "Pearson coef": m_reg.pearsonr_coefficient(),
+            "Pearson P": m_reg.pearsonr_value(),
+        }
 
         final_results.append(result)
 
@@ -255,21 +290,37 @@ for d in datas:
         y_true = train_encoder["Label"].tolist()
         val = data_tr_encoder.drop(train_encoder.index)
 
-        dual_encoder = Classification.train_model(train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500)
+        dual_encoder = Classification.train_model(
+            train=train_encoder, val=val, y_true=y_true, shared=True, epochs=500
+        )
 
-        recall, precision, F1, accuracy = Classification.test_model(data_ts_encoder, dual_encoder)
-        spearmanr, sp_pvalue, pearsonr, p_pvalue = Classification.generateLists(test_list, dual_encoder)
+        recall, precision, F1, accuracy = Classification.test_model(
+            data_ts_encoder, dual_encoder
+        )
+        spearmanr, sp_pvalue, pearsonr, p_pvalue = Classification.generateLists(
+            test_list, dual_encoder
+        )
 
-        result_encoder = {"Full data size": len(train), "Testing data size": len(test),
-                          "Recall": recall, "Precision": precision, "F1": F1,
-                          "Accuracy": accuracy, "Spearman coef": spearmanr,
-                          "Spearman P": sp_pvalue,
-                          "Pearson coef": pearsonr, "Pearson P": p_pvalue}
+        result_encoder = {
+            "Full data size": len(train),
+            "Testing data size": len(test),
+            "Recall": recall,
+            "Precision": precision,
+            "F1": F1,
+            "Accuracy": accuracy,
+            "Spearman coef": spearmanr,
+            "Spearman P": sp_pvalue,
+            "Pearson coef": pearsonr,
+            "Pearson P": p_pvalue,
+        }
 
         final_results_encoder.append(result_encoder)
 
     final_results = pd.DataFrame(final_results)
-    final_results.to_csv("../../Results/" + dataset + " SVM_" + col + "_" + str(num_comp) + ".csv", index=False)
+    final_results.to_csv(
+        "../../Results/" + dataset + " SVM_" + col + "_" + str(num_comp) + ".csv",
+        index=False,
+    )
 
 # final_results_encoder = pd.DataFrame(final_results_encoder)
 # final_results_encoder.to_csv("../../Results/" + dataName + " Encoder_" + col + "_" + str(num_comp) + ".csv",

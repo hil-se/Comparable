@@ -1,5 +1,6 @@
 import tensorflow as tf
 import keras
+
 K = tf.keras.backend
 
 
@@ -23,7 +24,7 @@ def create_encoder(input_size):
             # keras.layers.Conv1D(128, kernel_size=3, activation="relu"),
             # keras.layers.GlobalAveragePooling1D(),
             # keras.layers.Dropout(0.5),
-            keras.layers.Dense(100, activation='relu'),
+            keras.layers.Dense(100, activation="relu"),
             keras.layers.Dense(1, activation="linear"),
         ]
     )

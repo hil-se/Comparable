@@ -8,13 +8,15 @@ import SharedDualEncoder
 import metrics
 
 
-def learn(train_data,
-          epochs=100,
-          validation_data=None,
-          y_true=[],
-          patience=10,
-          batch_size=256,
-          shared=False):
+def learn(
+    train_data,
+    epochs=100,
+    validation_data=None,
+    y_true=[],
+    patience=10,
+    batch_size=256,
+    shared=False,
+):
     td_s = train_data["A"].to_list()
     td_t = train_data["B"].to_list()
     train_y = np.array(train_data["Label"].tolist())
@@ -35,21 +37,33 @@ def learn(train_data,
     train_dataset = train_dataset.batch(batch_size)
     val_dataset = val_dataset.batch(batch_size)
     if shared == True:
-        encoder = SharedDualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
-        dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
+        encoder = SharedDualEncoder.create_encoder(
+            input_size=train_dataset.element_spec["A"].shape[1]
+        )
+        dual_encoder = SharedDualEncoder.DualEncoderAll(
+            encoder, y_true=np.array(y_true)
+        )
     else:
-        encoder_A = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
-        encoder_B = DualEncoder.create_encoder(input_size=val_dataset.element_spec['A'].shape[1])
-        dual_encoder = DualEncoder.DualEncoderAll(encoder_A, encoder_B, y_true=np.array(y_true))
+        encoder_A = DualEncoder.create_encoder(
+            input_size=train_dataset.element_spec["A"].shape[1]
+        )
+        encoder_B = DualEncoder.create_encoder(
+            input_size=val_dataset.element_spec["A"].shape[1]
+        )
+        dual_encoder = DualEncoder.DualEncoderAll(
+            encoder_A, encoder_B, y_true=np.array(y_true)
+        )
     dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=1e-3))
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=patience, restore_best_weights=True
+    )
     dual_encoder.fit(
         x=train_dataset,
         epochs=epochs,
         validation_data=val_dataset,
         callbacks=[early_stopping],
-        verbose=1
+        verbose=1,
     )
     return dual_encoder
 
@@ -57,7 +71,9 @@ def learn(train_data,
 def train_model(train, val, y_true, epochs=100, shared=False):
     np.random.shuffle(train.values)
     np.random.shuffle(val.values)
-    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared)
+    dual_encoder = learn(
+        train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared
+    )
     return dual_encoder
 
 
@@ -165,6 +181,7 @@ def evaluate(y_true, y_pred):
 #     predList = predList.reset_index()
 #     return realList, predList
 
+
 def generateLists(test_dataset, dual_encoder):
     # realList = {}
     # predList = {}
@@ -205,8 +222,8 @@ def evaluateLists(realList, predList):
     for i in range(ln):
         id = realList[i]
         j = predList.index(id)
-        diff += (abs(i - j))
-        sum_d += ((i - j) * (i - j))
+        diff += abs(i - j)
+        sum_d += (i - j) * (i - j)
     spearman_corr = 1 - ((6 * sum_d) / (ln * ((ln * ln) - 1)))
     spearman_corr = round(spearman_corr, 3)
     avg_diff = round(diff / ln, 3)
@@ -242,6 +259,7 @@ def explainability(test_dataset, feat_list, dual_encoder):
         res.append({})
     res = pd.DataFrame(res)
     return res
+
 
 # def comparabilityExperiment(shared=False, dataName="Boston", testList=None, dataList=None, feat_list=None, epochs=100):
 #     r = Reader()

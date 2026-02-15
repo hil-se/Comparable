@@ -7,71 +7,157 @@ def create_encoder(height=250, width=250):
 
     base_model = tf.keras.Sequential()
     base_model.add(
-        tf.keras.layers.Conv2D(start_size, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu',
-                               input_shape=input_shape))
+        tf.keras.layers.Conv2D(
+            start_size,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+            input_shape=input_shape,
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu',
-                               input_shape=input_shape))
+        tf.keras.layers.Conv2D(
+            start_size,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+            input_shape=input_shape,
+        )
+    )
     base_model.add(tf.keras.layers.MaxPool2D(pool_size=(2, 2)))
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 2, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 2,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 2, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 2,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(tf.keras.layers.MaxPool2D(pool_size=(2, 2)))
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 4, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 4,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 4, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 4,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 4, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 4,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(tf.keras.layers.MaxPool2D(pool_size=(2, 2)))
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 8, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 8,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 8, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 8,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 8, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 8,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(tf.keras.layers.MaxPool2D(pool_size=(2, 2)))
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 8, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 8,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 8, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 8,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(
-        tf.keras.layers.Conv2D(start_size * 8, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            start_size * 8,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="same",
+            activation="relu",
+        )
+    )
     base_model.add(tf.keras.layers.MaxPool2D(pool_size=(2, 2)))
 
     base_model.add(
-        tf.keras.layers.Conv2D(4096, kernel_size=(7, 7), strides=(1, 1), padding='valid',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            4096, kernel_size=(7, 7), strides=(1, 1), padding="valid", activation="relu"
+        )
+    )
     base_model.add(tf.keras.layers.Dropout(0.5))
     base_model.add(
-        tf.keras.layers.Conv2D(4096, kernel_size=(1, 1), strides=(1, 1), padding='valid',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            4096, kernel_size=(1, 1), strides=(1, 1), padding="valid", activation="relu"
+        )
+    )
     base_model.add(tf.keras.layers.Dropout(0.5))
     base_model.add(
-        tf.keras.layers.Conv2D(2622, kernel_size=(1, 1), strides=(1, 1), padding='valid',
-                               activation='relu'))
+        tf.keras.layers.Conv2D(
+            2622, kernel_size=(1, 1), strides=(1, 1), padding="valid", activation="relu"
+        )
+    )
 
     base_model.add(tf.keras.layers.Flatten())
-    base_model.add(tf.keras.layers.Activation('softmax'))
-    base_model.load_weights('../../Data/vgg_face_weights.h5')
+    base_model.add(tf.keras.layers.Activation("softmax"))
+    base_model.load_weights("../../Data/vgg_face_weights.h5")
 
     # for layer in base_model.layers[:-7]:
     #     layer.trainable = False
 
     base_model_output = tf.keras.layers.Flatten()(base_model.layers[-4].output)
-    base_model_output = tf.keras.layers.Dense(256, activation='relu')(base_model_output)
+    base_model_output = tf.keras.layers.Dense(256, activation="relu")(base_model_output)
     base_model_output = tf.keras.layers.Dense(1)(base_model_output)
 
     return tf.keras.Model(inputs=base_model.input, outputs=base_model_output)

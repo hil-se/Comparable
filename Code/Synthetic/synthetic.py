@@ -69,7 +69,7 @@ def comp_pred(test, dual_encoder):
 
 def cal_comp(xt1, x1, xt2, x2):
     # Numerical stability: avoid 0/0 and division by zero downstream
-    denom = (x1 + x2)
+    denom = x1 + x2
     denom = denom if denom != 0 else 1.0
 
     mu = (xt1 + xt2) / denom
@@ -78,10 +78,30 @@ def cal_comp(xt1, x1, xt2, x2):
 
 
 def comparative_separation(x):
-    mut11, vart11 = cal_comp(x["1111"], x["1111"] + x["0111"] + x["x111"], x["0011"], x["0011"] + x["1011"] + x["x011"])
-    mut00, vart00 = cal_comp(x["1100"], x["1100"] + x["0100"] + x["x100"], x["0000"], x["0000"] + x["1000"] + x["x000"])
-    mut10, vart10 = cal_comp(x["1110"], x["1110"] + x["0110"] + x["x110"], x["0001"], x["0001"] + x["1001"] + x["x001"])
-    mut01, vart01 = cal_comp(x["1101"], x["1101"] + x["0101"] + x["x101"], x["0010"], x["0010"] + x["1010"] + x["x010"])
+    mut11, vart11 = cal_comp(
+        x["1111"],
+        x["1111"] + x["0111"] + x["x111"],
+        x["0011"],
+        x["0011"] + x["1011"] + x["x011"],
+    )
+    mut00, vart00 = cal_comp(
+        x["1100"],
+        x["1100"] + x["0100"] + x["x100"],
+        x["0000"],
+        x["0000"] + x["1000"] + x["x000"],
+    )
+    mut10, vart10 = cal_comp(
+        x["1110"],
+        x["1110"] + x["0110"] + x["x110"],
+        x["0001"],
+        x["0001"] + x["1001"] + x["x001"],
+    )
+    mut01, vart01 = cal_comp(
+        x["1101"],
+        x["1101"] + x["0101"] + x["x101"],
+        x["0010"],
+        x["0010"] + x["1010"] + x["x010"],
+    )
 
     eps = np.finfo(float).eps
     zc = (mut10 - mut01) / np.sqrt(vart10 + vart01 + eps)
@@ -134,8 +154,8 @@ def count_violation_fast(arr: np.ndarray, i1: np.ndarray, i2: np.ndarray) -> dic
 
     # cij_code: 2 for tie, 1 if c1>c2, 0 if c1<c2
     cij_code = np.empty_like(c1, dtype=np.int8)
-    eq = (c1 == c2)
-    gt = (c1 > c2)
+    eq = c1 == c2
+    gt = c1 > c2
     cij_code[eq] = 2
     cij_code[~eq & gt] = 1
     cij_code[~eq & ~gt] = 0
@@ -158,189 +178,10 @@ def batched_score(dual_encoder, inputs, batch_size=32):
     return np.concatenate(scores) if scores else np.array([])
 
 
-# 1,2,3,4
-def make_df1():
-    df1 = pd.DataFrame(np.array(
-        [
-            [0, 1, 1],
-            [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1],
-            [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1],
-            [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-        ]),
-        columns=['gender', 'income', 'pred'])
-
-    return df1, "df1"
-
-
-# 4,2,3,1
-def make_df2():
-    df2 = pd.DataFrame(np.array(
-        100 * [
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 1, 1],
-            [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 1, 1],
-            [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 1, 1],
-            [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-        ]),
-        columns=['gender', 'income', 'pred'])
-
-    return df2, "df2"
-
-
-# 1,4,3,8
-def make_df3():
-    df3 = pd.DataFrame(np.array(
-        [
-            [0, 1, 1],
-            [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1],
-            [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1],
-            [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1],
-            [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0],
-            [1, 1, 1], [1, 1, 1],
-            [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-        ]),
-        columns=['gender', 'income', 'pred'])
-    return df3, "df3"
-
-
-def make_df4():
-    df4 = pd.DataFrame(np.array(
-        [
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-
-        ]),
-        columns=['gender', 'income', 'pred'])
-    return df4, "df4"
-
-
-def make_df5():
-    df5 = pd.DataFrame(np.array(
-        [
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0], [0, 0, 0], [1, 1, 1], [1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1],
-            [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0],
-            [1, 1, 0],
-            [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-
-        ]),
-        columns=['gender', 'income', 'pred'])
-    return df5, "df5"
-
-
 def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
     # n is the number of data points.
     # 0 <= p <= 1 is the sampling probability of Male (sex=1).
-    keys = ['gender', 'income', 'pred']
+    keys = ["gender", "income", "pred"]
     data = {key: [] for key in keys}
     for i in range(n):
         rand1 = np.random.random()
@@ -362,30 +203,29 @@ def make_scut(P="P1"):
 
     # Parallel image loading with caching
     print(f"Loading {len(df)} images in parallel...")
-    pixels = DataProcessing.retrievePixels_batch(df['Filename'].tolist())
-    df['pixels'] = [p / 255.0 for p in pixels]
+    pixels = DataProcessing.retrievePixels_batch(df["Filename"].tolist())
+    df["pixels"] = [p / 255.0 for p in pixels]
     print("Images loaded.")
 
     fn = df["Filename"].astype(str)
     df["race"] = fn.str[0].fillna("")
     df["gender"] = fn.str[1].fillna("")
 
-    df['gender'] = df['gender'].apply(lambda x: 1 if x == "M" else 0)
-    df['race'] = df['race'].apply(lambda x: 1 if x == "C" else 0)
+    df["gender"] = df["gender"].apply(lambda x: 1 if x == "M" else 0)
+    df["race"] = df["race"].apply(lambda x: 1 if x == "C" else 0)
 
-    sa = 'gender'
+    sa = "gender"
 
-    df = df.rename(columns={sa: 'sa'})
+    df = df.rename(columns={sa: "sa"})
 
     global isBinary
     dependent = P
 
-    X = df[['pixels', 'sa']]
+    X = df[["pixels", "sa"]]
 
     y = np.array(df[dependent])
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -400,24 +240,26 @@ def make_adult():
     df = pd.read_csv(DATA_DIR / "adult.csv", na_values=["?"])
     # df = df.sample(frac=0.1)
     df = df.dropna()
-    df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
-    df['income'] = df['income'].apply(lambda x: 1 if x == ">50K" else 0)
-    dependent = 'income'
+    df["gender"] = df["gender"].apply(lambda x: 1 if x == "Male" else 0)
+    df["income"] = df["income"].apply(lambda x: 1 if x == ">50K" else 0)
+    dependent = "income"
 
     global isBinary
-    sa = 'gender'
+    sa = "gender"
 
-    df = df.rename(columns={sa: 'sa'})
+    df = df.rename(columns={sa: "sa"})
 
-    df = pd.get_dummies(df, columns=['workclass', 'marital-status', 'occupation',
-                                     'relationship', 'race'], dtype=float,
-                        drop_first=True)
+    df = pd.get_dummies(
+        df,
+        columns=["workclass", "marital-status", "occupation", "relationship", "race"],
+        dtype=float,
+        drop_first=True,
+    )
 
-    X = df.drop([dependent, 'education', 'native-country'], axis=1)
+    X = df.drop([dependent, "education", "native-country"], axis=1)
     y = np.array(df[dependent])
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -431,23 +273,26 @@ def make_german():
     # seed = 42
     df = pd.read_csv(DATA_DIR / "german_credit_data.csv", index_col=0)
     df = df.dropna()
-    df['Sex'] = df['Sex'].apply(lambda x: 1 if x == "male" else 0)
-    df['Risk'] = df['Risk'].apply(lambda x: 1 if x == "good" else 0)
+    df["Sex"] = df["Sex"].apply(lambda x: 1 if x == "male" else 0)
+    df["Risk"] = df["Risk"].apply(lambda x: 1 if x == "good" else 0)
 
     global isBinary
-    dependent = 'Risk'
-    sa = 'Sex'
+    dependent = "Risk"
+    sa = "Sex"
 
-    df = df.rename(columns={sa: 'sa'})
+    df = df.rename(columns={sa: "sa"})
 
-    df = pd.get_dummies(df, columns=['Housing', 'Saving accounts', 'Checking account', 'Purpose'], dtype=float,
-                        drop_first=True)
+    df = pd.get_dummies(
+        df,
+        columns=["Housing", "Saving accounts", "Checking account", "Purpose"],
+        dtype=float,
+        drop_first=True,
+    )
 
     X = df.drop([dependent], axis=1)
     y = np.array(df[dependent])
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -463,16 +308,15 @@ def make_heart():
     df = df.dropna()
 
     global isBinary
-    dependent = 'output'
-    sa = 'sex'
+    dependent = "output"
+    sa = "sex"
 
-    df = df.rename(columns={sa: 'sa'})
+    df = df.rename(columns={sa: "sa"})
 
     X = df.drop([dependent], axis=1)
     y = np.array(df[dependent])
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -484,33 +328,41 @@ def make_heart():
 
 def make_compas():
     df = pd.read_csv(DATA_DIR / "compas-scores-two-years.csv")
-    features_to_keep = ['sex', 'age', 'age_cat', 'race',
-                        'juv_fel_count', 'juv_misd_count', 'juv_other_count',
-                        'priors_count', 'c_charge_degree',
-                        'two_year_recid']
+    features_to_keep = [
+        "sex",
+        "age",
+        "age_cat",
+        "race",
+        "juv_fel_count",
+        "juv_misd_count",
+        "juv_other_count",
+        "priors_count",
+        "c_charge_degree",
+        "two_year_recid",
+    ]
     df = df[features_to_keep]
     # sensitive attribute names
     A = ["sex", "race"]
-    df['sex'] = df['sex'].apply(lambda x: 1 if x == "Male" else 0)
+    df["sex"] = df["sex"].apply(lambda x: 1 if x == "Male" else 0)
     # discretize race: Caucasian vs. non-Caucasian
-    df['race'] = df['race'].apply(lambda x: 1 if x == "Caucasian" else 0)
+    df["race"] = df["race"].apply(lambda x: 1 if x == "Caucasian" else 0)
     # prefer 0 (no recid) as label 1
-    df['two_year_recid'] = df['two_year_recid'].apply(lambda x: 1 if x == 0 else 0)
+    df["two_year_recid"] = df["two_year_recid"].apply(lambda x: 1 if x == 0 else 0)
 
     global isBinary
-    sa = 'sex'
-    df = df.rename(columns={sa: 'sa'})
+    sa = "sex"
+    df = df.rename(columns={sa: "sa"})
 
-    df = pd.get_dummies(df, columns=['age_cat', 'c_charge_degree'], dtype=float,
-                        drop_first=True)
+    df = pd.get_dummies(
+        df, columns=["age_cat", "c_charge_degree"], dtype=float, drop_first=True
+    )
 
-    dependent = 'two_year_recid'
+    dependent = "two_year_recid"
 
     X = df.drop([dependent], axis=1)
     y = np.array(df[dependent])
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -535,23 +387,22 @@ def make_comm():
 
     a = maj.map({B: 0, W: 1, A: 0, H: 0})
 
-    df['race'] = a
+    df["race"] = a
     df = df.drop(H, axis=1)
     df = df.drop(B, axis=1)
     df = df.drop(W, axis=1)
     df = df.drop(A, axis=1)
 
     global isBinary
-    dependent = 'ViolentCrimesPerPop'
-    sa = 'race'
+    dependent = "ViolentCrimesPerPop"
+    sa = "race"
 
-    df = df.rename(columns={sa: 'sa'})
+    df = df.rename(columns={sa: "sa"})
 
     X = df.drop([dependent], axis=1)
     y = np.array(df[dependent])
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -565,24 +416,23 @@ def make_lsac():
     df = pd.read_csv(DATA_DIR / "lawschool.csv")
     df = df.dropna()
 
-    df['race'] = [int(race == 7.0) for race in df['race']]
-    y = df['ugpa']
-    df['ugpa'] = np.array(y / max(y))
+    df["race"] = [int(race == 7.0) for race in df["race"]]
+    y = df["ugpa"]
+    df["ugpa"] = np.array(y / max(y))
 
-    df['gender'] = df['gender'].map({'male': 1, 'female': 0})
-    df['bar1'] = [int(grade == 'P') for grade in df['bar1']]
+    df["gender"] = df["gender"].map({"male": 1, "female": 0})
+    df["bar1"] = [int(grade == "P") for grade in df["bar1"]]
 
     global isBinary
-    dependent = 'ugpa'
-    sa = 'race'
+    dependent = "ugpa"
+    sa = "race"
 
-    df = df.rename(columns={sa: 'sa'})
+    df = df.rename(columns={sa: "sa"})
 
     X = df.drop([dependent], axis=1)
     y = np.array(df[dependent])
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.5)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
 
     X_train[col] = y_train
     X_test[col] = y_test
@@ -665,19 +515,19 @@ num_comp_train = 1
 num_comp_test = 1
 
 for i in range(10):
-    df, df_name, train, test = make_scut()
+    df, df_name, train, test = make_german()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
-    y_test = test['output'].values
-    test_features = test.drop(columns=['output'])
-    is_scut = 'scut' in df_name
+    y_test = test["output"].values
+    test_features = test.drop(columns=["output"])
+    is_scut = "scut" in df_name
 
     # Pre-extract values for index-based access (much faster than iterrows)
     train_vals = train.values
     train_cols = list(train.columns)
-    col_idx, sa_idx = train_cols.index(col), train_cols.index('sa')
-    pixels_idx = train_cols.index('pixels') if is_scut else None
+    col_idx, sa_idx = train_cols.index(col), train_cols.index("sa")
+    pixels_idx = train_cols.index("pixels") if is_scut else None
 
     res_tr_encoder = []
     svc_encoder = []
@@ -692,7 +542,9 @@ for i in range(10):
         idx_a, idx_b = np.where(~np.eye(num_train, dtype=bool))
 
         # Vectorized labels for all pairs
-        labels = np.sign(train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]).astype(int)
+        labels = np.sign(
+            train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]
+        ).astype(int)
 
         # Filter out ties (Label 0)
         valid_mask = labels != 0
@@ -715,15 +567,20 @@ for i in range(10):
 
         # Batch create dictionaries
         if is_scut:
-            res_tr_encoder = [{"A": fa, "B": fb, "Label": int(lbl)}
-                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+            res_tr_encoder = [
+                {"A": fa, "B": fb, "Label": int(lbl)}
+                for fa, fb, lbl in zip(feats_a, feats_b, labels)
+            ]
         else:
-            res_tr_encoder = [{"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
-                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+            res_tr_encoder = [
+                {"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
+                for fa, fb, lbl in zip(feats_a, feats_b, labels)
+            ]
 
-        res_tr_sa = [{"AB": (ra[sa_idx], rb[sa_idx]),
-                      "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
-                     for ra, rb, lbl in zip(rows_a, rows_b, labels)]
+        res_tr_sa = [
+            {"AB": (ra[sa_idx], rb[sa_idx]), "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
+            for ra, rb, lbl in zip(rows_a, rows_b, labels)
+        ]
     else:
         # Optimized random pair generation (vectorized where possible)
         n_train = len(train)
@@ -737,7 +594,9 @@ for i in range(10):
         for idx_a in range(n_train):
             # Vectorized partner selection
             if idx_a == 0:
-                partners = np.random.choice(n_train - 1, num_comp_train, replace=False) + 1
+                partners = (
+                    np.random.choice(n_train - 1, num_comp_train, replace=False) + 1
+                )
             elif idx_a == n_train - 1:
                 partners = np.random.choice(n_train - 1, num_comp_train, replace=False)
             else:
@@ -771,15 +630,20 @@ for i in range(10):
             feats_b = rows_b[:, keep_cols]
 
         if is_scut:
-            res_tr_encoder = [{"A": fa, "B": fb, "Label": int(lbl)}
-                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+            res_tr_encoder = [
+                {"A": fa, "B": fb, "Label": int(lbl)}
+                for fa, fb, lbl in zip(feats_a, feats_b, labels)
+            ]
         else:
-            res_tr_encoder = [{"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
-                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+            res_tr_encoder = [
+                {"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
+                for fa, fb, lbl in zip(feats_a, feats_b, labels)
+            ]
 
-        res_tr_sa = [{"AB": (ra[sa_idx], rb[sa_idx]),
-                      "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
-                     for ra, rb, lbl in zip(rows_a, rows_b, labels)]
+        res_tr_sa = [
+            {"AB": (ra[sa_idx], rb[sa_idx]), "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
+            for ra, rb, lbl in zip(rows_a, rows_b, labels)
+        ]
 
     # for indexA, rowA in test.iterrows():
     #     comp = []
@@ -821,38 +685,48 @@ for i in range(10):
 
     # Optimized Weights calculation (vectorized)
     res_tr_sa = pd.DataFrame(res_tr_sa)
-    ab_array = np.array(res_tr_sa['AB'].tolist())
+    ab_array = np.array(res_tr_sa["AB"].tolist())
     is_same_group = ab_array[:, 0] == ab_array[:, 1]
 
-    p_aij = res_tr_sa['AB'].value_counts(normalize=True)
-    p_aij_yij = res_tr_sa['AY'].value_counts(normalize=True)
+    p_aij = res_tr_sa["AB"].value_counts(normalize=True)
+    p_aij_yij = res_tr_sa["AY"].value_counts(normalize=True)
 
     # Calculate weights using vectorized mapping
     weights = np.ones(len(res_tr_sa))
     diff_group_mask = ~is_same_group
     weights[diff_group_mask] = (
-            res_tr_sa.loc[diff_group_mask, 'AB'].map(p_aij) /
-            (2 * res_tr_sa.loc[diff_group_mask, 'AY'].map(p_aij_yij))
+        res_tr_sa.loc[diff_group_mask, "AB"].map(p_aij)
+        / (2 * res_tr_sa.loc[diff_group_mask, "AY"].map(p_aij_yij))
     ).values
 
-    dual_encoder = Classification.train_model(train=data_tr_encoder, val=None,
-                                              y_true=data_tr_encoder["Label"].tolist(),
-                                              shared=True, epochs=100, df_name =df_name)
+    dual_encoder = Classification.train_model(
+        train=data_tr_encoder,
+        val=None,
+        y_true=data_tr_encoder["Label"].tolist(),
+        shared=True,
+        epochs=100,
+        df_name=df_name,
+    )
 
-    dual_encoder_weighted = Classification.train_model(train=data_tr_encoder,
-                                                       val=None,
-                                                       y_true=data_tr_encoder["Label"].tolist(),
-                                                       shared=True, epochs=100,
-                                                       train_weights=weights, val_weights=None, df_name=df_name)
+    dual_encoder_weighted = Classification.train_model(
+        train=data_tr_encoder,
+        val=None,
+        y_true=data_tr_encoder["Label"].tolist(),
+        shared=True,
+        epochs=100,
+        train_weights=weights,
+        val_weights=None,
+        df_name=df_name,
+    )
 
     # predictions = comp_pred(data_ts_encoder, dual_encoder)
     # predictions_weighted = comp_pred(data_ts_encoder, dual_encoder_weighted)
 
     # accuracy = accuracy_score(res_ts_sa['Label'], predictions)
 
-    y_train = train['output']
-    train = train.drop(columns=['output'])
-    test = test.drop(columns=['output'])
+    y_train = train["output"]
+    train = train.drop(columns=["output"])
+    test = test.drop(columns=["output"])
 
     # #
     # y_svc = svc_encoder['label']
@@ -887,8 +761,8 @@ for i in range(10):
         # y_score = clf.predict_proba(test)[:, 1]
         accuracy_lr = accuracy_score(y_test, predictions)
         f1_score_lr = f1_score(y_test, predictions)
-        AOD_lr = m_lr.AOD(test['sa'])
-        EOD_lr = m_lr.EOD(test['sa'])
+        AOD_lr = m_lr.AOD(test["sa"])
+        EOD_lr = m_lr.EOD(test["sa"])
     # #
     # fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
     # roc_auc_lr = auc(fpr_lr, tpr_lr)
@@ -898,16 +772,18 @@ for i in range(10):
         spearman_lr = m_lr.spearmanr_coefficient()
         pearson_lr = m_lr.pearsonr_coefficient()
 
-    I_sep_lr = m_lr.MI_con_info(test['sa'])
+    I_sep_lr = m_lr.MI_con_info(test["sa"])
 
     # Batch Prediction (Single call for better performance)
     if is_scut:
-        test_vals = np.stack(test_features['pixels'].values).astype(np.float32)
+        test_vals = np.stack(test_features["pixels"].values).astype(np.float32)
     else:
         test_vals = test_features.values
     if is_scut:
         predictions = batched_score(dual_encoder, test_vals, batch_size=16)
-        predictions_weighted = batched_score(dual_encoder_weighted, test_vals, batch_size=16)
+        predictions_weighted = batched_score(
+            dual_encoder_weighted, test_vals, batch_size=16
+        )
     else:
         predictions = dual_encoder.score(test_vals).numpy().flatten()
         predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
@@ -921,19 +797,25 @@ for i in range(10):
         pred_filt = remove_outliers(predictions)
         pred_w_filt = remove_outliers(predictions_weighted)
 
-        km = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(pred_filt.reshape(-1, 1))
+        km = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
+            pred_filt.reshape(-1, 1)
+        )
         predictions_kmeans = km.predict(predictions.reshape(-1, 1))
         if km.cluster_centers_[0] > km.cluster_centers_[1]:
             predictions_kmeans = 1 - predictions_kmeans
 
-        km_w = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(pred_w_filt.reshape(-1, 1))
+        km_w = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
+            pred_w_filt.reshape(-1, 1)
+        )
         predictions_kmeans_weighted = km_w.predict(predictions_weighted.reshape(-1, 1))
         if km_w.cluster_centers_[0] > km_w.cluster_centers_[1]:
             predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
 
     # Optimized Simulation Loop (The biggest bottleneck)
-    data_raw = np.column_stack([predictions_kmeans, y_test, test['sa'].values])
-    data_w_raw = np.column_stack([predictions_kmeans_weighted, y_test, test['sa'].values])
+    data_raw = np.column_stack([predictions_kmeans, y_test, test["sa"].values])
+    data_w_raw = np.column_stack(
+        [predictions_kmeans_weighted, y_test, test["sa"].values]
+    )
 
     violate_comp = violate_comp_w = 0
     violate = violate_w = 0
@@ -943,10 +825,14 @@ for i in range(10):
     half_size = n_rows // 2
     for _ in range(r):
         selectedr = np.random.choice(n_rows, size=half_size, replace=False)
-        ps = separation(data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2])
-        ps_w = separation(data_w_raw[selectedr, 1], data_w_raw[selectedr, 0], data_w_raw[selectedr, 2])
-        violate += (min(ps) < alpha)
-        violate_w += (min(ps_w) < alpha)
+        ps = separation(
+            data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2]
+        )
+        ps_w = separation(
+            data_w_raw[selectedr, 1], data_w_raw[selectedr, 0], data_w_raw[selectedr, 2]
+        )
+        violate += min(ps) < alpha
+        violate_w += min(ps_w) < alpha
 
     for _ in range(r):
         idx1 = np.random.randint(0, n_rows, size=n_rows)
@@ -960,8 +846,14 @@ for i in range(10):
         if i1.size == 0:
             continue
 
-        violate_comp += (min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0]) < alpha)
-        violate_comp_w += (min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0]) < alpha)
+        violate_comp += (
+            min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0])
+            < alpha
+        )
+        violate_comp_w += (
+            min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
+            < alpha
+        )
     # combined_unweighted = np.column_stack((predictions, predictions_kmeans))
     # combined_weighted = np.column_stack((predictions_weighted, predictions_kmeans_weighted))
     #
@@ -1037,16 +929,15 @@ for i in range(10):
     m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
 
     if isBinary:
-
         accuracy_bi = accuracy_score(y_test, predictions_kmeans)
         accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
         f1_score_bi = f1_score(y_test, predictions_kmeans)
         f1_score_weighted = f1_score(y_test, predictions_kmeans_weighted)
 
-        AOD = m_bi.AOD(test['sa'])
-        EOD = m_bi.EOD(test['sa'])
-        AOD_weighted = m_weighted_bi.AOD(test['sa'])
-        EOD_weighted = m_weighted_bi.EOD(test['sa'])
+        AOD = m_bi.AOD(test["sa"])
+        EOD = m_bi.EOD(test["sa"])
+        AOD_weighted = m_weighted_bi.AOD(test["sa"])
+        EOD_weighted = m_weighted_bi.EOD(test["sa"])
 
     else:
         MSE_unweighted = m_bi.mse()
@@ -1058,39 +949,49 @@ for i in range(10):
         spearman_weighted = m_weighted_bi.spearmanr_coefficient()
         pearson_weighted = m_weighted_bi.pearsonr_coefficient()
 
-    I_sep_bi = m_bi.MI_con_info(test['sa'])
-    I_sep_weighted_bi = m_weighted_bi.MI_con_info(test['sa'])
+    I_sep_bi = m_bi.MI_con_info(test["sa"])
+    I_sep_weighted_bi = m_weighted_bi.MI_con_info(test["sa"])
 
     if isBinary:
-
         result = {
-            'Acc_lr': accuracy_lr, 'Acc_unweight': accuracy_bi, 'Acc_weighted': accuracy_weighted,
-            'F1_lr': f1_score_lr, 'F1_unweight': f1_score_bi, 'F1_weighted': f1_score_weighted,
-            'AOD_lr': AOD_lr, 'AOD_unweight': AOD, 'AOD_weighted': AOD_weighted,
-            'EOD_lr': EOD_lr, 'EOD_unweight': EOD, 'EOD_weighted': EOD_weighted,
-            'I_sep_lr': I_sep_lr,
-            'I_sep_bi': I_sep_bi,
-            'I_sep_weighted_bi': I_sep_weighted_bi,
-            'violate_r': violate / r,
-            'violate_r_weighted': violate_w / r,
-            'violate_comp_r': violate_comp / r,
-            'violate_comp_r_w': violate_comp_w / r,
+            "Acc_lr": accuracy_lr,
+            "Acc_unweight": accuracy_bi,
+            "Acc_weighted": accuracy_weighted,
+            "F1_lr": f1_score_lr,
+            "F1_unweight": f1_score_bi,
+            "F1_weighted": f1_score_weighted,
+            "AOD_lr": AOD_lr,
+            "AOD_unweight": AOD,
+            "AOD_weighted": AOD_weighted,
+            "EOD_lr": EOD_lr,
+            "EOD_unweight": EOD,
+            "EOD_weighted": EOD_weighted,
+            "I_sep_lr": I_sep_lr,
+            "I_sep_bi": I_sep_bi,
+            "I_sep_weighted_bi": I_sep_weighted_bi,
+            "violate_r": violate / r,
+            "violate_r_weighted": violate_w / r,
+            "violate_comp_r": violate_comp / r,
+            "violate_comp_r_w": violate_comp_w / r,
         }
     else:
         result = {
-            'MSE_lr': mse_lr, "MSE_unweight": MSE_unweighted, "MSE_weight": MSE_weighted,
-            'spearman_lr': spearman_lr, 'spearman_unweighted': spearman_unweighted,
-            'spearman_weighted': spearman_weighted,
-            'pearson_lr': pearson_lr,
-            'pearson_unweighted': pearson_unweighted,
-            'pearson_weighted': pearson_weighted,
-            'I_sep_lr': I_sep_lr,
-            'I_sep_bi': I_sep_bi,
-            'I_sep_weighted_bi': I_sep_weighted_bi,
-            'violate_r': violate / r,
-            'violate_r_weighted': violate_w / r,
-            'violate_comp_r': violate_comp / r,
-            'violate_comp_r_w': violate_comp_w / r,
+            "MSE_lr": mse_lr,
+            "MSE_unweight": MSE_unweighted,
+            "MSE_weight": MSE_weighted,
+            "spearman_lr": spearman_lr,
+            "spearman_unweighted": spearman_unweighted,
+            "spearman_weighted": spearman_weighted,
+            "pearson_lr": pearson_lr,
+            "pearson_unweighted": pearson_unweighted,
+            "pearson_weighted": pearson_weighted,
+            "I_sep_lr": I_sep_lr,
+            "I_sep_bi": I_sep_bi,
+            "I_sep_weighted_bi": I_sep_weighted_bi,
+            "violate_r": violate / r,
+            "violate_r_weighted": violate_w / r,
+            "violate_comp_r": violate_comp / r,
+            "violate_comp_r_w": violate_comp_w / r,
         }
 
     results.append(result)

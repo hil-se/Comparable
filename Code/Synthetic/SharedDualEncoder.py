@@ -10,56 +10,56 @@ def create_encoder(input_size, df_name):
     # x = tf.keras.layers.Dense(32, activation='relu')(input)
     # output = tf.keras.layers.Dense(1, activation='linear')(input)
     # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
-    if 'scut' in df_name:
+    if "scut" in df_name:
         model = tf.keras.Sequential()
         model.add(ZeroPadding2D((1, 1), input_shape=(250, 250, 3)))
-        model.add(Convolution2D(64, (3, 3), activation='relu'))
+        model.add(Convolution2D(64, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(64, (3, 3), activation='relu'))
+        model.add(Convolution2D(64, (3, 3), activation="relu"))
         model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(128, (3, 3), activation='relu'))
+        model.add(Convolution2D(128, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(128, (3, 3), activation='relu'))
+        model.add(Convolution2D(128, (3, 3), activation="relu"))
         model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(256, (3, 3), activation='relu'))
+        model.add(Convolution2D(256, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(256, (3, 3), activation='relu'))
+        model.add(Convolution2D(256, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(256, (3, 3), activation='relu'))
+        model.add(Convolution2D(256, (3, 3), activation="relu"))
         model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation='relu'))
+        model.add(Convolution2D(512, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation='relu'))
+        model.add(Convolution2D(512, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation='relu'))
+        model.add(Convolution2D(512, (3, 3), activation="relu"))
         model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation='relu'))
+        model.add(Convolution2D(512, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation='relu'))
+        model.add(Convolution2D(512, (3, 3), activation="relu"))
         model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation='relu'))
+        model.add(Convolution2D(512, (3, 3), activation="relu"))
         model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-        model.add(Convolution2D(4096, (7, 7), activation='relu'))
+        model.add(Convolution2D(4096, (7, 7), activation="relu"))
         model.add(Dropout(0.5))
-        model.add(Convolution2D(4096, (1, 1), activation='relu'))
+        model.add(Convolution2D(4096, (1, 1), activation="relu"))
         model.add(Dropout(0.5))
         model.add(Convolution2D(2622, (1, 1)))
         model.add(Flatten())
-        model.add(Activation('softmax'))
+        model.add(Activation("softmax"))
 
         # pre-trained weights of vgg-face model.
         # you can find it here: https://drive.google.com/file/d/1CPSeum3HpopfomUEK1gybeuIVoeJT_Eo/view?usp=sharing
         # related blog post: https://sefiks.com/2018/08/06/deep-face-recognition-with-keras/
-        model.load_weights('../../Data/vgg_face_weights.h5')
+        model.load_weights("../../Data/vgg_face_weights.h5")
 
     else:
         input_shape = (input_size, 1)
@@ -141,10 +141,16 @@ class DualEncoderAll(tf.keras.Model):
         # mse = tf.keras.losses.MeanSquaredError()
         # loss = tf.math.abs(mse(y, pred))
         if sample_weight is not None:
-            sw = tf.cast(tf.squeeze(sample_weight, axis=-1) if len(sample_weight.shape) > 1 else sample_weight,
-                         tf.float32)
+            sw = tf.cast(
+                tf.squeeze(sample_weight, axis=-1)
+                if len(sample_weight.shape) > 1
+                else sample_weight,
+                tf.float32,
+            )
             per_example = per_example * sw
-            loss = tf.reduce_sum(per_example) / (tf.reduce_sum(sw) + tf.keras.backend.epsilon())
+            loss = tf.reduce_sum(per_example) / (
+                tf.reduce_sum(sw) + tf.keras.backend.epsilon()
+            )
         else:
             loss = tf.reduce_mean(per_example)
 
@@ -160,7 +166,9 @@ class DualEncoderAll(tf.keras.Model):
 
         with tf.GradientTape() as tape:
             encodings_A, encodings_B, y = self(x, trainable=True)
-            loss = self.compute_loss(encodings_A, encodings_B, y, sample_weight=sample_weight)
+            loss = self.compute_loss(
+                encodings_A, encodings_B, y, sample_weight=sample_weight
+            )
 
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
@@ -168,7 +176,6 @@ class DualEncoderAll(tf.keras.Model):
         # loss is now a scalar, so the Mean metric is happy.
         self.loss_tracker.update_state(loss)
         return {"loss": self.loss_tracker.result()}
-
 
     def predict(self, A, B):
         pred = self._to_scalar(self.encoder(A)) - self._to_scalar(self.encoder(B))

@@ -14,20 +14,24 @@ def _predict_labels_batch(test, dual_encoder, batch_size=2048):
     dataB = np.asarray(test["B"].tolist())
     if dataA.ndim > 2:
         batch_size = min(batch_size, 16)
-    raw_scores = dual_encoder.predict(dataA, dataB, batch_size=batch_size).numpy().reshape(-1)
+    raw_scores = (
+        dual_encoder.predict(dataA, dataB, batch_size=batch_size).numpy().reshape(-1)
+    )
     return np.where(raw_scores < 0, -1, 1).tolist()
 
 
-def learn(train_data,
-          epochs=100,
-          validation_data=None,
-          y_true=[],
-          patience=10,
-          batch_size=512,
-          shared=False,
-          train_weights=None,
-          val_weights=None,
-          df_name= None):
+def learn(
+    train_data,
+    epochs=100,
+    validation_data=None,
+    y_true=[],
+    patience=10,
+    batch_size=512,
+    shared=False,
+    train_weights=None,
+    val_weights=None,
+    df_name=None,
+):
     # SCUT image pairs are large; use a tiny batch and stream samples to avoid OOM.
     is_scut = df_name is not None and "scut" in df_name.lower()
     if is_scut:
@@ -67,32 +71,57 @@ def learn(train_data,
             "Weights": tf.TensorSpec(shape=(), dtype=tf.float32),
         }
 
-    train_dataset = tf.data.Dataset.from_generator(_row_generator, output_signature=output_signature)
+    train_dataset = tf.data.Dataset.from_generator(
+        _row_generator, output_signature=output_signature
+    )
     train_dataset = train_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     if shared == True:
-        encoder = SharedDualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1], df_name=df_name)
-        dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
+        encoder = SharedDualEncoder.create_encoder(
+            input_size=train_dataset.element_spec["A"].shape[1], df_name=df_name
+        )
+        dual_encoder = SharedDualEncoder.DualEncoderAll(
+            encoder, y_true=np.array(y_true)
+        )
     else:
-        encoder_A = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
-        encoder_B = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
-        dual_encoder = DualEncoder.DualEncoderAll(encoder_A, encoder_B, y_true=np.array(y_true))
+        encoder_A = DualEncoder.create_encoder(
+            input_size=train_dataset.element_spec["A"].shape[1]
+        )
+        encoder_B = DualEncoder.create_encoder(
+            input_size=train_dataset.element_spec["A"].shape[1]
+        )
+        dual_encoder = DualEncoder.DualEncoderAll(
+            encoder_A, encoder_B, y_true=np.array(y_true)
+        )
     dual_encoder.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
-        jit_compile=not is_scut
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3), jit_compile=not is_scut
     )
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
-    dual_encoder.fit(
-        x=train_dataset,
-        epochs=epochs,
-        verbose=0)
+    dual_encoder.fit(x=train_dataset, epochs=epochs, verbose=0)
 
     return dual_encoder
 
 
-def train_model(train, val, y_true, epochs=100, shared=False, train_weights=None, val_weights=None, df_name= None):
+def train_model(
+    train,
+    val,
+    y_true,
+    epochs=100,
+    shared=False,
+    train_weights=None,
+    val_weights=None,
+    df_name=None,
+):
     train = train.sample(frac=1).reset_index(drop=True)
-    dual_encoder = learn(train, epochs=epochs, validation_data=None, y_true=y_true, shared=shared,
-                         train_weights=train_weights, val_weights=None, df_name=df_name)
+    dual_encoder = learn(
+        train,
+        epochs=epochs,
+        validation_data=None,
+        y_true=y_true,
+        shared=shared,
+        train_weights=train_weights,
+        val_weights=None,
+        df_name=df_name,
+    )
     return dual_encoder
 
 
@@ -175,6 +204,7 @@ def evaluate(y_true, y_pred):
 #     predList = predList.reset_index()
 #     return realList, predList
 
+
 def generateLists(test_dataset, dual_encoder):
     # realList = {}
     # predList = {}
@@ -215,8 +245,8 @@ def evaluateLists(realList, predList):
     for i in range(ln):
         id = realList[i]
         j = predList.index(id)
-        diff += (abs(i - j))
-        sum_d += ((i - j) * (i - j))
+        diff += abs(i - j)
+        sum_d += (i - j) * (i - j)
     spearman_corr = 1 - ((6 * sum_d) / (ln * ((ln * ln) - 1)))
     spearman_corr = round(spearman_corr, 3)
     avg_diff = round(diff / ln, 3)
@@ -252,6 +282,7 @@ def explainability(test_dataset, feat_list, dual_encoder):
         res.append({})
     res = pd.DataFrame(res)
     return res
+
 
 # def comparabilityExperiment(shared=False, dataName="Boston", testList=None, dataList=None, feat_list=None, epochs=100):
 #     r = Reader()

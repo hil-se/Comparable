@@ -130,8 +130,10 @@ class Metrics:
             var = var1 / len(bias[1]) + var0 / len(bias[0])
             if var > 0:
                 bias_diff = bias_diff / np.sqrt(var)
-                dof = var ** 2 / ((var1 / len(bias[1])) ** 2 / (len(bias[1]) - 1) + (var0 / len(bias[0])) ** 2 / (
-                        len(bias[0]) - 1))
+                dof = var**2 / (
+                    (var1 / len(bias[1])) ** 2 / (len(bias[1]) - 1)
+                    + (var0 / len(bias[0])) ** 2 / (len(bias[0]) - 1)
+                )
             else:
                 bias_diff = 0.0
                 dof = 1
@@ -156,8 +158,9 @@ class Metrics:
         return p
 
     def r_sep(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
         model_joint = LogisticRegression().fit(joint, s)
         model_margin = LogisticRegression().fit(margin, s)
@@ -167,14 +170,17 @@ class Metrics:
         ratio = 0
 
         for i in range(len(s)):
-            t = (prob_joint[i] / (1 - prob_joint[i])) * ((1 - prob_margin[i]) / prob_margin[i])
+            t = (prob_joint[i] / (1 - prob_joint[i])) * (
+                (1 - prob_margin[i]) / prob_margin[i]
+            )
             ratio = ratio + t
         ratio = ratio / len(s)
         return ratio
 
     def MI(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
         model_joint = LogisticRegression().fit(joint, s)
         model_margin = LogisticRegression().fit(margin, s)
@@ -192,7 +198,6 @@ class Metrics:
         return MI
 
     def MI_b(self, s):
-
         y0 = self.y[s == 0]
         y0_pred = self.y_pred[s == 0]
         y1 = self.y[s == 1]
@@ -200,15 +205,26 @@ class Metrics:
 
         tp0, fp0, tn0, fn0 = self.confusion(y0, y0_pred)
         tp1, fp1, tn1, fn1 = self.confusion(y1, y1_pred)
-        def ediff(n1, d1, n0, d0):
-            return np.log(n0/(n0+d0))*n0 + np.log(n1/(n1+d1))*n1 - (n0+n1)*np.log((n0+n1)/(n0+n1+d0+d1))
 
-        MI = ediff(tp1, fn1, tp0, fn0) + ediff(fp1, tn1, fp0, tn0) + ediff(tn1, fp1, tn0, fp0) + ediff(fn1, tp1, fn0, tp0)
+        def ediff(n1, d1, n0, d0):
+            return (
+                np.log(n0 / (n0 + d0)) * n0
+                + np.log(n1 / (n1 + d1)) * n1
+                - (n0 + n1) * np.log((n0 + n1) / (n0 + n1 + d0 + d1))
+            )
+
+        MI = (
+            ediff(tp1, fn1, tp0, fn0)
+            + ediff(fp1, tn1, fp0, tn0)
+            + ediff(tn1, fp1, tn0, fp0)
+            + ediff(fn1, tp1, fn0, tp0)
+        )
         return MI / len(s)
 
     def MI_con(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
 
         model_joint = LinearRegression().fit(joint, s)
@@ -278,16 +294,16 @@ class Metrics:
         Entropy = 0
 
         for i in range(len(s)):
-            Info = Info + math.log(
-                pdf_joint[i] / pdf_margin[i])
+            Info = Info + math.log(pdf_joint[i] / pdf_margin[i])
             Entropy = Entropy + math.log(pdf_margin[i])
 
         MI = Info / (-Entropy)
         return MI
 
     def MI_con_scaled(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
 
         model_joint = LinearRegression().fit(joint, s)
@@ -314,16 +330,16 @@ class Metrics:
         Entropy = 0
 
         for i in range(len(s)):
-            Info = Info + math.log(
-                scaled_joint_pdf[i] / scaled_pdf_margin[i])
+            Info = Info + math.log(scaled_joint_pdf[i] / scaled_pdf_margin[i])
             Entropy = Entropy + math.log(scaled_pdf_margin[i])
 
         MI = Info / (-Entropy)
         return MI
 
     def MI_con_info(self, s):
-
-        joint = pd.DataFrame({'y': self.y, 'y_pred': self.y_pred}, columns=['y', 'y_pred'])
+        joint = pd.DataFrame(
+            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
+        )
         margin = self.y.reshape(-1, 1)
 
         model_joint = LinearRegression().fit(joint, s)
@@ -341,18 +357,16 @@ class Metrics:
         Info = 0
 
         for i in range(len(s)):
-            Info = Info + math.log(
-                pdf_joint[i] / pdf_margin[i])
+            Info = Info + math.log(pdf_joint[i] / pdf_margin[i])
 
         MI = Info / len(s)
         return MI
 
     def AOD_comp(self, s):
-
         t = n = tp = fp = tn = fn = 0
 
         for i, row in s.iterrows():
-            if row['A'] > row['B']:
+            if row["A"] > row["B"]:
                 if self.y[i] == 1:
                     t += 1
                     if self.y_pred[i] == 1:
@@ -366,7 +380,7 @@ class Metrics:
                     if self.y_pred[i] == -1:
                         tn += 1
 
-            elif row['A'] < row['B']:
+            elif row["A"] < row["B"]:
                 if self.y[i] == -1:
                     t += 1
                     if self.y_pred[i] == -1:
@@ -389,12 +403,11 @@ class Metrics:
         return aod
 
     def Within_comp(self, s):
-
         t1 = n1 = tp1 = fp1 = tn1 = fn1 = 0
         t0 = n0 = tp0 = fp0 = tn0 = fn0 = 0
 
         for i, row in s.iterrows():
-            if row['A'] == row['B'] == 1:
+            if row["A"] == row["B"] == 1:
                 if self.y[i] == 1:
                     t1 += 1
                     if self.y_pred[i] == 1:
@@ -408,7 +421,7 @@ class Metrics:
                     if self.y_pred[i] == -1:
                         tn1 += 1
 
-            elif row['A'] == row['B'] == 0:
+            elif row["A"] == row["B"] == 0:
                 if self.y[i] == 1:
                     t0 += 1
                     if self.y_pred[i] == 1:
@@ -422,16 +435,16 @@ class Metrics:
                     if self.y_pred[i] == -1:
                         tn0 += 1
 
-        tpr1 = (tp1+tn1) / (t1+n1)
-        fpr1 = (fp1+fn1) / (t1+n1)
-        tpr0 = (tp0+tn0) / (t0+n0)
-        fpr0 = (fp0+fn0) / (t0+n0)
+        tpr1 = (tp1 + tn1) / (t1 + n1)
+        fpr1 = (fp1 + fn1) / (t1 + n1)
+        tpr0 = (tp0 + tn0) / (t0 + n0)
+        fpr0 = (fp0 + fn0) / (t0 + n0)
         within = (tpr1 - fpr1 - tpr0 + fpr0) / 2
 
         return within
 
     def Sep_comp(self, s):
-        return np.sqrt(self.Within_comp(s)**2+self.AOD_comp(s)**2)
+        return np.sqrt(self.Within_comp(s) ** 2 + self.AOD_comp(s) ** 2)
 
     def gAOD(self, s):
         # s is an array of numerical values of a sensitive attribute
@@ -508,68 +521,68 @@ class Metrics:
         t11 = n11 = tp11 = fp11 = tn11 = fn11 = 0
         t10 = n10 = tp10 = fp10 = tn10 = fn10 = 0
         t01 = n01 = tp01 = fp01 = tn01 = fn01 = 0
-        t00 = n00 =tp00 = fp00 = tn00 = fn00 = 0
+        t00 = n00 = tp00 = fp00 = tn00 = fn00 = 0
 
         for i, row in s.iterrows():
             if self.y[i] == 1:
                 t += 1
-                if row['A'] == row['B'] == 1:
+                if row["A"] == row["B"] == 1:
                     t11 += 1
-                if row['A'] == row['B'] == 0:
+                if row["A"] == row["B"] == 0:
                     t00 += 1
-                if row['A'] == 1 and row['B'] == 0:
+                if row["A"] == 1 and row["B"] == 0:
                     t10 += 1
-                if row['A'] == 0 and row['B'] == 1:
+                if row["A"] == 0 and row["B"] == 1:
                     t01 += 1
                 if self.y_pred[i] == 1:
                     tp += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         tp11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         tp00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         tp10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         tp01 += 1
                 if self.y_pred[i] == -1:
                     fn += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         fn11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         fn00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         fn10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         fn01 += 1
             elif self.y[i] == -1:
                 n += 1
-                if row['A'] == row['B'] == 1:
+                if row["A"] == row["B"] == 1:
                     n11 += 1
-                if row['A'] == row['B'] == 0:
+                if row["A"] == row["B"] == 0:
                     n00 += 1
-                if row['A'] == 1 and row['B'] == 0:
+                if row["A"] == 1 and row["B"] == 0:
                     n10 += 1
-                if row['A'] == 0 and row['B'] == 1:
+                if row["A"] == 0 and row["B"] == 1:
                     n01 += 1
                 if self.y_pred[i] == 1:
                     fp += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         fp11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         fp00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         fp10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         fp01 += 1
                 if self.y_pred[i] == -1:
                     tn += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         tn11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         tn00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         tn10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         tn01 += 1
         tp = tp00 + tp01 + tp10 + tp11
         fn = fn00 + fn01 + fn10 + fn11
@@ -607,68 +620,68 @@ class Metrics:
         t11 = n11 = tp11 = fp11 = tn11 = fn11 = 0
         t10 = n10 = tp10 = fp10 = tn10 = fn10 = 0
         t01 = n01 = tp01 = fp01 = tn01 = fn01 = 0
-        t00 = n00 =tp00 = fp00 = tn00 = fn00 = 0
+        t00 = n00 = tp00 = fp00 = tn00 = fn00 = 0
 
         for i, row in s.iterrows():
             if self.y[i] == 1:
                 t += 1
-                if row['A'] == row['B'] == 1:
+                if row["A"] == row["B"] == 1:
                     t11 += 1
-                if row['A'] == row['B'] == 0:
+                if row["A"] == row["B"] == 0:
                     t00 += 1
-                if row['A'] == 1 and row['B'] == 0:
+                if row["A"] == 1 and row["B"] == 0:
                     t10 += 1
-                if row['A'] == 0 and row['B'] == 1:
+                if row["A"] == 0 and row["B"] == 1:
                     t01 += 1
                 if self.y_pred[i] == 1:
                     tp += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         tp11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         tp00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         tp10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         tp01 += 1
                 if self.y_pred[i] == -1:
                     fn += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         fn11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         fn00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         fn10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         fn01 += 1
             elif self.y[i] == -1:
                 n += 1
-                if row['A'] == row['B'] == 1:
+                if row["A"] == row["B"] == 1:
                     n11 += 1
-                if row['A'] == row['B'] == 0:
+                if row["A"] == row["B"] == 0:
                     n00 += 1
-                if row['A'] == 1 and row['B'] == 0:
+                if row["A"] == 1 and row["B"] == 0:
                     n10 += 1
-                if row['A'] == 0 and row['B'] == 1:
+                if row["A"] == 0 and row["B"] == 1:
                     n01 += 1
                 if self.y_pred[i] == 1:
                     fp += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         fp11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         fp00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         fp10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         fp01 += 1
                 if self.y_pred[i] == -1:
                     tn += 1
-                    if row['A'] == row['B'] == 1:
+                    if row["A"] == row["B"] == 1:
                         tn11 += 1
-                    if row['A'] == row['B'] == 0:
+                    if row["A"] == row["B"] == 0:
                         tn00 += 1
-                    if row['A'] == 1 and row['B'] == 0:
+                    if row["A"] == 1 and row["B"] == 0:
                         tn10 += 1
-                    if row['A'] == 0 and row['B'] == 1:
+                    if row["A"] == 0 and row["B"] == 1:
                         tn01 += 1
 
         mitp00 = np.log(tp00 / t00 / (tp / t)) * tp00 / len(s)
