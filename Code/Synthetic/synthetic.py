@@ -537,9 +537,9 @@ for i in range(10):
     res_ts_sa = []
 
     if use_all_pairs:
-        # Generate all possible pairs (i, j) where i != j (Fully vectorized)
+        # Generate each unordered pair once (i < j) to avoid duplicates.
         num_train = len(train_vals)
-        idx_a, idx_b = np.where(~np.eye(num_train, dtype=bool))
+        idx_a, idx_b = np.triu_indices(num_train, k=1)
 
         # Vectorized labels for all pairs
         labels = np.sign(
@@ -582,7 +582,7 @@ for i in range(10):
             for ra, rb, lbl in zip(rows_a, rows_b, labels)
         ]
     else:
-        # Optimized random pair generation (vectorized where possible)
+        # Random pair generation without duplicate unordered pairs.
         n_train = len(train)
         keep_cols = np.ones(train_vals.shape[1], dtype=bool)
         keep_cols[col_idx] = False
@@ -590,21 +590,25 @@ for i in range(10):
         # Pre-allocate arrays for batch processing
         all_idx_a = []
         all_idx_b = []
+        used_pairs = set()
 
         for idx_a in range(n_train):
-            # Vectorized partner selection
-            if idx_a == 0:
-                partners = (
-                    np.random.choice(n_train - 1, num_comp_train, replace=False) + 1
-                )
-            elif idx_a == n_train - 1:
-                partners = np.random.choice(n_train - 1, num_comp_train, replace=False)
-            else:
-                partners = np.random.randint(0, n_train - 1, num_comp_train)
-                partners[partners >= idx_a] += 1
+            candidates = [
+                idx_b
+                for idx_b in range(n_train)
+                if idx_b != idx_a
+                   and (min(idx_a, idx_b), max(idx_a, idx_b)) not in used_pairs
+            ]
+            if not candidates:
+                continue
 
-            all_idx_a.extend([idx_a] * len(partners))
-            all_idx_b.extend(partners)
+            k = min(num_comp_train, len(candidates))
+            partners = np.random.choice(candidates, size=k, replace=False)
+
+            for idx_b in partners:
+                used_pairs.add((min(idx_a, int(idx_b)), max(idx_a, int(idx_b))))
+                all_idx_a.append(idx_a)
+                all_idx_b.append(int(idx_b))
 
         # Batch process all pairs
         all_idx_a = np.array(all_idx_a)
@@ -831,6 +835,8 @@ for i in range(10):
     violate_comp = violate_comp_w = 0
     violate = violate_w = 0
     n_rows = len(data_raw)
+    y_vals = data_raw[:, 1]
+    has_comparable_pairs = np.unique(y_vals).size > 1
 
     # Vectorize violation checks
     half_size = n_rows // 2
@@ -846,16 +852,25 @@ for i in range(10):
         violate_w += min(ps_w) < alpha
 
     for _ in range(r):
-        idx1 = np.random.randint(0, n_rows, size=n_rows)
-        idx2 = np.random.randint(0, n_rows, size=n_rows)
-
-        # Filter for Y1 != Y2
-        mask = data_raw[idx1, 1] != data_raw[idx2, 1]
-        i1, i2 = idx1[mask], idx2[mask]
-
-        # If everything got filtered out, skip this round
-        if i1.size == 0:
+        if not has_comparable_pairs:
             continue
+
+        # Build exactly n_rows pairs with Y1 != Y2.
+        i1 = np.empty(n_rows, dtype=np.int64)
+        i2 = np.empty(n_rows, dtype=np.int64)
+        filled = 0
+        while filled < n_rows:
+            remaining = n_rows - filled
+            batch_size = max(remaining * 2, 256)
+            idx1 = np.random.randint(0, n_rows, size=batch_size)
+            idx2 = np.random.randint(0, n_rows, size=batch_size)
+            valid = y_vals[idx1] != y_vals[idx2]
+            if not np.any(valid):
+                continue
+            take = min(remaining, int(valid.sum()))
+            i1[filled: filled + take] = idx1[valid][:take]
+            i2[filled: filled + take] = idx2[valid][:take]
+            filled += take
 
         violate_comp += (
             min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0])
