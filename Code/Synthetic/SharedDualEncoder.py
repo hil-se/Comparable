@@ -160,18 +160,6 @@ class DualEncoderAll(tf.keras.Model):
         self.loss_tracker.update_state(loss)
         return {"loss": self.loss_tracker.result()}
 
-    def test_step(self, data):
-        if isinstance(data, tuple):
-            x = data[0]
-        else:
-            x = data
-
-        sample_weight = x.get("Weights", None) if isinstance(x, dict) else None
-        encodings_A, encodings_B, y = self(x, trainable=False)
-        loss = self.compute_loss(encodings_A, encodings_B, y, sample_weight=sample_weight)
-
-        self.loss_tracker.update_state(loss)
-        return {"loss": self.loss_tracker.result()}
 
     def predict(self, A, B):
         return self.encoder(A) - self.encoder(B)

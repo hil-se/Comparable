@@ -1,4 +1,5 @@
 import random
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import tensorflow as tf
@@ -7,6 +8,9 @@ pd.set_option('display.max_columns', None)
 
 height = 250
 width = 250
+
+# Global cache for loaded images
+_image_cache = {}
 
 
 def loadData(col="Average", num_img=5500):
@@ -24,15 +28,38 @@ def loadData(col="Average", num_img=5500):
 
 
 def retrievePixels(path):
-    # img = tf.keras.utils.load_img("../data/images/"+path, grayscale=False)
+    # Check cache first
+    if path in _image_cache:
+        return _image_cache[path]
+
     folder_path = "../../Data/Images/"
-    # folder_path = "../../../XAI_Image/data/images/"
     img = tf.keras.utils.load_img(folder_path + path, target_size=(height, width))
     x = tf.keras.utils.img_to_array(img)
+
+    # Cache the result
+    _image_cache[path] = x
     return x
 
 
+def retrievePixels_batch(paths):
+    """Load multiple images in parallel"""
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(retrievePixels, paths))
+    return results
+
+
+def _encode_from_filenames(files, idx, value):
+    files = files.astype(str)
+    return files.str[idx].eq(value).astype(int).tolist()
+
+
+def _load_pixels_cached(series):
+    arr = series.astype(str).tolist()
+    return [retrievePixels(path) / 255.0 for path in arr]
+
+
 def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
+    global height, width
     height = h
     width = w
     data = loadData(col=col, num_img=num_img)
@@ -56,11 +83,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     #     else:
     #         protected_tr_sex.append(0)
     #
-    for file in test["Filename"]:
-        if file[1] == 'M':
-            protected_ts_sex.append(1)
-        else:
-            protected_ts_sex.append(0)
+    protected_ts_sex = _encode_from_filenames(test["Filename"], 1, "M")
     #
     # for file in train["Filename"]:
     #     if file[0] == 'C':
@@ -68,11 +91,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     #     else:
     #         protected_tr_race.append(0)
     #
-    for file in test["Filename"]:
-        if file[0] == 'C':
-            protected_ts_race.append(1)
-        else:
-            protected_ts_race.append(0)
+    protected_ts_race = _encode_from_filenames(test["Filename"], 0, "C")
 
     res_tr = []
     res_ts = []
@@ -114,11 +133,11 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     data_tr = pd.DataFrame(res_tr)
     data_tr_single = pd.DataFrame(res_tr_single)
 
-    data_tr['A'] = data_tr['A'].apply(retrievePixels).div(255.0)
-    data_tr['B'] = data_tr['B'].apply(retrievePixels).div(255.0)
+    data_tr["A"] = _load_pixels_cached(data_tr["A"])
+    data_tr["B"] = _load_pixels_cached(data_tr["B"])
 
-    data_tr_single['A'] = data_tr_single['A'].apply(retrievePixels).div(255.0)
-    data_tr_single['B'] = data_tr_single['B'].apply(retrievePixels).div(255.0)
+    data_tr_single["A"] = _load_pixels_cached(data_tr_single["A"])
+    data_tr_single["B"] = _load_pixels_cached(data_tr_single["B"])
     # print("Saving training data...")
     # data_tr = data_tr.sample(frac=1)
     # data_tr.to_csv("../../Data/ImageExp/image_train.csv", index=False)
@@ -169,29 +188,13 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     protected_ts_A_race_single = []
     protected_ts_B_race_single = []
 
-    for file in data_ts["A"]:
-        if file[1] == 'M':
-            protected_ts_A_sex.append(1)
-        else:
-            protected_ts_A_sex.append(0)
+    protected_ts_A_sex = _encode_from_filenames(data_ts["A"], 1, "M")
 
-    for file in data_ts["B"]:
-        if file[1] == 'M':
-            protected_ts_B_sex.append(1)
-        else:
-            protected_ts_B_sex.append(0)
+    protected_ts_B_sex = _encode_from_filenames(data_ts["B"], 1, "M")
 
-    for file in data_ts["A"]:
-        if file[0] == 'C':
-            protected_ts_A_race.append(1)
-        else:
-            protected_ts_A_race.append(0)
+    protected_ts_A_race = _encode_from_filenames(data_ts["A"], 0, "C")
 
-    for file in data_ts["B"]:
-        if file[0] == 'C':
-            protected_ts_B_race.append(1)
-        else:
-            protected_ts_B_race.append(0)
+    protected_ts_B_race = _encode_from_filenames(data_ts["B"], 0, "C")
 
     protected_ts_AB_race = pd.DataFrame({
         "A": protected_ts_A_race,
@@ -203,29 +206,13 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         "B": protected_ts_B_sex
     })
 
-    for file in data_ts_single["A"]:
-        if file[1] == 'M':
-            protected_ts_A_sex_single.append(1)
-        else:
-            protected_ts_A_sex_single.append(0)
+    protected_ts_A_sex_single = _encode_from_filenames(data_ts_single["A"], 1, "M")
 
-    for file in data_ts_single["B"]:
-        if file[1] == 'M':
-            protected_ts_B_sex_single.append(1)
-        else:
-            protected_ts_B_sex_single.append(0)
+    protected_ts_B_sex_single = _encode_from_filenames(data_ts_single["B"], 1, "M")
 
-    for file in data_ts_single["A"]:
-        if file[0] == 'C':
-            protected_ts_A_race_single.append(1)
-        else:
-            protected_ts_A_race_single.append(0)
+    protected_ts_A_race_single = _encode_from_filenames(data_ts_single["A"], 0, "C")
 
-    for file in data_ts_single["B"]:
-        if file[0] == 'C':
-            protected_ts_B_race_single.append(1)
-        else:
-            protected_ts_B_race_single.append(0)
+    protected_ts_B_race_single = _encode_from_filenames(data_ts_single["B"], 0, "C")
 
     protected_ts_AB_race_single = pd.DataFrame({
         "A": protected_ts_A_race_single,
@@ -237,11 +224,11 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         "B": protected_ts_B_sex_single
     })
 
-    data_ts['A'] = data_ts['A'].apply(retrievePixels).div(255.0)
-    data_ts['B'] = data_ts['B'].apply(retrievePixels).div(255.0)
+    data_ts["A"] = _load_pixels_cached(data_ts["A"])
+    data_ts["B"] = _load_pixels_cached(data_ts["B"])
 
-    data_ts_single['A'] = data_ts_single['A'].apply(retrievePixels).div(255.0)
-    data_ts_single['B'] = data_ts_single['B'].apply(retrievePixels).div(255.0)
+    data_ts_single["A"] = _load_pixels_cached(data_ts_single["A"])
+    data_ts_single["B"] = _load_pixels_cached(data_ts_single["B"])
 
     # print("Saving testing data...")
     # data_ts = data_ts.sample(frac=1)

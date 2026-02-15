@@ -8,137 +8,71 @@ import SharedDualEncoder
 import metrics
 
 
+def _predict_labels_batch(test, dual_encoder, batch_size=2048):
+    """Batch inference to avoid per-row Python/TensorFlow overhead."""
+    dataA = np.asarray(test["A"].tolist())
+    dataB = np.asarray(test["B"].tolist())
+    raw_scores = dual_encoder.predict(dataA, dataB, batch_size=batch_size).numpy().reshape(-1)
+    return np.where(raw_scores < 0, -1, 1).tolist()
+
+
 def learn(train_data,
           epochs=100,
           validation_data=None,
           y_true=[],
           patience=10,
-          batch_size=256,
+          batch_size=512,
           shared=False,
           train_weights=None,
           val_weights=None,
           df_name= None):
-    td_s = train_data["A"].to_list()
-    td_t = train_data["B"].to_list()
-    train_y = np.array(train_data["Label"].tolist())
-    source = np.array([emb for emb in td_s])
-    target = np.array([emb for emb in td_t])
+    # Vectorized data extraction (avoid list comprehension)
+    source = np.array(train_data["A"].tolist())
+    target = np.array(train_data["B"].tolist())
+    train_y = train_data["Label"].values
 
     if train_weights is not None:
         tr_feature = {"A": source, "B": target, "Label": train_y, "Weights": train_weights}
     else:
         tr_feature = {"A": source, "B": target, "Label": train_y}
 
-    v_s = validation_data["A"].to_list()
-    v_t = validation_data["B"].to_list()
-    val_y = np.array(validation_data["Label"].tolist())
-    source = np.array([emb for emb in v_s])
-    target = np.array([emb for emb in v_t])
-
-    if val_weights is not None:
-        v_feature = {"A": source, "B": target, "Label": val_y, "Weights": val_weights}
-    else:
-        v_feature = {"A": source, "B": target, "Label": val_y}
-
     train_dataset = tf.data.Dataset.from_tensor_slices(tr_feature)
-    val_dataset = tf.data.Dataset.from_tensor_slices(v_feature)
 
-    train_dataset = train_dataset.batch(batch_size)
-    val_dataset = val_dataset.batch(batch_size)
+    train_dataset = train_dataset.cache().batch(batch_size).prefetch(tf.data.AUTOTUNE)
     if shared == True:
         encoder = SharedDualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1], df_name=df_name)
         dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
     else:
         encoder_A = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
-        encoder_B = DualEncoder.create_encoder(input_size=val_dataset.element_spec['A'].shape[1])
+        encoder_B = DualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1])
         dual_encoder = DualEncoder.DualEncoderAll(encoder_A, encoder_B, y_true=np.array(y_true))
-    dual_encoder.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3))
+    dual_encoder.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+        jit_compile=True
+    )
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)
     dual_encoder.fit(
         x=train_dataset,
         epochs=epochs,
-        validation_data=val_dataset,
-        callbacks=[early_stopping],
         verbose=0)
 
     return dual_encoder
 
 
 def train_model(train, val, y_true, epochs=100, shared=False, train_weights=None, val_weights=None, df_name= None):
-    np.random.shuffle(train.values)
-    np.random.shuffle(val.values)
-    dual_encoder = learn(train, epochs=epochs, validation_data=val, y_true=y_true, shared=shared, train_weights=train_weights, val_weights=val_weights, df_name=df_name)
+    train = train.sample(frac=1).reset_index(drop=True)
+    dual_encoder = learn(train, epochs=epochs, validation_data=None, y_true=y_true, shared=shared,
+                         train_weights=train_weights, val_weights=None, df_name=df_name)
     return dual_encoder
 
 
 def predict(test, dual_encoder):
-    dataA = test["A"].tolist()
-    dataB = test["B"].tolist()
-    labels = test["Label"].tolist()
-    ln = len(dataA)
-    predictions = []
-    for i in range(ln):
-        datapoint_A = np.array(dataA[i])
-        datapoint_B = np.array(dataB[i])
-        datapoint_A = np.expand_dims(datapoint_A, axis=0)
-        datapoint_B = np.expand_dims(datapoint_B, axis=0)
-        prediction = dual_encoder.predict(datapoint_A, datapoint_B)
-
-        # prediction = round(prediction.numpy()[0][0].item()) # Labels in [0, 1]
-
-        prediction = prediction.numpy()[0][0].item()
-
-        # Labels: -1, 0, 1
-        # if prediction < -0.33:
-        #     prediction = -1
-        # elif prediction > 0.33:
-        #     prediction = 1
-        # else:
-        #     prediction = 0
-
-        # Labels: -1, 1
-        if prediction < 0:
-            prediction = -1
-        else:
-            prediction = 1
-
-        predictions.append(prediction)
-    return predictions
+    return _predict_labels_batch(test, dual_encoder)
 
 
 def test_model(test, dual_encoder):
-    dataA = test["A"].tolist()
-    dataB = test["B"].tolist()
     labels = test["Label"].tolist()
-    ln = len(dataA)
-    predictions = []
-    for i in range(ln):
-        datapoint_A = np.array(dataA[i])
-        datapoint_B = np.array(dataB[i])
-        datapoint_A = np.expand_dims(datapoint_A, axis=0)
-        datapoint_B = np.expand_dims(datapoint_B, axis=0)
-        prediction = dual_encoder.predict(datapoint_A, datapoint_B)
-
-        # prediction = round(prediction.numpy()[0][0].item()) # Labels in [0, 1]
-
-        prediction = prediction.numpy()[0][0].item()
-
-        # Labels: -1, 0, 1
-        # if prediction < -0.33:
-        #     prediction = -1
-        # elif prediction > 0.33:
-        #     prediction = 1
-        # else:
-        #     prediction = 0
-
-        # Labels: -1, 1
-        if prediction < 0:
-            prediction = -1
-        else:
-            prediction = 1
-
-        predictions.append(prediction)
+    predictions = _predict_labels_batch(test, dual_encoder)
     return predictions, evaluate(labels, predictions)
     # return evaluate_accuracy(labels, predictions)
 

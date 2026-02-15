@@ -1,4 +1,5 @@
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -14,13 +15,16 @@ import DataProcessing
 from metrics import Metrics
 
 isBinary = True
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR.parent.parent / "Data"
+RESULTS_DIR = BASE_DIR / "Results"
 
 
 def retrievePixels(path, height, width):
     # img = tf.keras.utils.load_img("../data/images/"+path, grayscale=False
-    folder_path = "../../Data/Images/"
+    folder_path = DATA_DIR / "Images"
     # folder_path = "../../../XAI_Image/data/images/"
-    img = tf.keras.utils.load_img(folder_path + path, target_size=(height, width))
+    img = tf.keras.utils.load_img(str(folder_path / path), target_size=(height, width))
     x = tf.keras.utils.img_to_array(img)
     return x
 
@@ -343,9 +347,14 @@ def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
 
 
 def make_scut(P="P1"):
-    df = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
+    df = pd.read_csv(DATA_DIR / "ImageExp" / "Selected_Ratings.csv")
     df = df[["Filename", P]]
-    df['pixels'] = df['Filename'].apply(DataProcessing.retrievePixels) / 255.0
+
+    # Parallel image loading with caching
+    print(f"Loading {len(df)} images in parallel...")
+    pixels = DataProcessing.retrievePixels_batch(df['Filename'].tolist())
+    df['pixels'] = [p / 255.0 for p in pixels]
+    print("Images loaded.")
 
     fn = df["Filename"].astype(str)
     df["race"] = fn.str[0].fillna("")
@@ -360,9 +369,6 @@ def make_scut(P="P1"):
 
     global isBinary
     dependent = P
-
-    # features = np.array([pixel for pixel in df['pixels']]) / 255.0
-    # df['features'] = features
 
     X = df[['pixels', 'sa']]
 
@@ -381,7 +387,7 @@ def make_scut(P="P1"):
 
 def make_adult():
     # seed = 18
-    df = pd.read_csv("../../Data/adult.csv", na_values=["?"])
+    df = pd.read_csv(DATA_DIR / "adult.csv", na_values=["?"])
     # df = df.sample(frac=0.1)
     df = df.dropna()
     df['gender'] = df['gender'].apply(lambda x: 1 if x == "Male" else 0)
@@ -413,7 +419,7 @@ def make_adult():
 
 def make_german():
     # seed = 42
-    df = pd.read_csv("../../Data/german_credit_data.csv", index_col=0)
+    df = pd.read_csv(DATA_DIR / "german_credit_data.csv", index_col=0)
     df = df.dropna()
     df['Sex'] = df['Sex'].apply(lambda x: 1 if x == "male" else 0)
     df['Risk'] = df['Risk'].apply(lambda x: 1 if x == "good" else 0)
@@ -443,7 +449,7 @@ def make_german():
 
 def make_heart():
     # seed = 42
-    df = pd.read_csv("../../Data/heart.csv")
+    df = pd.read_csv(DATA_DIR / "heart.csv")
     df = df.dropna()
 
     global isBinary
@@ -467,7 +473,7 @@ def make_heart():
 
 
 def make_compas():
-    df = pd.read_csv("../../Data/compas-scores-two-years.csv")
+    df = pd.read_csv(DATA_DIR / "compas-scores-two-years.csv")
     features_to_keep = ['sex', 'age', 'age_cat', 'race',
                         'juv_fel_count', 'juv_misd_count', 'juv_other_count',
                         'priors_count', 'c_charge_degree',
@@ -506,7 +512,7 @@ def make_compas():
 
 def make_comm():
     # seed = 42
-    df = pd.read_csv("../../Data/communities.csv")
+    df = pd.read_csv(DATA_DIR / "communities.csv")
     df = df.fillna(0)
     B = "racepctblack"
     W = "racePctWhite"
@@ -546,7 +552,7 @@ def make_comm():
 
 
 def make_lsac():
-    df = pd.read_csv("../../Data/lawschool.csv")
+    df = pd.read_csv(DATA_DIR / "lawschool.csv")
     df = df.dropna()
 
     df['race'] = [int(race == 7.0) for race in df['race']]
@@ -655,11 +661,13 @@ for i in range(10):
 
     y_test = test['output'].values
     test_features = test.drop(columns=['output'])
+    is_scut = 'scut' in df_name
 
     # Pre-extract values for index-based access (much faster than iterrows)
     train_vals = train.values
     train_cols = list(train.columns)
     col_idx, sa_idx = train_cols.index(col), train_cols.index('sa')
+    pixels_idx = train_cols.index('pixels') if is_scut else None
 
     res_tr_encoder = []
     svc_encoder = []
@@ -669,49 +677,99 @@ for i in range(10):
     res_ts_sa = []
 
     if use_all_pairs:
-        # Generate all possible pairs (i, j) where i != j
+        # Generate all possible pairs (i, j) where i != j (Fully vectorized)
         num_train = len(train_vals)
         idx_a, idx_b = np.where(~np.eye(num_train, dtype=bool))
 
         # Vectorized labels for all pairs
         labels = np.sign(train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]).astype(int)
 
-        # Filter out ties (Label 0) if desired, similar to existing logic
+        # Filter out ties (Label 0)
         valid_mask = labels != 0
         idx_a, idx_b, labels = idx_a[valid_mask], idx_b[valid_mask], labels[valid_mask]
 
-        for k in range(len(idx_a)):
-            row_a, row_b = train_vals[idx_a[k]], train_vals[idx_b[k]]
-            feat_a = np.delete(row_a, col_idx)
-            feat_b = np.delete(row_b, col_idx)
-            label = labels[k]
+        # Vectorized feature extraction
+        rows_a = train_vals[idx_a]
+        rows_b = train_vals[idx_b]
 
-            res_tr_encoder.append({"A": feat_a.tolist(), "B": feat_b.tolist(), "Label": label})
-            svc_encoder.append(np.append(feat_a - feat_b, label))
-            res_tr_sa.append({
-                "AB": (row_a[sa_idx], row_b[sa_idx]),
-                "AY": ((row_a[sa_idx], row_b[sa_idx]), label)
-            })
+        # Create mask for columns to keep (all except col_idx)
+        keep_cols = np.ones(train_vals.shape[1], dtype=bool)
+        keep_cols[col_idx] = False
+
+        if is_scut:
+            feats_a = np.stack(rows_a[:, pixels_idx]).astype(np.float32)
+            feats_b = np.stack(rows_b[:, pixels_idx]).astype(np.float32)
+        else:
+            feats_a = rows_a[:, keep_cols]
+            feats_b = rows_b[:, keep_cols]
+
+        # Batch create dictionaries
+        if is_scut:
+            res_tr_encoder = [{"A": fa, "B": fb, "Label": int(lbl)}
+                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+        else:
+            res_tr_encoder = [{"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
+                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+
+        res_tr_sa = [{"AB": (ra[sa_idx], rb[sa_idx]),
+                      "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
+                     for ra, rb, lbl in zip(rows_a, rows_b, labels)]
     else:
-        for idx_a in range(len(train)):
-            row_a = train_vals[idx_a]
-            # Pick partners using numpy instead of df.sample
-            possible_partners = np.delete(np.arange(len(train)), idx_a)
-            partners = np.random.choice(possible_partners, num_comp_train, replace=False)
+        # Optimized random pair generation (vectorized where possible)
+        n_train = len(train)
+        keep_cols = np.ones(train_vals.shape[1], dtype=bool)
+        keep_cols[col_idx] = False
 
-            for idx_b in partners:
-                row_b = train_vals[idx_b]
-                label = 1 if row_a[col_idx] > row_b[col_idx] else (-1 if row_a[col_idx] < row_b[col_idx] else 0)
+        # Pre-allocate arrays for batch processing
+        all_idx_a = []
+        all_idx_b = []
 
-                if label != 0:
-                    feat_a = np.delete(row_a, col_idx)
-                    feat_b = np.delete(row_b, col_idx)
-                    res_tr_encoder.append({"A": feat_a.tolist(), "B": feat_b.tolist(), "Label": label})
-                    svc_encoder.append(np.append(feat_a - feat_b, label))
-                    res_tr_sa.append({
-                        "AB": (row_a[sa_idx], row_b[sa_idx]),
-                        "AY": ((row_a[sa_idx], row_b[sa_idx]), label)
-                    })
+        for idx_a in range(n_train):
+            # Vectorized partner selection
+            if idx_a == 0:
+                partners = np.random.choice(n_train - 1, num_comp_train, replace=False) + 1
+            elif idx_a == n_train - 1:
+                partners = np.random.choice(n_train - 1, num_comp_train, replace=False)
+            else:
+                partners = np.random.randint(0, n_train - 1, num_comp_train)
+                partners[partners >= idx_a] += 1
+
+            all_idx_a.extend([idx_a] * len(partners))
+            all_idx_b.extend(partners)
+
+        # Batch process all pairs
+        all_idx_a = np.array(all_idx_a)
+        all_idx_b = np.array(all_idx_b)
+
+        rows_a = train_vals[all_idx_a]
+        rows_b = train_vals[all_idx_b]
+
+        diffs = rows_a[:, col_idx] - rows_b[:, col_idx]
+        valid_mask = diffs != 0
+        labels = np.where(diffs > 0, 1, -1)
+
+        # Filter valid pairs
+        rows_a = rows_a[valid_mask]
+        rows_b = rows_b[valid_mask]
+        labels = labels[valid_mask]
+
+        if is_scut:
+            feats_a = np.stack(rows_a[:, pixels_idx]).astype(np.float32)
+            feats_b = np.stack(rows_b[:, pixels_idx]).astype(np.float32)
+        else:
+            feats_a = rows_a[:, keep_cols]
+            feats_b = rows_b[:, keep_cols]
+
+        if is_scut:
+            res_tr_encoder = [{"A": fa, "B": fb, "Label": int(lbl)}
+                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+        else:
+            res_tr_encoder = [{"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
+                              for fa, fb, lbl in zip(feats_a, feats_b, labels)]
+
+        res_tr_sa = [{"AB": (ra[sa_idx], rb[sa_idx]),
+                      "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
+                     for ra, rb, lbl in zip(rows_a, rows_b, labels)]
 
     # for indexA, rowA in test.iterrows():
     #     comp = []
@@ -749,17 +807,15 @@ for i in range(10):
     #             comp_count += 1
 
     data_tr_encoder = pd.DataFrame(res_tr_encoder)
-    res_tr_sa = pd.DataFrame(res_tr_sa)
     nc = len(data_tr_encoder)
 
-    data_ts_encoder = pd.DataFrame(res_ts_encoder)
-    res_ts_sa = pd.DataFrame(res_ts_sa)
+    # Optimized Weights calculation (vectorized)
+    res_tr_sa = pd.DataFrame(res_tr_sa)
+    ab_array = np.array(res_tr_sa['AB'].tolist())
+    is_same_group = ab_array[:, 0] == ab_array[:, 1]
 
-    # Optimized Weights calculation (vectorized map)
     p_aij = res_tr_sa['AB'].value_counts(normalize=True)
     p_aij_yij = res_tr_sa['AY'].value_counts(normalize=True)
-
-    is_same_group = res_tr_sa['AB'].apply(lambda x: x[0] == x[1])
 
     # Calculate weights using vectorized mapping
     weights = np.ones(len(res_tr_sa))
@@ -769,18 +825,15 @@ for i in range(10):
             (2 * res_tr_sa.loc[diff_group_mask, 'AY'].map(p_aij_yij))
     ).values
 
-    train_idx = data_tr_encoder.sample(frac=0.8).index
-    val_idx = data_tr_encoder.index.difference(train_idx)
-
-    dual_encoder = Classification.train_model(train=data_tr_encoder.loc[train_idx], val=data_tr_encoder.loc[val_idx],
-                                              y_true=data_tr_encoder.loc[train_idx, "Label"].tolist(),
+    dual_encoder = Classification.train_model(train=data_tr_encoder, val=None,
+                                              y_true=data_tr_encoder["Label"].tolist(),
                                               shared=True, epochs=100, df_name =df_name)
 
-    dual_encoder_weighted = Classification.train_model(train=data_tr_encoder.loc[train_idx],
-                                                       val=data_tr_encoder.loc[val_idx],
-                                                       y_true=data_tr_encoder.loc[train_idx, "Label"].tolist(),
+    dual_encoder_weighted = Classification.train_model(train=data_tr_encoder,
+                                                       val=None,
+                                                       y_true=data_tr_encoder["Label"].tolist(),
                                                        shared=True, epochs=100,
-                                                       train_weights=weights[train_idx], val_weights=weights[val_idx], df_name = df_name)
+                                                       train_weights=weights, val_weights=None, df_name=df_name)
 
     # predictions = comp_pred(data_ts_encoder, dual_encoder)
     # predictions_weighted = comp_pred(data_ts_encoder, dual_encoder_weighted)
@@ -837,8 +890,11 @@ for i in range(10):
 
     I_sep_lr = m_lr.MI_con_info(test['sa'])
 
-    # Batch Prediction (Avoid row-wise loop)
-    test_vals = test_features.values
+    # Batch Prediction (Single call for better performance)
+    if is_scut:
+        test_vals = np.stack(test_features['pixels'].values).astype(np.float32)
+    else:
+        test_vals = test_features.values
     predictions = dual_encoder.score(test_vals).numpy().flatten()
     predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
 
@@ -847,34 +903,19 @@ for i in range(10):
         predictions_kmeans_weighted = predictions_weighted
 
     else:
-        # Outlier removal and KMeans (Original logic kept but used vectorized arrays)
+        # Outlier removal and KMeans (Optimized)
         pred_filt = remove_outliers(predictions)
         pred_w_filt = remove_outliers(predictions_weighted)
 
-        # plt.hist(predictions, bins=np.linspace(-1, 1, 50))
-        # plt.title('predictions on test data')
-        # plt.show()
-        #
-        # plt.hist(predictions_weighted, bins=np.linspace(-1, 1, 50))
-        # plt.title('predictions on weighted test data')
-        # plt.show()
-
-        # plt.hist(predictions_train, bins=np.linspace(-1, 1, 50))
-        # plt.title('predictions on train data')
-        # plt.show()
-        #
-        # plt.hist(predictions_train_weighted, bins=np.linspace(-1, 1, 50))
-        # plt.title('predictions on weighted train data')
-        # plt.show()
-
-        km = KMeans(n_clusters=2, n_init="auto").fit(pred_filt.reshape(-1, 1))
+        km = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(pred_filt.reshape(-1, 1))
         predictions_kmeans = km.predict(predictions.reshape(-1, 1))
-        if km.cluster_centers_[0] > km.cluster_centers_[1]: predictions_kmeans = 1 - predictions_kmeans
+        if km.cluster_centers_[0] > km.cluster_centers_[1]:
+            predictions_kmeans = 1 - predictions_kmeans
 
-        km_w = KMeans(n_clusters=2, n_init="auto").fit(pred_w_filt.reshape(-1, 1))
+        km_w = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(pred_w_filt.reshape(-1, 1))
         predictions_kmeans_weighted = km_w.predict(predictions_weighted.reshape(-1, 1))
-        if km_w.cluster_centers_[0] > km_w.cluster_centers_[
-            1]: predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
+        if km_w.cluster_centers_[0] > km_w.cluster_centers_[1]:
+            predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
 
     # Optimized Simulation Loop (The biggest bottleneck)
     data_raw = np.column_stack([predictions_kmeans, y_test, test['sa'].values])
@@ -884,14 +925,14 @@ for i in range(10):
     violate = violate_w = 0
     n_rows = len(data_raw)
 
+    # Vectorize violation checks
+    half_size = n_rows // 2
     for _ in range(r):
-        selectedr = np.random.choice(n_rows, size=n_rows // 2, replace=False)
+        selectedr = np.random.choice(n_rows, size=half_size, replace=False)
         ps = separation(data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2])
         ps_w = separation(data_w_raw[selectedr, 1], data_w_raw[selectedr, 0], data_w_raw[selectedr, 2])
-        if min((ps)) < alpha:
-            violate += 1
-        if min((ps_w)) < alpha:
-            violate_w += 1
+        violate += (min(ps) < alpha)
+        violate_w += (min(ps_w) < alpha)
 
     for _ in range(r):
         idx1 = np.random.randint(0, n_rows, size=n_rows)
@@ -905,10 +946,8 @@ for i in range(10):
         if i1.size == 0:
             continue
 
-        if min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0]) < alpha:
-            violate_comp += 1
-        if min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0]) < alpha:
-            violate_comp_w += 1
+        violate_comp += (min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0]) < alpha)
+        violate_comp_w += (min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0]) < alpha)
     # combined_unweighted = np.column_stack((predictions, predictions_kmeans))
     # combined_weighted = np.column_stack((predictions_weighted, predictions_kmeans_weighted))
     #
@@ -1043,8 +1082,11 @@ for i in range(10):
     results.append(result)
 
 pair_strategy = "all" if use_all_pairs else str(num_comp_train)
-
-pd.DataFrame(results).to_csv(f'../Results/FairReweighing_violate_r_{df_name}_{nc}_{pair_strategy}.csv', index=False)
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+pd.DataFrame(results).to_csv(
+    RESULTS_DIR / f"FairReweighing_violate_r_{df_name}_{nc}_{pair_strategy}.csv",
+    index=False,
+)
 
 # changed encoder structure
 # use one pair for every training entry
