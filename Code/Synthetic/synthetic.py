@@ -148,6 +148,16 @@ def count_violation_fast(arr: np.ndarray, i1: np.ndarray, i2: np.ndarray) -> dic
     return _counts_dict_from_bincount(bc)
 
 
+def batched_score(dual_encoder, inputs, batch_size=32):
+    n = len(inputs)
+    scores = []
+    for start in range(0, n, batch_size):
+        end = min(start + batch_size, n)
+        batch_scores = dual_encoder.score(inputs[start:end]).numpy().flatten()
+        scores.append(batch_scores)
+    return np.concatenate(scores) if scores else np.array([])
+
+
 # 1,2,3,4
 def make_df1():
     df1 = pd.DataFrame(np.array(
@@ -895,8 +905,12 @@ for i in range(10):
         test_vals = np.stack(test_features['pixels'].values).astype(np.float32)
     else:
         test_vals = test_features.values
-    predictions = dual_encoder.score(test_vals).numpy().flatten()
-    predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
+    if is_scut:
+        predictions = batched_score(dual_encoder, test_vals, batch_size=16)
+        predictions_weighted = batched_score(dual_encoder_weighted, test_vals, batch_size=16)
+    else:
+        predictions = dual_encoder.score(test_vals).numpy().flatten()
+        predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
 
     if not isBinary:
         predictions_kmeans = predictions

@@ -12,6 +12,8 @@ def _predict_labels_batch(test, dual_encoder, batch_size=2048):
     """Batch inference to avoid per-row Python/TensorFlow overhead."""
     dataA = np.asarray(test["A"].tolist())
     dataB = np.asarray(test["B"].tolist())
+    if dataA.ndim > 2:
+        batch_size = min(batch_size, 16)
     raw_scores = dual_encoder.predict(dataA, dataB, batch_size=batch_size).numpy().reshape(-1)
     return np.where(raw_scores < 0, -1, 1).tolist()
 
@@ -26,19 +28,47 @@ def learn(train_data,
           train_weights=None,
           val_weights=None,
           df_name= None):
-    # Vectorized data extraction (avoid list comprehension)
-    source = np.array(train_data["A"].tolist())
-    target = np.array(train_data["B"].tolist())
-    train_y = train_data["Label"].values
+    # SCUT image pairs are large; use a tiny batch and stream samples to avoid OOM.
+    is_scut = df_name is not None and "scut" in df_name.lower()
+    if is_scut:
+        batch_size = min(batch_size, 8)
 
-    if train_weights is not None:
-        tr_feature = {"A": source, "B": target, "Label": train_y, "Weights": train_weights}
+    first_a = np.asarray(train_data["A"].iloc[0], dtype=np.float32)
+    first_b = np.asarray(train_data["B"].iloc[0], dtype=np.float32)
+
+    def _row_generator():
+        if train_weights is None:
+            for _, row in train_data.iterrows():
+                yield {
+                    "A": np.asarray(row["A"], dtype=np.float32),
+                    "B": np.asarray(row["B"], dtype=np.float32),
+                    "Label": np.float32(row["Label"]),
+                }
+        else:
+            for idx, row in train_data.iterrows():
+                yield {
+                    "A": np.asarray(row["A"], dtype=np.float32),
+                    "B": np.asarray(row["B"], dtype=np.float32),
+                    "Label": np.float32(row["Label"]),
+                    "Weights": np.float32(train_weights[idx]),
+                }
+
+    if train_weights is None:
+        output_signature = {
+            "A": tf.TensorSpec(shape=first_a.shape, dtype=tf.float32),
+            "B": tf.TensorSpec(shape=first_b.shape, dtype=tf.float32),
+            "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
+        }
     else:
-        tr_feature = {"A": source, "B": target, "Label": train_y}
+        output_signature = {
+            "A": tf.TensorSpec(shape=first_a.shape, dtype=tf.float32),
+            "B": tf.TensorSpec(shape=first_b.shape, dtype=tf.float32),
+            "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
+            "Weights": tf.TensorSpec(shape=(), dtype=tf.float32),
+        }
 
-    train_dataset = tf.data.Dataset.from_tensor_slices(tr_feature)
-
-    train_dataset = train_dataset.cache().batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    train_dataset = tf.data.Dataset.from_generator(_row_generator, output_signature=output_signature)
+    train_dataset = train_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     if shared == True:
         encoder = SharedDualEncoder.create_encoder(input_size=train_dataset.element_spec['A'].shape[1], df_name=df_name)
         dual_encoder = SharedDualEncoder.DualEncoderAll(encoder, y_true=np.array(y_true))
@@ -48,7 +78,7 @@ def learn(train_data,
         dual_encoder = DualEncoder.DualEncoderAll(encoder_A, encoder_B, y_true=np.array(y_true))
     dual_encoder.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
-        jit_compile=True
+        jit_compile=not is_scut
     )
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     dual_encoder.fit(
