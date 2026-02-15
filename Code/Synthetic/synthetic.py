@@ -506,16 +506,17 @@ def separation(y, y_pred, s):
 
 
 results = []
-use_all_pairs = False  # Set to True to use all possible pairs (N^2)
+use_all_pairs = True  # Set to True to use all possible pairs (N^2)
 
 alpha = 0.05
 r = 100
 nc = 1000
 num_comp_train = 1
 num_comp_test = 1
+WEIGHT_FORMULA = "eq15"
 
-for i in range(10):
-    df, df_name, train, test = make_scut()
+for i in range(1):
+    df, df_name, train, test = make_german()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
@@ -687,7 +688,7 @@ for i in range(10):
     data_tr_encoder = pd.DataFrame(res_tr_encoder)
     nc = len(data_tr_encoder)
 
-    # Optimized Weights calculation (vectorized)
+    # Optimized weights calculation (vectorized), Eq. (15) only.
     res_tr_sa = pd.DataFrame(res_tr_sa)
     ab_array = np.array(res_tr_sa["AB"].tolist())
     is_same_group = ab_array[:, 0] == ab_array[:, 1]
@@ -695,7 +696,7 @@ for i in range(10):
     p_aij = res_tr_sa["AB"].value_counts(normalize=True)
     p_aij_yij = res_tr_sa["AY"].value_counts(normalize=True)
 
-    # Calculate weights using vectorized mapping
+    # Eq. (15): same-group pairs keep weight 1; cross-group pairs get P(aij)/(2P(aij,yij)).
     weights = np.ones(len(res_tr_sa))
     diff_group_mask = ~is_same_group
     weights[diff_group_mask] = (
@@ -951,7 +952,6 @@ for i in range(10):
 
     # m = Metrics(y_test, predictions)
     m_bi = Metrics(y_test, predictions_kmeans)
-    # m_weighted = Metrics(y_test, predictions_weighted)
     m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
 
     if isBinary:
@@ -980,6 +980,7 @@ for i in range(10):
 
     if isBinary:
         result = {
+            "weight_formula": WEIGHT_FORMULA,
             "Acc_lr": accuracy_lr,
             "Acc_unweight": accuracy_bi,
             "Acc_weighted": accuracy_weighted,
@@ -1002,6 +1003,7 @@ for i in range(10):
         }
     else:
         result = {
+            "weight_formula": WEIGHT_FORMULA,
             "MSE_lr": mse_lr,
             "MSE_unweight": MSE_unweighted,
             "MSE_weight": MSE_weighted,
