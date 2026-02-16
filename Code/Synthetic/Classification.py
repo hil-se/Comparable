@@ -35,7 +35,7 @@ def learn(
     # SCUT image pairs are large; use a tiny batch and stream samples to avoid OOM.
     is_scut = df_name is not None and "scut" in df_name.lower()
     if is_scut:
-        batch_size = min(batch_size, 8)
+        batch_size = min(batch_size, 2)
 
     first_a = np.asarray(train_data["A"].iloc[0], dtype=np.float32)
     first_b = np.asarray(train_data["B"].iloc[0], dtype=np.float32)
