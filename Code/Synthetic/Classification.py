@@ -110,7 +110,7 @@ def learn(
         x=train_dataset,
         epochs=epochs,
         steps_per_epoch=steps_per_epoch,
-        verbose=1,
+        verbose=0,
         callbacks=[early_stopping],
     )
 
