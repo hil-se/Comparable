@@ -521,7 +521,7 @@ num_comp_test = 1
 WEIGHT_FORMULA = "eq15"
 
 for i in range(10):
-    df, df_name, train, test = make_german()
+    df, df_name, train, test = make_heart()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
