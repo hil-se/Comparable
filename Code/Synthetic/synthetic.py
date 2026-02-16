@@ -543,9 +543,9 @@ for i in range(10):
     res_ts_sa = []
 
     if use_all_pairs:
-        # Generate each unordered pair once (i < j) to avoid duplicates.
+        # Generate all directed pairs (i, j) where i != j.
         num_train = len(train_vals)
-        idx_a, idx_b = np.triu_indices(num_train, k=1)
+        idx_a, idx_b = np.where(~np.eye(num_train, dtype=bool))
 
         # Vectorized labels for all pairs
         labels = np.sign(
@@ -588,7 +588,7 @@ for i in range(10):
             for ra, rb, lbl in zip(rows_a, rows_b, labels)
         ]
     else:
-        # Random pair generation without duplicate unordered pairs.
+        # Random pair generation with both directions for each selected pair.
         n_train = len(train)
         keep_cols = np.ones(train_vals.shape[1], dtype=bool)
         keep_cols[col_idx] = False
@@ -613,8 +613,11 @@ for i in range(10):
 
             for idx_b in partners:
                 used_pairs.add((min(idx_a, int(idx_b)), max(idx_a, int(idx_b))))
+                # Add both directed pairs once: (i, j) and (j, i).
                 all_idx_a.append(idx_a)
                 all_idx_b.append(int(idx_b))
+                all_idx_a.append(int(idx_b))
+                all_idx_b.append(idx_a)
 
         # Batch process all pairs
         all_idx_a = np.array(all_idx_a)
