@@ -106,7 +106,7 @@ def learn(
     dual_encoder.fit(
         x=train_dataset,
         epochs=epochs,
-        verbose=1,
+        verbose=0,
         callbacks=[early_stopping],
     )
 

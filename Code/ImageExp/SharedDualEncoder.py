@@ -186,7 +186,7 @@ class DualEncoderAll(tf.keras.Model):
         encodings_A = tf.squeeze(encodings_A)
         encodings_B = tf.squeeze(encodings_B)
         # pred = (encodings_A + encodings_B) / 2
-        pred = encodings_A - encodings_B
+        pred = tf.cast(encodings_A - encodings_B, tf.float32)
         y = tf.cast(y, tf.float32)
 
         # loss = tf.math.abs(y - pred)

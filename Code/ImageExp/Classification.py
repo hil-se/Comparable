@@ -9,6 +9,21 @@ import metrics
 import vgg_pre
 
 
+def _configure_runtime(use_mixed_precision=True):
+    gpus = tf.config.list_physical_devices("GPU")
+    for gpu in gpus:
+        try:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError:
+            # Device config must happen before GPUs are initialized.
+            pass
+
+    if use_mixed_precision:
+        tf.keras.mixed_precision.set_global_policy("mixed_float16")
+    else:
+        tf.keras.mixed_precision.set_global_policy("float32")
+
+
 def learn(
     train_data,
     epochs=100,
@@ -19,7 +34,11 @@ def learn(
     shared=False,
     height=250,
     width=250,
+        use_mixed_precision=True,
 ):
+    tf.keras.backend.clear_session()
+    _configure_runtime(use_mixed_precision=use_mixed_precision)
+
     if y_true is None:
         y_true = []
     td_s = train_data["A"].to_list()
