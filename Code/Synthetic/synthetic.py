@@ -511,7 +511,7 @@ def separation(y, y_pred, s):
 
 
 results = []
-use_all_pairs = False  # Set to True to use all possible pairs (N^2)
+use_all_pairs = True  # Set to True to use all possible pairs (N^2)
 
 alpha = 0.05
 r = 100
@@ -521,7 +521,7 @@ num_comp_test = 1
 WEIGHT_FORMULA = "eq15"
 
 for i in range(10):
-    df, df_name, train, test = make_scut()
+    df, df_name, train, test = make_german()
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 

@@ -74,7 +74,10 @@ def learn(
     train_dataset = tf.data.Dataset.from_generator(
         _row_generator, output_signature=output_signature
     )
-    train_dataset = train_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    steps_per_epoch = int(np.ceil(len(train_data) / batch_size))
+    train_dataset = (
+        train_dataset.batch(batch_size).repeat().prefetch(tf.data.AUTOTUNE)
+    )
     if shared == True:
         encoder = SharedDualEncoder.create_encoder(
             input_size=train_dataset.element_spec["A"].shape[1], df_name=df_name
@@ -106,7 +109,8 @@ def learn(
     dual_encoder.fit(
         x=train_dataset,
         epochs=epochs,
-        verbose=0,
+        steps_per_epoch=steps_per_epoch,
+        verbose=1,
         callbacks=[early_stopping],
     )
 
@@ -123,7 +127,15 @@ def train_model(
     val_weights=None,
     df_name=None,
 ):
-    train = train.sample(frac=1).reset_index(drop=True)
+    if train_weights is not None:
+        train_weights = np.asarray(train_weights, dtype=np.float32)
+        if len(train_weights) != len(train):
+            raise ValueError("train_weights length must match training data length.")
+        perm = np.random.permutation(len(train))
+        train = train.iloc[perm].reset_index(drop=True)
+        train_weights = train_weights[perm]
+    else:
+        train = train.sample(frac=1).reset_index(drop=True)
     dual_encoder = learn(
         train,
         epochs=epochs,
