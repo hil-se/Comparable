@@ -86,10 +86,11 @@ def create_encoder(input_size, df_name):
 
 
 class DualEncoderAll(tf.keras.Model):
-    def __init__(self, encoder, y_true, **kwargs):
+    def __init__(self, encoder, y_true, fairness_lambda=0.0, **kwargs):
         super(DualEncoderAll, self).__init__(**kwargs)
         self.encoder = encoder
         self.y_true = y_true
+        self.fairness_lambda = fairness_lambda
         self.temperature = 0.05
         self.loss_tracker = tf.keras.metrics.Mean(name="loss")
 
@@ -101,8 +102,10 @@ class DualEncoderAll(tf.keras.Model):
         encodings_A = self.encoder(features["A"], training=trainable)
         encodings_B = self.encoder(features["B"], training=trainable)
         y = features["Label"]
+        sa_a = features.get("SA_A", None)
+        sa_b = features.get("SA_B", None)
         self.encoder.trainable = trainable
-        return encodings_A, encodings_B, y
+        return encodings_A, encodings_B, y, sa_a, sa_b
 
     @staticmethod
     def _to_scalar(encoding):
@@ -114,7 +117,9 @@ class DualEncoderAll(tf.keras.Model):
         encoding = tf.reshape(encoding, [tf.shape(encoding)[0], -1])
         return tf.reduce_mean(encoding, axis=1)
 
-    def compute_loss(self, encodings_A, encodings_B, y, sample_weight=None):
+    def compute_loss(
+            self, encodings_A, encodings_B, y, sample_weight=None, sa_a=None, sa_b=None
+    ):
         encodings_A = self._to_scalar(encodings_A)
         encodings_B = self._to_scalar(encodings_B)
         pred = encodings_A - encodings_B
@@ -154,6 +159,32 @@ class DualEncoderAll(tf.keras.Model):
         else:
             loss = tf.reduce_mean(per_example)
 
+        if self.fairness_lambda > 0 and sa_a is not None and sa_b is not None:
+            sa_a = tf.cast(
+                tf.squeeze(sa_a, axis=-1) if len(sa_a.shape) > 1 else sa_a, tf.float32
+            )
+            sa_b = tf.cast(
+                tf.squeeze(sa_b, axis=-1) if len(sa_b.shape) > 1 else sa_b, tf.float32
+            )
+            cross_group = tf.not_equal(sa_a, sa_b)
+            within_group = tf.equal(sa_a, sa_b)
+
+            cross_count = tf.reduce_sum(tf.cast(cross_group, tf.float32))
+            within_count = tf.reduce_sum(tf.cast(within_group, tf.float32))
+
+            def _safe_group_mean(mask):
+                masked = tf.boolean_mask(per_example, mask)
+                return tf.reduce_mean(masked)
+
+            fairness_penalty = tf.cond(
+                tf.logical_and(cross_count > 0, within_count > 0),
+                lambda: tf.abs(
+                    _safe_group_mean(cross_group) - _safe_group_mean(within_group)
+                ),
+                lambda: tf.constant(0.0, dtype=tf.float32),
+            )
+            loss = loss + self.fairness_lambda * fairness_penalty
+
         return loss
 
     def train_step(self, data):
@@ -163,11 +194,20 @@ class DualEncoderAll(tf.keras.Model):
             x = data
 
         sample_weight = x.get("Weights", None) if isinstance(x, dict) else None
+        sa_a = x.get("SA_A", None) if isinstance(x, dict) else None
+        sa_b = x.get("SA_B", None) if isinstance(x, dict) else None
 
         with tf.GradientTape() as tape:
-            encodings_A, encodings_B, y = self(x, trainable=True)
+            encodings_A, encodings_B, y, sa_a_out, sa_b_out = self(x, trainable=True)
+            sa_a = sa_a if sa_a is not None else sa_a_out
+            sa_b = sa_b if sa_b is not None else sa_b_out
             loss = self.compute_loss(
-                encodings_A, encodings_B, y, sample_weight=sample_weight
+                encodings_A,
+                encodings_B,
+                y,
+                sample_weight=sample_weight,
+                sa_a=sa_a,
+                sa_b=sa_b,
             )
 
         gradients = tape.gradient(loss, self.trainable_variables)

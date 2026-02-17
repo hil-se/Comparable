@@ -1,4 +1,3 @@
-from collections import Counter
 import os
 from pathlib import Path
 
@@ -35,6 +34,15 @@ def retrievePixels(path, height, width):
 
 
 col = "output"
+
+
+def _split_with_output(df, dependent, test_size=0.5):
+    X = df.drop(columns=[dependent])
+    y = np.array(df[dependent])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+    X_train[col] = y_train
+    X_test[col] = y_test
+    return X_train, X_test
 
 
 def comp_pred(test, dual_encoder):
@@ -226,14 +234,8 @@ def make_scut(P="P1"):
     global isBinary
     dependent = P
 
-    X = df[["pixels", "sa"]]
-
-    y = np.array(df[dependent])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
-
-    X_train[col] = y_train
-    X_test[col] = y_test
+    model_df = df[["pixels", "sa", dependent]]
+    X_train, X_test = _split_with_output(model_df, dependent)
 
     isBinary = False
 
@@ -261,13 +263,8 @@ def make_adult():
         drop_first=True,
     )
 
-    X = df.drop([dependent, "education", "native-country"], axis=1)
-    y = np.array(df[dependent])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
-
-    X_train[col] = y_train
-    X_test[col] = y_test
+    model_df = df.drop(columns=["education", "native-country"])
+    X_train, X_test = _split_with_output(model_df, dependent)
 
     isBinary = True
 
@@ -294,13 +291,7 @@ def make_german():
         drop_first=True,
     )
 
-    X = df.drop([dependent], axis=1)
-    y = np.array(df[dependent])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
-
-    X_train[col] = y_train
-    X_test[col] = y_test
+    X_train, X_test = _split_with_output(df, dependent)
 
     isBinary = True
 
@@ -318,13 +309,7 @@ def make_heart():
 
     df = df.rename(columns={sa: "sa"})
 
-    X = df.drop([dependent], axis=1)
-    y = np.array(df[dependent])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
-
-    X_train[col] = y_train
-    X_test[col] = y_test
+    X_train, X_test = _split_with_output(df, dependent)
 
     isBinary = True
 
@@ -346,8 +331,6 @@ def make_compas():
         "two_year_recid",
     ]
     df = df[features_to_keep]
-    # sensitive attribute names
-    A = ["sex", "race"]
     df["sex"] = df["sex"].apply(lambda x: 1 if x == "Male" else 0)
     # discretize race: Caucasian vs. non-Caucasian
     df["race"] = df["race"].apply(lambda x: 1 if x == "Caucasian" else 0)
@@ -364,13 +347,7 @@ def make_compas():
 
     dependent = "two_year_recid"
 
-    X = df.drop([dependent], axis=1)
-    y = np.array(df[dependent])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
-
-    X_train[col] = y_train
-    X_test[col] = y_test
+    X_train, X_test = _split_with_output(df, dependent)
 
     isBinary = True
 
@@ -404,13 +381,7 @@ def make_comm():
 
     df = df.rename(columns={sa: "sa"})
 
-    X = df.drop([dependent], axis=1)
-    y = np.array(df[dependent])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
-
-    X_train[col] = y_train
-    X_test[col] = y_test
+    X_train, X_test = _split_with_output(df, dependent)
 
     isBinary = False
 
@@ -434,13 +405,7 @@ def make_lsac():
 
     df = df.rename(columns={sa: "sa"})
 
-    X = df.drop([dependent], axis=1)
-    y = np.array(df[dependent])
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
-
-    X_train[col] = y_train
-    X_test[col] = y_test
+    X_train, X_test = _split_with_output(df, dependent)
 
     isBinary = False
 
@@ -448,12 +413,7 @@ def make_lsac():
 
 
 def majority_pop(a):
-    B = "racepctblack"
-    W = "racePctWhite"
-    A = "racePctAsian"
-    H = "racePctHisp"
-    maj = a.apply(pd.Series.idxmax, axis=1)
-    return maj
+    return a.apply(pd.Series.idxmax, axis=1)
 
 
 def remove_outliers(data):
@@ -471,8 +431,6 @@ def remove_outliers(data):
 
     # Filter out the outliers
     X_filtered = X[(X >= lower_bound) & (X <= upper_bound)]
-    outliers = X[(X < lower_bound) | (X > upper_bound)]
-
     return X_filtered
 
 
@@ -490,110 +448,57 @@ def stats(x1, x2):
 
 
 def separation(y, y_pred, s):
-    count = []
-    for i in range(len(s)):
-        count.append(str(int(y_pred[i])) + str(int(y[i])) + str(int(s[i])))
-    x = Counter(count)
+    # Robust binarization: supports continuous/regression inputs without negative
+    # bincount indices while preserving 0/1 behavior for binary datasets.
+    y = (np.asarray(y) > 0).astype(np.int8)
+    y_pred = (np.asarray(y_pred) > 0).astype(np.int8)
+    s = (np.asarray(s) > 0).astype(np.int8)
 
-    mut1, vart1 = stats(x["111"], x["011"])
-    mut0, vart0 = stats(x["110"], x["010"])
+    # Encode (pred, y, s) into 0..7 and count once.
+    encoded = (y_pred << 2) + (y << 1) + s
+    counts = np.bincount(encoded, minlength=8)
+
+    mut1, vart1 = stats(counts[7], counts[3])  # 111 vs 011
+    mut0, vart0 = stats(counts[6], counts[2])  # 110 vs 010
 
     eps = np.finfo(float).eps
     zt = (mut1 - mut0) / np.sqrt(max(vart1 + vart0, eps))
     pt = norm.sf(np.abs(zt)) * 2
 
-    muf1, varf1 = stats(x["101"], x["001"])
-    muf0, varf0 = stats(x["100"], x["000"])
+    muf1, varf1 = stats(counts[5], counts[1])  # 101 vs 001
+    muf0, varf0 = stats(counts[4], counts[0])  # 100 vs 000
     zf = (muf1 - muf0) / np.sqrt(max(varf1 + varf0, eps))
     pf = norm.sf(np.abs(zf)) * 2
 
     return [pt, pf]
 
 
-results = []
-use_all_pairs = False  # Set to True to use all possible pairs (N^2)
-
 alpha = 0.05
 r = 100
-nc = 1000
-num_comp_train = 1
-num_comp_test = 1
 WEIGHT_FORMULA = "eq15"
+FAIRNESS_LAMBDA = 0.1
 
-for i in range(10):
-    df, df_name, train, test = make_scut()
-    train.reset_index(inplace=True, drop=True)
-    test.reset_index(inplace=True, drop=True)
 
-    y_test = test["output"].values
-    test_features = test.drop(columns=["output"])
-    is_scut = "scut" in df_name
-
-    # Pre-extract values for index-based access (much faster than iterrows)
-    train_vals = train.values
-    train_cols = list(train.columns)
-    col_idx, sa_idx = train_cols.index(col), train_cols.index("sa")
-    pixels_idx = train_cols.index("pixels") if is_scut else None
-
-    res_tr_encoder = []
-    svc_encoder = []
-    res_tr_sa = []
-
-    res_ts_encoder = []
-    res_ts_sa = []
+def _build_train_pairs(
+        train_vals, col_idx, sa_idx, pixels_idx, is_scut, use_all_pairs, num_comp_train
+):
+    keep_cols = np.ones(train_vals.shape[1], dtype=bool)
+    keep_cols[col_idx] = False
 
     if use_all_pairs:
-        # Generate all directed pairs (i, j) where i != j.
         num_train = len(train_vals)
         idx_a, idx_b = np.where(~np.eye(num_train, dtype=bool))
-
-        # Vectorized labels for all pairs
-        labels = np.sign(
-            train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]
-        ).astype(int)
-
-        # Filter out ties (Label 0)
+        labels = np.sign(train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]).astype(
+            int
+        )
         valid_mask = labels != 0
-        idx_a, idx_b, labels = idx_a[valid_mask], idx_b[valid_mask], labels[valid_mask]
-
-        # Vectorized feature extraction
-        rows_a = train_vals[idx_a]
-        rows_b = train_vals[idx_b]
-
-        # Create mask for columns to keep (all except col_idx)
-        keep_cols = np.ones(train_vals.shape[1], dtype=bool)
-        keep_cols[col_idx] = False
-
-        if is_scut:
-            feats_a = np.stack(rows_a[:, pixels_idx]).astype(np.float32)
-            feats_b = np.stack(rows_b[:, pixels_idx]).astype(np.float32)
-        else:
-            feats_a = rows_a[:, keep_cols]
-            feats_b = rows_b[:, keep_cols]
-
-        # Batch create dictionaries
-        if is_scut:
-            res_tr_encoder = [
-                {"A": fa, "B": fb, "Label": int(lbl)}
-                for fa, fb, lbl in zip(feats_a, feats_b, labels)
-            ]
-        else:
-            res_tr_encoder = [
-                {"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
-                for fa, fb, lbl in zip(feats_a, feats_b, labels)
-            ]
-
-        res_tr_sa = [
-            {"AB": (ra[sa_idx], rb[sa_idx]), "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
-            for ra, rb, lbl in zip(rows_a, rows_b, labels)
-        ]
+        rows_a, rows_b, labels = (
+            train_vals[idx_a[valid_mask]],
+            train_vals[idx_b[valid_mask]],
+            labels[valid_mask],
+        )
     else:
-        # Random pair generation with both directions for each selected pair.
-        n_train = len(train)
-        keep_cols = np.ones(train_vals.shape[1], dtype=bool)
-        keep_cols[col_idx] = False
-
-        # Pre-allocate arrays for batch processing
+        n_train = len(train_vals)
         all_idx_a = []
         all_idx_b = []
         used_pairs = set()
@@ -610,586 +515,369 @@ for i in range(10):
 
             k = min(num_comp_train, len(candidates))
             partners = np.random.choice(candidates, size=k, replace=False)
-
             for idx_b in partners:
-                used_pairs.add((min(idx_a, int(idx_b)), max(idx_a, int(idx_b))))
-                # Add both directed pairs once: (i, j) and (j, i).
-                all_idx_a.append(idx_a)
-                all_idx_b.append(int(idx_b))
-                all_idx_a.append(int(idx_b))
-                all_idx_b.append(idx_a)
+                pair = (min(idx_a, int(idx_b)), max(idx_a, int(idx_b)))
+                used_pairs.add(pair)
+                all_idx_a.extend([idx_a, int(idx_b)])
+                all_idx_b.extend([int(idx_b), idx_a])
 
-        # Batch process all pairs
-        all_idx_a = np.array(all_idx_a)
-        all_idx_b = np.array(all_idx_b)
-
-        rows_a = train_vals[all_idx_a]
-        rows_b = train_vals[all_idx_b]
-
+        rows_a = train_vals[np.array(all_idx_a)]
+        rows_b = train_vals[np.array(all_idx_b)]
         diffs = rows_a[:, col_idx] - rows_b[:, col_idx]
         valid_mask = diffs != 0
-        labels = np.where(diffs > 0, 1, -1)
-
-        # Filter valid pairs
         rows_a = rows_a[valid_mask]
         rows_b = rows_b[valid_mask]
-        labels = labels[valid_mask]
+        labels = np.where(diffs[valid_mask] > 0, 1, -1)
 
-        if is_scut:
-            feats_a = np.stack(rows_a[:, pixels_idx]).astype(np.float32)
-            feats_b = np.stack(rows_b[:, pixels_idx]).astype(np.float32)
-        else:
-            feats_a = rows_a[:, keep_cols]
-            feats_b = rows_b[:, keep_cols]
-
-        if is_scut:
-            res_tr_encoder = [
-                {"A": fa, "B": fb, "Label": int(lbl)}
-                for fa, fb, lbl in zip(feats_a, feats_b, labels)
-            ]
-        else:
-            res_tr_encoder = [
-                {"A": fa.tolist(), "B": fb.tolist(), "Label": int(lbl)}
-                for fa, fb, lbl in zip(feats_a, feats_b, labels)
-            ]
-
-        res_tr_sa = [
-            {"AB": (ra[sa_idx], rb[sa_idx]), "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
-            for ra, rb, lbl in zip(rows_a, rows_b, labels)
+    if is_scut:
+        feats_a = np.stack(rows_a[:, pixels_idx]).astype(np.float32)
+        feats_b = np.stack(rows_b[:, pixels_idx]).astype(np.float32)
+        train_pairs = [
+            {
+                "A": fa,
+                "B": fb,
+                "Label": int(lbl),
+                "SA_A": int(ra[sa_idx]),
+                "SA_B": int(rb[sa_idx]),
+            }
+            for fa, fb, lbl, ra, rb in zip(feats_a, feats_b, labels, rows_a, rows_b)
+        ]
+    else:
+        feats_a = rows_a[:, keep_cols]
+        feats_b = rows_b[:, keep_cols]
+        train_pairs = [
+            {
+                "A": fa.tolist(),
+                "B": fb.tolist(),
+                "Label": int(lbl),
+                "SA_A": int(ra[sa_idx]),
+                "SA_B": int(rb[sa_idx]),
+            }
+            for fa, fb, lbl, ra, rb in zip(feats_a, feats_b, labels, rows_a, rows_b)
         ]
 
-    # for indexA, rowA in test.iterrows():
-    #     comp = []
-    #     comp_count = 0
-    #     test_cp = test.copy()
-    #     while comp_count < num_comp_test:
-    #     # for indexB, rowB in test.iterrows():
-    #         rowB = test_cp.sample()
-    #         indexB = rowB.index[0]
-    #         if (indexB == indexA):
-    #             continue
-    #         rowB = rowB.iloc[0]
-    #         ratingA = rowA[col]
-    #         ratingB = rowB[col]
-    #         label = -1
-    #         if ratingA > ratingB:
-    #             label = 1
-    #         elif ratingA < ratingB:
-    #             label = 0
-    #         if label != -1:
-    #             # if label is not None:
-    #             testA = rowA.drop(labels=[col])
-    #             testB = rowB.drop(labels=[col])
-    #
-    #             res_ts_encoder.append({"A": testA.to_list(),
-    #                                    "B": testB.to_list(),
-    #                                    })
-    #
-    #
-    #             res_ts_sa.append({"A": testA['sa'],
-    #                               "B": testB['sa'],
-    #                               "Label": label})
-    #
-    #             test_cp.drop(indexB, inplace=True)
-    #             comp_count += 1
+    pair_meta = [
+        {"AB": (ra[sa_idx], rb[sa_idx]), "AY": ((ra[sa_idx], rb[sa_idx]), int(lbl))}
+        for ra, rb, lbl in zip(rows_a, rows_b, labels)
+    ]
+    return train_pairs, pair_meta
 
-    data_tr_encoder = pd.DataFrame(res_tr_encoder)
-    nc = len(data_tr_encoder)
 
-    # Optimized weights calculation (vectorized), Eq. (15) only.
-    res_tr_sa = pd.DataFrame(res_tr_sa)
-    ab_array = np.array(res_tr_sa["AB"].tolist())
+def _compute_pair_weights(pair_meta_df):
+    ab_array = np.array(pair_meta_df["AB"].tolist())
     is_same_group = ab_array[:, 0] == ab_array[:, 1]
+    p_aij = pair_meta_df["AB"].value_counts(normalize=True)
+    p_aij_yij = pair_meta_df["AY"].value_counts(normalize=True)
 
-    p_aij = res_tr_sa["AB"].value_counts(normalize=True)
-    p_aij_yij = res_tr_sa["AY"].value_counts(normalize=True)
-
-    # Eq. (15): same-group pairs keep weight 1; cross-group pairs get P(aij)/(2P(aij,yij)).
-    weights = np.ones(len(res_tr_sa))
+    weights = np.ones(len(pair_meta_df))
     diff_group_mask = ~is_same_group
     weights[diff_group_mask] = (
-        res_tr_sa.loc[diff_group_mask, "AB"].map(p_aij)
-        / (2 * res_tr_sa.loc[diff_group_mask, "AY"].map(p_aij_yij))
+            pair_meta_df.loc[diff_group_mask, "AB"].map(p_aij)
+            / (2 * pair_meta_df.loc[diff_group_mask, "AY"].map(p_aij_yij))
     ).values
+    return weights
 
-    dual_encoder = Classification.train_model(
-        train=data_tr_encoder,
-        val=None,
-        y_true=data_tr_encoder["Label"].tolist(),
-        shared=True,
-        epochs=100,
-        df_name=df_name,
-    )
 
-    dual_encoder_weighted = Classification.train_model(
-        train=data_tr_encoder,
-        val=None,
-        y_true=data_tr_encoder["Label"].tolist(),
-        shared=True,
-        epochs=100,
-        train_weights=weights,
-        val_weights=None,
-        df_name=df_name,
-    )
+def _load_dataset(dataset_name):
+    dataset_loaders = {
+        "scut": make_scut,
+        "adult": make_adult,
+        "german": make_german,
+        "heart": make_heart,
+        "compas": make_compas,
+        "comm": make_comm,
+        "lsac": make_lsac,
+    }
+    if dataset_name not in dataset_loaders:
+        valid = ", ".join(sorted(dataset_loaders))
+        raise ValueError(f"Unknown dataset '{dataset_name}'. Valid options: {valid}")
+    return dataset_loaders[dataset_name]()
 
-    # predictions = comp_pred(data_ts_encoder, dual_encoder)
-    # predictions_weighted = comp_pred(data_ts_encoder, dual_encoder_weighted)
 
-    # accuracy = accuracy_score(res_ts_sa['Label'], predictions)
+def run_experiments(
+        num_runs=10, dataset="scut", use_all_pairs=False, num_comp_train=1
+):
+    results = []
+    output_df_name = None
+    output_nc = 0
 
-    y_train = train["output"]
-    train = train.drop(columns=["output"])
-    test = test.drop(columns=["output"])
+    for _ in range(num_runs):
+        _, df_name, train, test = _load_dataset(dataset)
+        output_df_name = df_name
+        train = train.reset_index(drop=True)
+        test = test.reset_index(drop=True)
 
-    # #
-    # y_svc = svc_encoder['label']
-    # svc_train = svc_encoder.drop(columns=['label'])
-    #
-    # svc = LinearSVC(fit_intercept=False, loss='hinge', max_iter=100000)
-    # svc.fit(svc_train, y_svc)
-    # svc_predictions = svc.predict(test)
-    # svc_predictions_reg = svc.decision_function(test)
-    # svc_predictions = [0 if x == -1 else 1 for x in svc_predictions]
+        y_test = test[col].values
+        test_features = test.drop(columns=[col])
+        is_scut = "scut" in df_name
 
-    # accuracy_svc = accuracy_score(y_test, svc_predictions)
-    # f1_score_svc = f1_score(y_test, svc_predictions)
-    # m_svc = Metrics(y_test, svc_predictions_reg)
-    # AOD_svc = m_svc.AOD(test['sa'])
-    # EOD_svc = m_svc.EOD(test['sa'])
-    # spearman_svc = m_svc.spearmanr_coefficient()
-    # pearson_svc = m_svc.pearsonr_coefficient()
-    # MSE_svc = m_svc.mse()
-    # I_sep_svc = m_svc.MI_con_info(test['sa'])
-    #
-    # Skip baseline linear-model training/comparison for SCUT runs.
-    if is_scut:
-        accuracy_lr = np.nan
-        f1_score_lr = np.nan
-        AOD_lr = np.nan
-        EOD_lr = np.nan
-        mse_lr = np.nan
-        spearman_lr = np.nan
-        pearson_lr = np.nan
-        I_sep_lr = np.nan
-    else:
-        if isBinary:
-            clf = LogisticRegression().fit(train, y_train)
-            predictions = clf.predict(test)
+        train_vals = train.values
+        train_cols = list(train.columns)
+        col_idx, sa_idx = train_cols.index(col), train_cols.index("sa")
+        pixels_idx = train_cols.index("pixels") if is_scut else None
+
+        train_pairs, pair_meta = _build_train_pairs(
+            train_vals=train_vals,
+            col_idx=col_idx,
+            sa_idx=sa_idx,
+            pixels_idx=pixels_idx,
+            is_scut=is_scut,
+            use_all_pairs=use_all_pairs,
+            num_comp_train=num_comp_train,
+        )
+
+        data_tr_encoder = pd.DataFrame(train_pairs)
+        output_nc = len(data_tr_encoder)
+        pair_meta_df = pd.DataFrame(pair_meta)
+        weights = _compute_pair_weights(pair_meta_df)
+
+        dual_encoder = Classification.train_model(
+            train=data_tr_encoder,
+            val=None,
+            y_true=data_tr_encoder["Label"].tolist(),
+            shared=True,
+            epochs=100,
+            df_name=df_name,
+        )
+        dual_encoder_weighted = Classification.train_model(
+            train=data_tr_encoder,
+            val=None,
+            y_true=data_tr_encoder["Label"].tolist(),
+            shared=True,
+            epochs=100,
+            train_weights=weights,
+            val_weights=None,
+            df_name=df_name,
+        )
+        dual_encoder_fair = Classification.train_model(
+            train=data_tr_encoder,
+            val=None,
+            y_true=data_tr_encoder["Label"].tolist(),
+            shared=True,
+            epochs=100,
+            df_name=df_name,
+            fairness_lambda=FAIRNESS_LAMBDA,
+        )
+
+        y_train = train[col]
+        train = train.drop(columns=[col])
+        test = test.drop(columns=[col])
+
+        if is_scut:
+            accuracy_lr = f1_score_lr = AOD_lr = EOD_lr = np.nan
+            mse_lr = spearman_lr = pearson_lr = I_sep_lr = np.nan
         else:
-            clf = LinearRegression().fit(train, y_train)
-            predictions = clf.predict(test)
+            if isBinary:
+                clf = LogisticRegression().fit(train, y_train)
+            else:
+                clf = LinearRegression().fit(train, y_train)
+            predictions_lr = clf.predict(test)
+            m_lr = Metrics(y_test, predictions_lr)
 
-        m_lr = Metrics(y_test, predictions)
+            if isBinary:
+                accuracy_lr = accuracy_score(y_test, predictions_lr)
+                f1_score_lr = f1_score(y_test, predictions_lr)
+                AOD_lr = m_lr.AOD(test["sa"])
+                EOD_lr = m_lr.EOD(test["sa"])
+            else:
+                mse_lr = m_lr.mse()
+                spearman_lr = m_lr.spearmanr_coefficient()
+                pearson_lr = m_lr.pearsonr_coefficient()
+            I_sep_lr = m_lr.MI_con_info(test["sa"])
+
+        if is_scut:
+            test_vals = np.stack(test_features["pixels"].values).astype(np.float32)
+            predictions = batched_score(dual_encoder, test_vals, batch_size=4)
+            predictions_weighted = batched_score(
+                dual_encoder_weighted, test_vals, batch_size=4
+            )
+            predictions_fair = batched_score(dual_encoder_fair, test_vals, batch_size=4)
+        else:
+            test_vals = test_features.values
+            predictions = dual_encoder.score(test_vals).numpy().flatten()
+            predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
+            predictions_fair = dual_encoder_fair.score(test_vals).numpy().flatten()
 
         if isBinary:
-            # y_score = clf.predict_proba(test)[:, 1]
-            accuracy_lr = accuracy_score(y_test, predictions)
-            f1_score_lr = f1_score(y_test, predictions)
-            AOD_lr = m_lr.AOD(test["sa"])
-            EOD_lr = m_lr.EOD(test["sa"])
-        # #
-        # fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, y_score)
-        # roc_auc_lr = auc(fpr_lr, tpr_lr)
-        #
+            pred_filt = remove_outliers(predictions)
+            pred_w_filt = remove_outliers(predictions_weighted)
+
+            km = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
+                pred_filt.reshape(-1, 1)
+            )
+            predictions_kmeans = km.predict(predictions.reshape(-1, 1))
+            if km.cluster_centers_[0] > km.cluster_centers_[1]:
+                predictions_kmeans = 1 - predictions_kmeans
+
+            km_w = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
+                pred_w_filt.reshape(-1, 1)
+            )
+            predictions_kmeans_weighted = km_w.predict(predictions_weighted.reshape(-1, 1))
+            if km_w.cluster_centers_[0] > km_w.cluster_centers_[1]:
+                predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
+
+            pred_fair_filt = remove_outliers(predictions_fair)
+            km_fair = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
+                pred_fair_filt.reshape(-1, 1)
+            )
+            predictions_kmeans_fair = km_fair.predict(predictions_fair.reshape(-1, 1))
+            if km_fair.cluster_centers_[0] > km_fair.cluster_centers_[1]:
+                predictions_kmeans_fair = 1 - predictions_kmeans_fair
         else:
-            mse_lr = m_lr.mse()
-            spearman_lr = m_lr.spearmanr_coefficient()
-            pearson_lr = m_lr.pearsonr_coefficient()
+            predictions_kmeans = predictions
+            predictions_kmeans_weighted = predictions_weighted
+            predictions_kmeans_fair = predictions_fair
 
-        I_sep_lr = m_lr.MI_con_info(test["sa"])
-
-    # Batch Prediction (Single call for better performance)
-    if is_scut:
-        test_vals = np.stack(test_features["pixels"].values).astype(np.float32)
-    else:
-        test_vals = test_features.values
-    if is_scut:
-        predictions = batched_score(dual_encoder, test_vals, batch_size=16)
-        predictions_weighted = batched_score(
-            dual_encoder_weighted, test_vals, batch_size=16
+        data_raw = np.column_stack([predictions_kmeans, y_test, test["sa"].values])
+        data_w_raw = np.column_stack(
+            [predictions_kmeans_weighted, y_test, test["sa"].values]
         )
-    else:
-        predictions = dual_encoder.score(test_vals).numpy().flatten()
-        predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
-
-    if not isBinary:
-        predictions_kmeans = predictions
-        predictions_kmeans_weighted = predictions_weighted
-
-    else:
-        # Outlier removal and KMeans (Optimized)
-        pred_filt = remove_outliers(predictions)
-        pred_w_filt = remove_outliers(predictions_weighted)
-
-        km = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
-            pred_filt.reshape(-1, 1)
+        data_fair_raw = np.column_stack(
+            [predictions_kmeans_fair, y_test, test["sa"].values]
         )
-        predictions_kmeans = km.predict(predictions.reshape(-1, 1))
-        if km.cluster_centers_[0] > km.cluster_centers_[1]:
-            predictions_kmeans = 1 - predictions_kmeans
 
-        km_w = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
-            pred_w_filt.reshape(-1, 1)
-        )
-        predictions_kmeans_weighted = km_w.predict(predictions_weighted.reshape(-1, 1))
-        if km_w.cluster_centers_[0] > km_w.cluster_centers_[1]:
-            predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
+        violate_comp = violate_comp_w = violate_comp_fair = 0
+        violate = violate_w = violate_fair = 0
+        n_rows = len(data_raw)
+        y_vals = data_raw[:, 1]
+        has_comparable_pairs = np.unique(y_vals).size > 1
+        half_size = n_rows // 2
 
-    # Optimized Simulation Loop (The biggest bottleneck)
-    data_raw = np.column_stack([predictions_kmeans, y_test, test["sa"].values])
-    data_w_raw = np.column_stack(
-        [predictions_kmeans_weighted, y_test, test["sa"].values]
-    )
+        for _ in range(r):
+            selectedr = np.random.choice(n_rows, size=half_size, replace=False)
+            ps = separation(
+                data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2]
+            )
+            ps_w = separation(
+                data_w_raw[selectedr, 1],
+                data_w_raw[selectedr, 0],
+                data_w_raw[selectedr, 2],
+            )
+            ps_fair = separation(
+                data_fair_raw[selectedr, 1],
+                data_fair_raw[selectedr, 0],
+                data_fair_raw[selectedr, 2],
+            )
+            violate += min(ps) < alpha
+            violate_w += min(ps_w) < alpha
+            violate_fair += min(ps_fair) < alpha
 
-    violate_comp = violate_comp_w = 0
-    violate = violate_w = 0
-    n_rows = len(data_raw)
-    y_vals = data_raw[:, 1]
-    has_comparable_pairs = np.unique(y_vals).size > 1
-
-    # Vectorize violation checks
-    half_size = n_rows // 2
-    for _ in range(r):
-        selectedr = np.random.choice(n_rows, size=half_size, replace=False)
-        ps = separation(
-            data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2]
-        )
-        ps_w = separation(
-            data_w_raw[selectedr, 1], data_w_raw[selectedr, 0], data_w_raw[selectedr, 2]
-        )
-        violate += min(ps) < alpha
-        violate_w += min(ps_w) < alpha
-
-    for _ in range(r):
-        if not has_comparable_pairs:
-            continue
-
-        # Build exactly n_rows pairs with Y1 != Y2.
-        i1 = np.empty(n_rows, dtype=np.int64)
-        i2 = np.empty(n_rows, dtype=np.int64)
-        filled = 0
-        while filled < n_rows:
-            remaining = n_rows - filled
-            batch_size = max(remaining * 2, 256)
-            idx1 = np.random.randint(0, n_rows, size=batch_size)
-            idx2 = np.random.randint(0, n_rows, size=batch_size)
-            valid = y_vals[idx1] != y_vals[idx2]
-            if not np.any(valid):
+        for _ in range(r):
+            if not has_comparable_pairs:
                 continue
-            take = min(remaining, int(valid.sum()))
-            i1[filled: filled + take] = idx1[valid][:take]
-            i2[filled: filled + take] = idx2[valid][:take]
-            filled += take
 
-        violate_comp += (
-            min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0])
-            < alpha
-        )
-        violate_comp_w += (
-            min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
-            < alpha
-        )
-    # combined_unweighted = np.column_stack((predictions, predictions_kmeans))
-    # combined_weighted = np.column_stack((predictions_weighted, predictions_kmeans_weighted))
-    #
-    # df_unweighted = pd.DataFrame(combined_unweighted, columns=['predictions', 'kmeans'])
-    # df_weighted = pd.DataFrame(combined_weighted, columns=['predictions', 'kmeans'])
-    #
-    # group0_unweighted = df_unweighted[df_unweighted['kmeans'] == 0]['predictions']
-    # group1_unweighted = df_unweighted[df_unweighted['kmeans'] == 1]['predictions']
-    #
-    # group0_weighted = df_weighted[df_weighted['kmeans'] == 0]['predictions']
-    # group1_weighted = df_weighted[df_weighted['kmeans'] == 1]['predictions']
+            i1 = np.empty(n_rows, dtype=np.int64)
+            i2 = np.empty(n_rows, dtype=np.int64)
+            filled = 0
+            while filled < n_rows:
+                remaining = n_rows - filled
+                batch_size = max(remaining * 2, 256)
+                idx1 = np.random.randint(0, n_rows, size=batch_size)
+                idx2 = np.random.randint(0, n_rows, size=batch_size)
+                valid = y_vals[idx1] != y_vals[idx2]
+                if not np.any(valid):
+                    continue
+                take = min(remaining, int(valid.sum()))
+                i1[filled: filled + take] = idx1[valid][:take]
+                i2[filled: filled + take] = idx2[valid][:take]
+                filled += take
 
-    # fpr, tpr, thresholds = roc_curve(y_test, predictions)
-    # roc_auc = auc(fpr, tpr)
-    #
-    # fpr_weighted, tpr_weighted, threshold_weighted = roc_curve(y_test, predictions_weighted)
-    # roc_auc_weighted = auc(fpr_weighted, tpr_weighted)
+            violate_comp += (
+                    min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0])
+                    < alpha
+            )
+            violate_comp_w += (
+                    min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
+                    < alpha
+            )
+            violate_comp_fair += (
+                    min(comparative_separation(count_violation_fast(data_fair_raw, i1, i2))[0])
+                    < alpha
+            )
 
-    # plt.figure()
-    # plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    # plt.plot(fpr_lr, tpr_lr, color='blue', lw=2, label=f'ROC_lr curve (area = {roc_auc_lr:.2f})')
-    # plt.plot(fpr_weighted, tpr_weighted, color='red', lw=2, label=f'ROC_weighted curve (area = {roc_auc_weighted:.2f})')
-    # plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    # plt.xlim([0.0, 1.0])
-    # plt.ylim([0.0, 1.05])
-    # plt.xlabel('False Positive Rate')
-    # plt.ylabel('True Positive Rate')
-    # plt.title('Receiver Operating Characteristic')
-    # plt.legend(loc="lower right")
-    # plt.show()
+        m_bi = Metrics(y_test, predictions_kmeans)
+        m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
+        m_fair_bi = Metrics(y_test, predictions_kmeans_fair)
+        I_sep_bi = m_bi.MI_con_info(test["sa"])
+        I_sep_weighted_bi = m_weighted_bi.MI_con_info(test["sa"])
+        I_sep_fair_bi = m_fair_bi.MI_con_info(test["sa"])
 
-    # res_index = next(x for x, val in enumerate(tpr) if val >= 0.8)
-    # res_index_weighted = next(x for x, val in enumerate(tpr_weighted) if val >= 0.8)
-    #
-    # threshold = thresholds[res_index]
-    # threshold_weighted = threshold_weighted[res_index_weighted]
+        if isBinary:
+            result = {
+                "weight_formula": WEIGHT_FORMULA,
+                "fairness_lambda": FAIRNESS_LAMBDA,
+                "Acc_lr": accuracy_lr,
+                "Acc_unweight": accuracy_score(y_test, predictions_kmeans),
+                "Acc_weighted": accuracy_score(y_test, predictions_kmeans_weighted),
+                "Acc_fairreg": accuracy_score(y_test, predictions_kmeans_fair),
+                "F1_lr": f1_score_lr,
+                "F1_unweight": f1_score(y_test, predictions_kmeans),
+                "F1_weighted": f1_score(y_test, predictions_kmeans_weighted),
+                "F1_fairreg": f1_score(y_test, predictions_kmeans_fair),
+                "AOD_lr": AOD_lr,
+                "AOD_unweight": m_bi.AOD(test["sa"]),
+                "AOD_weighted": m_weighted_bi.AOD(test["sa"]),
+                "AOD_fairreg": m_fair_bi.AOD(test["sa"]),
+                "EOD_lr": EOD_lr,
+                "EOD_unweight": m_bi.EOD(test["sa"]),
+                "EOD_weighted": m_weighted_bi.EOD(test["sa"]),
+                "EOD_fairreg": m_fair_bi.EOD(test["sa"]),
+                "I_sep_lr": I_sep_lr,
+                "I_sep_bi": I_sep_bi,
+                "I_sep_weighted_bi": I_sep_weighted_bi,
+                "I_sep_fairreg_bi": I_sep_fair_bi,
+                "violate_r": violate / r,
+                "violate_r_weighted": violate_w / r,
+                "violate_r_fairreg": violate_fair / r,
+                "violate_comp_r": violate_comp / r,
+                "violate_comp_r_w": violate_comp_w / r,
+                "violate_comp_r_fairreg": violate_comp_fair / r,
+            }
+        else:
+            result = {
+                "weight_formula": WEIGHT_FORMULA,
+                "fairness_lambda": FAIRNESS_LAMBDA,
+                "MSE_lr": mse_lr,
+                "MSE_unweight": m_bi.mse(),
+                "MSE_weight": m_weighted_bi.mse(),
+                "MSE_fairreg": m_fair_bi.mse(),
+                "spearman_lr": spearman_lr,
+                "spearman_unweighted": m_bi.spearmanr_coefficient(),
+                "spearman_weighted": m_weighted_bi.spearmanr_coefficient(),
+                "spearman_fairreg": m_fair_bi.spearmanr_coefficient(),
+                "pearson_lr": pearson_lr,
+                "pearson_unweighted": m_bi.pearsonr_coefficient(),
+                "pearson_weighted": m_weighted_bi.pearsonr_coefficient(),
+                "pearson_fairreg": m_fair_bi.pearsonr_coefficient(),
+                "I_sep_lr": I_sep_lr,
+                "I_sep_bi": I_sep_bi,
+                "I_sep_weighted_bi": I_sep_weighted_bi,
+                "I_sep_fairreg_bi": I_sep_fair_bi,
+                "violate_r": violate / r,
+                "violate_r_weighted": violate_w / r,
+                "violate_r_fairreg": violate_fair / r,
+                "violate_comp_r": violate_comp / r,
+                "violate_comp_r_w": violate_comp_w / r,
+                "violate_comp_r_fairreg": violate_comp_fair / r,
+            }
+        results.append(result)
 
-    # plt.hist(group0_unweighted, bins=np.linspace(-1, 1, 50), label='Group 0')
-    # plt.hist(group1_unweighted, bins=np.linspace(-1, 1, 50), label='Group 1')
-    # plt.scatter(kmeans_unweighted.cluster_centers_,[0,0], c='r')
-    # plt.scatter(threshold,0,c='g', label='ROC Threshold')
-    # plt.legend()
-    # plt.title('predictions on test data')
-    # plt.show()
-    #
-    # plt.hist(group0_weighted, bins=np.linspace(-1, 1, 50), label='Group 0')
-    # plt.hist(group1_weighted, bins=np.linspace(-1, 1, 50), label='Group 1')
-    # plt.scatter(kmeans_weighted.cluster_centers_,[0,0], c='r')
-    # plt.scatter(threshold_weighted,0,c='g', label='ROC Threshold')
-    # plt.legend()
-    # plt.title('predictions on weighted test data')
-    # plt.show()
-
-    #
-    # predictions_bi = []
-    # predictions_weighted_bi = []
-    #
-    # for index, item in enumerate(predictions):
-    #     if item >= threshold:
-    #         predictions_bi.append(1)
-    #     else:
-    #         predictions_bi.append(0)
-    #
-    # for index, item in enumerate(predictions_weighted):
-    #     if item >= threshold_weighted:
-    #         predictions_weighted_bi.append(1)
-    #     else:
-    #         predictions_weighted_bi.append(0)
-
-    # m = Metrics(y_test, predictions)
-    m_bi = Metrics(y_test, predictions_kmeans)
-    m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
-
-    if isBinary:
-        accuracy_bi = accuracy_score(y_test, predictions_kmeans)
-        accuracy_weighted = accuracy_score(y_test, predictions_kmeans_weighted)
-        f1_score_bi = f1_score(y_test, predictions_kmeans)
-        f1_score_weighted = f1_score(y_test, predictions_kmeans_weighted)
-
-        AOD = m_bi.AOD(test["sa"])
-        EOD = m_bi.EOD(test["sa"])
-        AOD_weighted = m_weighted_bi.AOD(test["sa"])
-        EOD_weighted = m_weighted_bi.EOD(test["sa"])
-
-    else:
-        MSE_unweighted = m_bi.mse()
-        MSE_weighted = m_weighted_bi.mse()
-
-        spearman_unweighted = m_bi.spearmanr_coefficient()
-        pearson_unweighted = m_bi.pearsonr_coefficient()
-
-        spearman_weighted = m_weighted_bi.spearmanr_coefficient()
-        pearson_weighted = m_weighted_bi.pearsonr_coefficient()
-
-    I_sep_bi = m_bi.MI_con_info(test["sa"])
-    I_sep_weighted_bi = m_weighted_bi.MI_con_info(test["sa"])
-
-    if isBinary:
-        result = {
-            "weight_formula": WEIGHT_FORMULA,
-            "Acc_lr": accuracy_lr,
-            "Acc_unweight": accuracy_bi,
-            "Acc_weighted": accuracy_weighted,
-            "F1_lr": f1_score_lr,
-            "F1_unweight": f1_score_bi,
-            "F1_weighted": f1_score_weighted,
-            "AOD_lr": AOD_lr,
-            "AOD_unweight": AOD,
-            "AOD_weighted": AOD_weighted,
-            "EOD_lr": EOD_lr,
-            "EOD_unweight": EOD,
-            "EOD_weighted": EOD_weighted,
-            "I_sep_lr": I_sep_lr,
-            "I_sep_bi": I_sep_bi,
-            "I_sep_weighted_bi": I_sep_weighted_bi,
-            "violate_r": violate / r,
-            "violate_r_weighted": violate_w / r,
-            "violate_comp_r": violate_comp / r,
-            "violate_comp_r_w": violate_comp_w / r,
-        }
-    else:
-        result = {
-            "weight_formula": WEIGHT_FORMULA,
-            "MSE_lr": mse_lr,
-            "MSE_unweight": MSE_unweighted,
-            "MSE_weight": MSE_weighted,
-            "spearman_lr": spearman_lr,
-            "spearman_unweighted": spearman_unweighted,
-            "spearman_weighted": spearman_weighted,
-            "pearson_lr": pearson_lr,
-            "pearson_unweighted": pearson_unweighted,
-            "pearson_weighted": pearson_weighted,
-            "I_sep_lr": I_sep_lr,
-            "I_sep_bi": I_sep_bi,
-            "I_sep_weighted_bi": I_sep_weighted_bi,
-            "violate_r": violate / r,
-            "violate_r_weighted": violate_w / r,
-            "violate_comp_r": violate_comp / r,
-            "violate_comp_r_w": violate_comp_w / r,
-        }
-
-    results.append(result)
-
-pair_strategy = "all" if use_all_pairs else str(num_comp_train)
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-pd.DataFrame(results).to_csv(
-    RESULTS_DIR / f"FairReweighing_violate_r_{df_name}_{nc}_{pair_strategy}.csv",
-    index=False,
-)
-
-# changed encoder structure
-# use one pair for every training entry
-# Compare AUC, AOD, EOD with logistic regression
-# Build models on the whole adult dataset
-# I_sep when comparing linea output
-# Switch to German and Heart
-# including accuracy (F1,precision...) and mAOD from FairBalance
-# try linearSVC/ SVC (fit_intercept=False, loss='hinge') with entry A minus entry B, make prediction on individual and calculate accuracy.
-# bin continuous results and plot a histogram on the training data
-# focus more on regression datasets like communities, lsac and SCUT
-# put FairReiweghing paper on arxiv
-
-# fix cluster labeling, plot historgram with cutoff
-# finding different ways for clustering (KDE, SVM)
-# historgram for training and test data and both
-# cutoff with ROC curve
-# sample weight implementation
-
-# increasing the numbers of comparison for better accuracy (german & heart)
-# check MSE, spearman for regression
-# new ways to preprocessing reweighing
-
-# work on comp_sep paper & github repo
-# real world dataset
-# test comp_sep on comp FairReweighing
-
-# select the same testing pairs for weighted and unweighted
-# trying using all pairs
-# report average difference between TPR and FPR
-# testing with difference number of nc
-# focus on the paper first (introduction, background)
+    pair_strategy = "all" if use_all_pairs else str(num_comp_train)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(results).to_csv(
+        RESULTS_DIR / f"FairReweighing_violate_r_{output_df_name}_{output_nc}_{pair_strategy}.csv",
+        index=False,
+    )
 
 
-# split the dataset in half stratifily on SA
-# train a classification model and one with fairbalance
-# sample without replacement for a certain number of repetition
-
-# include COMPAS and regression dataset
-# include SCUT and other fairness metrics
-
-# include the hypothesis test for seperation
-# getting rid of the validation and earlystopping
-
-
-# for i in range(10):
-# # m = Metrics(df["income"], df["pred"])
-# # AOD = m.AOD(df["gender"])
-# # EOD = m.EOD(df["gender"])
-# # gAOD = m.gAOD(df["gender"])
-# # MI = m.MI_b(df["gender"])
-#
-#     res_ts_encoder = []
-# test_list = []
-#
-# for indexA, rowA in test.iterrows():
-#     comp = []
-# test_cp = test.copy()
-# comp_count = 0
-# while comp_count < num_comp_test:
-#     rowB = test_cp.sample()
-#     indexB = rowB.index[0]
-#     if (indexB == indexA):
-#         continue
-#     rowB = rowB.iloc[0]
-#     ratingA = rowA[col]
-#     ratingB = rowB[col]
-#     label = 0
-#     if ratingA > ratingB:
-#         label = 1
-#     elif ratingA < ratingB:
-#         label = -1
-#     if label != 0:
-#         # if label is not None:
-#         testA = rowA.drop(labels=[col])
-#         testB = rowB.drop(labels=[col])
-#
-#         res_ts_encoder.append({"A": testA.to_list(),
-#                                "B": testB.to_list(),
-#                                "Label": label
-#                                })
-#         test_list.append({"A": testA['sa'],
-#                           "B": testB['sa'],
-#                           "Label": label
-#                           })
-#         test_cp.drop(indexB, inplace=True)
-#         comp_count += 1
-#
-# data_ts_encoder = pd.DataFrame(res_ts_encoder)
-# test_list = pd.DataFrame(test_list)
-#
-# predictions = Classification.predict(train_encoder, dual_encoder)
-
-# res_tr = []
-# comp = []
-# for indexA in range(0, len(df)):
-#     df_cp = df.copy()
-#     comp_count = 0
-#     rowA = df.iloc[indexA]
-#     while comp_count < num_comp:
-#         # for indexB in range(0, len(df)):
-#         #     indexB = random.randint(0, len(df_cp) - 1)
-#         rowB = df_cp.sample()
-#         indexB = rowB.index[0]
-#         if (indexB == indexA):
-#                 continue
-#         rowB = rowB.iloc[0]
-#         ratingA = rowA[col]
-#         ratingB = rowB[col]
-#         predA = rowA["pred"]
-#         predB = rowB["pred"]
-#         label = 0
-#         pred = 0
-#         if ratingA > ratingB:
-#             label = 1
-#         elif ratingA < ratingB:
-#             label = -1
-#         if predA > predB:
-#             pred = 1
-#         elif predA < predB:
-#             pred = -1
-#         res_tr.append({"A": rowA["gender"],
-#                        "B": rowB["gender"],
-#                        "Label": label,
-#                        "pred_con": pred
-#                        })
-#         # comp.append(indexB)
-#         df_cp.drop(indexB, inplace=True)
-#         comp_count += 1
-
-# data_tr = pd.DataFrame(res_tr)
-
-# test_list["pred"] = predictions
-# m = Metrics(test_list["Label"], test_list["pred"])
-# AOD_comp = m.AOD_comp(test_list[["A", "B"]])
-# Within_comp = m.Within_comp(test_list[["A", "B"]])
-# Sep_comp = m.Sep_comp(test_list[["A", "B"]])
-# # MI_comp = m.MI_comp(data_tr[["A", "B"]])
-# # MI_comp2 = m.MI_comp2(data_tr[["A", "B"]])
-#
-# result = {"# of comparisons": len(test_list), "AOD_comp": AOD_comp,
-#           "Within_comp": Within_comp, "EOD_comp": AOD_comp + Within_comp,
-#           # "MI_comp": MI_comp, "MI_comp2": MI_comp2, "Ratio": MI / MI_comp
-#           }
-# results.append(result)
-#
-# results = pd.DataFrame(results)
-# results.loc[len(results.index)] = results.mean()
-# results.loc[len(results.index)] = results.std()
-# results.to_csv(df_name + "_encoder_" + str(num_comp_train) + '_' + str(num_comp_test) + ".csv", index=False)
-
-# experiment with the num of comparison (repeat 20 times and get mean and std)
-# repeated trail on df1-df3 and add more data points
-# SCUT dataset
-# Find out the relationship between num of comparison and num of data points
+if __name__ == "__main__":
+    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
+    NUM_RUNS = 5
+    USE_ALL_PAIRS = True
+    NUM_COMP_TRAIN = 1
+    run_experiments(
+        num_runs=NUM_RUNS,
+        dataset=DATASET,
+        use_all_pairs=USE_ALL_PAIRS,
+        num_comp_train=NUM_COMP_TRAIN,
+    )

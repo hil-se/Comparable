@@ -72,26 +72,7 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     train.reset_index(inplace=True, drop=True)
     test.reset_index(inplace=True, drop=True)
 
-    protected_tr_race = []
-    protected_ts_race = []
-
-    protected_tr_sex = []
-    protected_ts_sex = []
-
-    # for file in train["Filename"]:
-    #     if file[1] == 'M':
-    #         protected_tr_sex.append(1)
-    #     else:
-    #         protected_tr_sex.append(0)
-    #
     protected_ts_sex = _encode_from_filenames(test["Filename"], 1, "M")
-    #
-    # for file in train["Filename"]:
-    #     if file[0] == 'C':
-    #         protected_tr_race.append(1)
-    #     else:
-    #         protected_tr_race.append(0)
-    #
     protected_ts_race = _encode_from_filenames(test["Filename"], 0, "C")
 
     res_tr = []
@@ -171,18 +152,6 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     data_ts = pd.DataFrame(res_ts)
     data_ts_single = pd.DataFrame(res_ts_single)
 
-    protected_ts_A_sex = []
-    protected_ts_B_sex = []
-
-    protected_ts_A_race = []
-    protected_ts_B_race = []
-
-    protected_ts_A_sex_single = []
-    protected_ts_B_sex_single = []
-
-    protected_ts_A_race_single = []
-    protected_ts_B_race_single = []
-
     protected_ts_A_sex = _encode_from_filenames(data_ts["A"], 1, "M")
 
     protected_ts_B_sex = _encode_from_filenames(data_ts["B"], 1, "M")
@@ -230,18 +199,20 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     print("Training data size:", len(data_tr_single.index))
     print("Testing data size:", len(data_ts_single.index))
 
-    test_list = []
-    for indexA, rowA in test.iterrows():
-        ratingA = rowA[col]
-        test_list.append({"indexA": indexA, "A": rowA["Filename"], "Score": ratingA})
-    test_list = pd.DataFrame(test_list)
+    test_list = pd.DataFrame(
+        [
+            {"indexA": indexA, "A": rowA["Filename"], "Score": rowA[col]}
+            for indexA, rowA in test.iterrows()
+        ]
+    )
     test_list["A"] = test_list["A"].apply(retrievePixels)
 
-    data_list = []
-    for indexA, rowA in data.iterrows():
-        ratingA = rowA[col]
-        data_list.append({"indexA": indexA, "A": rowA["Filename"], "Score": ratingA})
-    data_list = pd.DataFrame(data_list)
+    data_list = pd.DataFrame(
+        [
+            {"indexA": indexA, "A": rowA["Filename"], "Score": rowA[col]}
+            for indexA, rowA in data.iterrows()
+        ]
+    )
     data_list["A"] = data_list["A"].apply(retrievePixels)
 
     return (

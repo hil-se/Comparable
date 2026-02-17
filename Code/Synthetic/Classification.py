@@ -5,7 +5,6 @@ from scipy import stats
 
 import DualEncoder
 import SharedDualEncoder
-import metrics
 
 
 def _predict_labels_batch(test, dual_encoder, batch_size=2048):
@@ -24,13 +23,14 @@ def learn(
     train_data,
     epochs=100,
     validation_data=None,
-    y_true=[],
+        y_true=None,
     patience=10,
     batch_size=512,
     shared=False,
     train_weights=None,
     val_weights=None,
     df_name=None,
+        fairness_lambda=0.0,
 ):
     # SCUT image pairs are large; use a tiny batch and stream samples to avoid OOM.
     is_scut = df_name is not None and "scut" in df_name.lower()
@@ -43,33 +43,38 @@ def learn(
     def _row_generator():
         if train_weights is None:
             for _, row in train_data.iterrows():
-                yield {
+                item = {
                     "A": np.asarray(row["A"], dtype=np.float32),
                     "B": np.asarray(row["B"], dtype=np.float32),
                     "Label": np.float32(row["Label"]),
                 }
+                if "SA_A" in row and "SA_B" in row:
+                    item["SA_A"] = np.float32(row["SA_A"])
+                    item["SA_B"] = np.float32(row["SA_B"])
+                yield item
         else:
             for idx, row in train_data.iterrows():
-                yield {
+                item = {
                     "A": np.asarray(row["A"], dtype=np.float32),
                     "B": np.asarray(row["B"], dtype=np.float32),
                     "Label": np.float32(row["Label"]),
                     "Weights": np.float32(train_weights[idx]),
                 }
+                if "SA_A" in row and "SA_B" in row:
+                    item["SA_A"] = np.float32(row["SA_A"])
+                    item["SA_B"] = np.float32(row["SA_B"])
+                yield item
 
-    if train_weights is None:
-        output_signature = {
-            "A": tf.TensorSpec(shape=first_a.shape, dtype=tf.float32),
-            "B": tf.TensorSpec(shape=first_b.shape, dtype=tf.float32),
-            "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
-        }
-    else:
-        output_signature = {
-            "A": tf.TensorSpec(shape=first_a.shape, dtype=tf.float32),
-            "B": tf.TensorSpec(shape=first_b.shape, dtype=tf.float32),
-            "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
-            "Weights": tf.TensorSpec(shape=(), dtype=tf.float32),
-        }
+    output_signature = {
+        "A": tf.TensorSpec(shape=first_a.shape, dtype=tf.float32),
+        "B": tf.TensorSpec(shape=first_b.shape, dtype=tf.float32),
+        "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
+    }
+    if train_weights is not None:
+        output_signature["Weights"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+    if "SA_A" in train_data.columns and "SA_B" in train_data.columns:
+        output_signature["SA_A"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+        output_signature["SA_B"] = tf.TensorSpec(shape=(), dtype=tf.float32)
 
     train_dataset = tf.data.Dataset.from_generator(
         _row_generator, output_signature=output_signature
@@ -78,12 +83,15 @@ def learn(
     train_dataset = (
         train_dataset.batch(batch_size).repeat().prefetch(tf.data.AUTOTUNE)
     )
-    if shared == True:
+    if y_true is None:
+        y_true = []
+
+    if shared:
         encoder = SharedDualEncoder.create_encoder(
             input_size=train_dataset.element_spec["A"].shape[1], df_name=df_name
         )
         dual_encoder = SharedDualEncoder.DualEncoderAll(
-            encoder, y_true=np.array(y_true)
+            encoder, y_true=np.array(y_true), fairness_lambda=fairness_lambda
         )
     else:
         encoder_A = DualEncoder.create_encoder(
@@ -126,6 +134,7 @@ def train_model(
     train_weights=None,
     val_weights=None,
     df_name=None,
+        fairness_lambda=0.0,
 ):
     if train_weights is not None:
         train_weights = np.asarray(train_weights, dtype=np.float32)
@@ -145,6 +154,7 @@ def train_model(
         train_weights=train_weights,
         val_weights=None,
         df_name=df_name,
+        fairness_lambda=fairness_lambda,
     )
     return dual_encoder
 
@@ -157,17 +167,6 @@ def test_model(test, dual_encoder):
     labels = test["Label"].tolist()
     predictions = _predict_labels_batch(test, dual_encoder)
     return predictions, evaluate(labels, predictions)
-    # return evaluate_accuracy(labels, predictions)
-
-
-def evaluate_accuracy(y_true, y_pred):
-    matches = 0
-    ln = len(y_true)
-    for i in range(ln):
-        if y_pred[i] == y_true[i]:
-            matches += 1
-    accuracy = matches / ln
-    return accuracy
 
 
 def evaluate(y_true, y_pred):
@@ -204,59 +203,23 @@ def evaluate(y_true, y_pred):
     return recall, precision, F1, accuracy
 
 
-# def generateLists(test_dataset, dual_encoder):
-#     # realList = {}
-#     # predList = {}
-#     realList = []
-#     predList = []
-#     for index, row in test_dataset.iterrows():
-#         idName = row["indexA"]
-#         datapoint = np.array(row["A"])
-#         real_score = row["Score"]
-#         datapoint = np.expand_dims(datapoint, axis=0)
-#         pred_score = dual_encoder.score(datapoint)
-#         pred_score = pred_score.numpy()[0][0].item()
-#         # realList[idName] = real_score
-#         # predList[idName] = pred_score
-#         realList.append({"id": idName, "Score": real_score})
-#         predList.append({"id": idName, "Score": pred_score})
-#     realList = pd.DataFrame(realList)
-#     predList = pd.DataFrame(predList)
-#     realList.sort_values(by=['Score'], inplace=True)
-#     predList.sort_values(by=['Score'], inplace=True)
-#     realList = realList.reset_index()
-#     predList = predList.reset_index()
-#     return realList, predList
-
-
 def generateLists(test_dataset, dual_encoder):
-    # realList = {}
-    # predList = {}
     realList = []
     predList = []
-    for index, row in test_dataset.iterrows():
+    for _, row in test_dataset.iterrows():
         idName = row["indexA"]
         datapoint = np.array(row["A"])
         real_score = row["Score"]
         datapoint = np.expand_dims(datapoint, axis=0)
         pred_score = dual_encoder.score(datapoint)
         pred_score = pred_score.numpy()[0][0].item()
-        # realList[idName] = real_score
-        # predList[idName] = pred_score
         realList.append({"id": idName, "Score": real_score})
         predList.append({"id": idName, "Score": pred_score})
     realList = pd.DataFrame(realList)
     predList = pd.DataFrame(predList)
 
-    m_comp = metrics.Metrics(realList["Score"], predList["Score"])
-
     [spearmanr, sp_pvalue] = stats.spearmanr(realList["Score"], predList["Score"])
     [pearsonr, p_pvalue] = stats.pearsonr(realList["Score"], predList["Score"])
-
-    # realList.sort_values(by=['Score'], inplace=True)
-    # predList.sort_values(by=['Score'], inplace=True)
-    # realList = realList.reset_index()
-    # predList = predList.reset_index()
     return spearmanr, sp_pvalue, pearsonr, p_pvalue
 
 
