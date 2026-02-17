@@ -871,10 +871,10 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "heart"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "comm"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
-    USE_ALL_PAIRS = True
-    NUM_COMP_TRAIN = 1
+    USE_ALL_PAIRS = False
+    NUM_COMP_TRAIN = 20
     run_experiments(
         num_runs=NUM_RUNS,
         dataset=DATASET,
