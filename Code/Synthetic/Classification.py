@@ -12,7 +12,7 @@ def _predict_labels_batch(test, dual_encoder, batch_size=2048):
     dataA = np.asarray(test["A"].tolist())
     dataB = np.asarray(test["B"].tolist())
     if dataA.ndim > 2:
-        batch_size = min(batch_size, 16)
+        batch_size = min(batch_size, 4)
     raw_scores = (
         dual_encoder.predict(dataA, dataB, batch_size=batch_size).numpy().reshape(-1)
     )
