@@ -118,7 +118,7 @@ class DualEncoderAll(tf.keras.Model):
         return tf.reduce_mean(encoding, axis=1)
 
     def compute_loss(
-            self, encodings_A, encodings_B, y, sample_weight=None, sa_a=None, sa_b=None
+        self, encodings_A, encodings_B, y, sample_weight=None, sa_a=None, sa_b=None
     ):
         encodings_A = self._to_scalar(encodings_A)
         encodings_B = self._to_scalar(encodings_B)
