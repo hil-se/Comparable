@@ -871,9 +871,9 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
-    NUM_RUNS = 5
-    USE_ALL_PAIRS = True
+    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
+    NUM_RUNS = 10
+    USE_ALL_PAIRS = False
     NUM_COMP_TRAIN = 1
     run_experiments(
         num_runs=NUM_RUNS,
