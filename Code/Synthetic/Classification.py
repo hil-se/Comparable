@@ -12,7 +12,7 @@ def _predict_labels_batch(test, dual_encoder, batch_size=2048):
     dataA = np.asarray(test["A"].tolist())
     dataB = np.asarray(test["B"].tolist())
     if dataA.ndim > 2:
-        batch_size = min(batch_size, 4)
+        batch_size = min(batch_size, 16)
     raw_scores = (
         dual_encoder.predict(dataA, dataB, batch_size=batch_size).numpy().reshape(-1)
     )
@@ -23,14 +23,14 @@ def learn(
     train_data,
     epochs=100,
     validation_data=None,
-    y_true=None,
+        y_true=None,
     patience=10,
     batch_size=512,
     shared=False,
     train_weights=None,
     val_weights=None,
     df_name=None,
-    fairness_lambda=0.0,
+        fairness_lambda=0.0,
 ):
     # SCUT image pairs are large; use a tiny batch and stream samples to avoid OOM.
     is_scut = df_name is not None and "scut" in df_name.lower()
@@ -80,7 +80,9 @@ def learn(
         _row_generator, output_signature=output_signature
     )
     steps_per_epoch = int(np.ceil(len(train_data) / batch_size))
-    train_dataset = train_dataset.batch(batch_size).repeat().prefetch(tf.data.AUTOTUNE)
+    train_dataset = (
+        train_dataset.batch(batch_size).repeat().prefetch(tf.data.AUTOTUNE)
+    )
     if y_true is None:
         y_true = []
 
@@ -132,7 +134,7 @@ def train_model(
     train_weights=None,
     val_weights=None,
     df_name=None,
-    fairness_lambda=0.0,
+        fairness_lambda=0.0,
 ):
     if train_weights is not None:
         train_weights = np.asarray(train_weights, dtype=np.float32)

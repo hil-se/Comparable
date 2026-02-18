@@ -480,7 +480,7 @@ FAIRNESS_LAMBDA = 0.1
 
 
 def _build_train_pairs(
-    train_vals, col_idx, sa_idx, pixels_idx, is_scut, use_all_pairs, num_comp_train
+        train_vals, col_idx, sa_idx, pixels_idx, is_scut, use_all_pairs, num_comp_train
 ):
     keep_cols = np.ones(train_vals.shape[1], dtype=bool)
     keep_cols[col_idx] = False
@@ -488,9 +488,9 @@ def _build_train_pairs(
     if use_all_pairs:
         num_train = len(train_vals)
         idx_a, idx_b = np.where(~np.eye(num_train, dtype=bool))
-        labels = np.sign(
-            train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]
-        ).astype(int)
+        labels = np.sign(train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]).astype(
+            int
+        )
         valid_mask = labels != 0
         rows_a, rows_b, labels = (
             train_vals[idx_a[valid_mask]],
@@ -508,7 +508,7 @@ def _build_train_pairs(
                 idx_b
                 for idx_b in range(n_train)
                 if idx_b != idx_a
-                and (min(idx_a, idx_b), max(idx_a, idx_b)) not in used_pairs
+                   and (min(idx_a, idx_b), max(idx_a, idx_b)) not in used_pairs
             ]
             if not candidates:
                 continue
@@ -572,8 +572,8 @@ def _compute_pair_weights(pair_meta_df):
     weights = np.ones(len(pair_meta_df))
     diff_group_mask = ~is_same_group
     weights[diff_group_mask] = (
-        pair_meta_df.loc[diff_group_mask, "AB"].map(p_aij)
-        / (2 * pair_meta_df.loc[diff_group_mask, "AY"].map(p_aij_yij))
+            pair_meta_df.loc[diff_group_mask, "AB"].map(p_aij)
+            / (2 * pair_meta_df.loc[diff_group_mask, "AY"].map(p_aij_yij))
     ).values
     return weights
 
@@ -594,7 +594,9 @@ def _load_dataset(dataset_name):
     return dataset_loaders[dataset_name]()
 
 
-def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_train=1):
+def run_experiments(
+        num_runs=10, dataset="scut", use_all_pairs=False, num_comp_train=1
+):
     results = []
     output_df_name = None
     output_nc = 0
@@ -693,9 +695,7 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
         else:
             test_vals = test_features.values
             predictions = dual_encoder.score(test_vals).numpy().flatten()
-            predictions_weighted = (
-                dual_encoder_weighted.score(test_vals).numpy().flatten()
-            )
+            predictions_weighted = dual_encoder_weighted.score(test_vals).numpy().flatten()
             predictions_fair = dual_encoder_fair.score(test_vals).numpy().flatten()
 
         if isBinary:
@@ -712,16 +712,14 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
             km_w = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
                 pred_w_filt.reshape(-1, 1)
             )
-            predictions_kmeans_weighted = km_w.predict(
-                predictions_weighted.reshape(-1, 1)
-            )
+            predictions_kmeans_weighted = km_w.predict(predictions_weighted.reshape(-1, 1))
             if km_w.cluster_centers_[0] > km_w.cluster_centers_[1]:
                 predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
 
             pred_fair_filt = remove_outliers(predictions_fair)
-            km_fair = KMeans(
-                n_clusters=2, n_init=10, max_iter=300, random_state=42
-            ).fit(pred_fair_filt.reshape(-1, 1))
+            km_fair = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
+                pred_fair_filt.reshape(-1, 1)
+            )
             predictions_kmeans_fair = km_fair.predict(predictions_fair.reshape(-1, 1))
             if km_fair.cluster_centers_[0] > km_fair.cluster_centers_[1]:
                 predictions_kmeans_fair = 1 - predictions_kmeans_fair
@@ -780,25 +778,21 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
                 if not np.any(valid):
                     continue
                 take = min(remaining, int(valid.sum()))
-                i1[filled : filled + take] = idx1[valid][:take]
-                i2[filled : filled + take] = idx2[valid][:take]
+                i1[filled: filled + take] = idx1[valid][:take]
+                i2[filled: filled + take] = idx2[valid][:take]
                 filled += take
 
             violate_comp += (
-                min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0])
-                < alpha
+                    min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0])
+                    < alpha
             )
             violate_comp_w += (
-                min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
-                < alpha
+                    min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
+                    < alpha
             )
             violate_comp_fair += (
-                min(
-                    comparative_separation(count_violation_fast(data_fair_raw, i1, i2))[
-                        0
-                    ]
-                )
-                < alpha
+                    min(comparative_separation(count_violation_fast(data_fair_raw, i1, i2))[0])
+                    < alpha
             )
 
         m_bi = Metrics(y_test, predictions_kmeans)
@@ -871,17 +865,16 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
     pair_strategy = "all" if use_all_pairs else str(num_comp_train)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(results).to_csv(
-        RESULTS_DIR
-        / f"FairReweighing_violate_r_{output_df_name}_{output_nc}_{pair_strategy}.csv",
+        RESULTS_DIR / f"FairReweighing_violate_r_{output_df_name}_{output_nc}_{pair_strategy}.csv",
         index=False,
     )
 
 
 if __name__ == "__main__":
-    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
-    NUM_RUNS = 5
+    DATASET = "comm"  # scut, adult, german, heart, compas, comm, lsac
+    NUM_RUNS = 10
     USE_ALL_PAIRS = False
-    NUM_COMP_TRAIN = 1
+    NUM_COMP_TRAIN = 20
     run_experiments(
         num_runs=NUM_RUNS,
         dataset=DATASET,
