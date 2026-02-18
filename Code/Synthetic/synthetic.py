@@ -878,7 +878,7 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
 
 
 if __name__ == "__main__":
-    DATASET = "lsac"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
     USE_ALL_PAIRS = False
     NUM_COMP_TRAIN = 3
