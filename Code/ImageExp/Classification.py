@@ -34,7 +34,7 @@ def learn(
     shared=False,
     height=250,
     width=250,
-        use_mixed_precision=True,
+    use_mixed_precision=True,
 ):
     tf.keras.backend.clear_session()
     _configure_runtime(use_mixed_precision=use_mixed_precision)
