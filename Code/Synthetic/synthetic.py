@@ -36,7 +36,7 @@ def retrievePixels(path, height, width):
 col = "output"
 
 
-def _split_with_output(df, dependent, test_size=0.5):
+def _split_with_output(df, dependent, test_size=0.2):
     X = df.drop(columns=[dependent])
     y = np.array(df[dependent])
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
@@ -594,10 +594,17 @@ def _load_dataset(dataset_name):
     return dataset_loaders[dataset_name]()
 
 
-def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_train=1):
+def run_experiments(
+    num_runs=10,
+    dataset="scut",
+    use_all_pairs=False,
+    num_comp_train=1,
+    train_fairreg=True,
+):
     results = []
     output_df_name = None
     output_nc = 0
+    effective_use_all_pairs = use_all_pairs or dataset in {"german", "heart"}
 
     for _ in range(num_runs):
         _, df_name, train, test = _load_dataset(dataset)
@@ -620,7 +627,7 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
             sa_idx=sa_idx,
             pixels_idx=pixels_idx,
             is_scut=is_scut,
-            use_all_pairs=use_all_pairs,
+            use_all_pairs=effective_use_all_pairs,
             num_comp_train=num_comp_train,
         )
 
@@ -647,15 +654,17 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
             val_weights=None,
             df_name=df_name,
         )
-        dual_encoder_fair = Classification.train_model(
-            train=data_tr_encoder,
-            val=None,
-            y_true=data_tr_encoder["Label"].tolist(),
-            shared=True,
-            epochs=100,
-            df_name=df_name,
-            fairness_lambda=FAIRNESS_LAMBDA,
-        )
+        dual_encoder_fair = None
+        if train_fairreg:
+            dual_encoder_fair = Classification.train_model(
+                train=data_tr_encoder,
+                val=None,
+                y_true=data_tr_encoder["Label"].tolist(),
+                shared=True,
+                epochs=100,
+                df_name=df_name,
+                fairness_lambda=FAIRNESS_LAMBDA,
+            )
 
         y_train = train[col]
         train = train.drop(columns=[col])
@@ -689,14 +698,22 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
             predictions_weighted = batched_score(
                 dual_encoder_weighted, test_vals, batch_size=4
             )
-            predictions_fair = batched_score(dual_encoder_fair, test_vals, batch_size=4)
+            if train_fairreg:
+                predictions_fair = batched_score(
+                    dual_encoder_fair, test_vals, batch_size=4
+                )
+            else:
+                predictions_fair = np.full_like(predictions, np.nan, dtype=np.float64)
         else:
             test_vals = test_features.values
             predictions = dual_encoder.score(test_vals).numpy().flatten()
             predictions_weighted = (
                 dual_encoder_weighted.score(test_vals).numpy().flatten()
             )
-            predictions_fair = dual_encoder_fair.score(test_vals).numpy().flatten()
+            if train_fairreg:
+                predictions_fair = dual_encoder_fair.score(test_vals).numpy().flatten()
+            else:
+                predictions_fair = np.full_like(predictions, np.nan, dtype=np.float64)
 
         if isBinary:
             pred_filt = remove_outliers(predictions)
@@ -718,29 +735,43 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
             if km_w.cluster_centers_[0] > km_w.cluster_centers_[1]:
                 predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
 
-            pred_fair_filt = remove_outliers(predictions_fair)
-            km_fair = KMeans(
-                n_clusters=2, n_init=10, max_iter=300, random_state=42
-            ).fit(pred_fair_filt.reshape(-1, 1))
-            predictions_kmeans_fair = km_fair.predict(predictions_fair.reshape(-1, 1))
-            if km_fair.cluster_centers_[0] > km_fair.cluster_centers_[1]:
-                predictions_kmeans_fair = 1 - predictions_kmeans_fair
+            if train_fairreg:
+                pred_fair_filt = remove_outliers(predictions_fair)
+                km_fair = KMeans(
+                    n_clusters=2, n_init=10, max_iter=300, random_state=42
+                ).fit(pred_fair_filt.reshape(-1, 1))
+                predictions_kmeans_fair = km_fair.predict(
+                    predictions_fair.reshape(-1, 1)
+                )
+                if km_fair.cluster_centers_[0] > km_fair.cluster_centers_[1]:
+                    predictions_kmeans_fair = 1 - predictions_kmeans_fair
+            else:
+                predictions_kmeans_fair = np.full_like(
+                    predictions_kmeans, np.nan, dtype=np.float64
+                )
         else:
             predictions_kmeans = predictions
             predictions_kmeans_weighted = predictions_weighted
-            predictions_kmeans_fair = predictions_fair
+            predictions_kmeans_fair = (
+                predictions_fair
+                if train_fairreg
+                else np.full_like(predictions, np.nan, dtype=np.float64)
+            )
 
         data_raw = np.column_stack([predictions_kmeans, y_test, test["sa"].values])
         data_w_raw = np.column_stack(
             [predictions_kmeans_weighted, y_test, test["sa"].values]
         )
-        data_fair_raw = np.column_stack(
-            [predictions_kmeans_fair, y_test, test["sa"].values]
+        data_fair_raw = (
+            np.column_stack([predictions_kmeans_fair, y_test, test["sa"].values])
+            if train_fairreg
+            else None
         )
 
         violate_comp = violate_comp_w = violate_comp_fair = 0
         violate = violate_w = violate_fair = 0
         n_rows = len(data_raw)
+        num_comp_pairs = max(1, int(np.ceil(0.1 * n_rows)))
         y_vals = data_raw[:, 1]
         has_comparable_pairs = np.unique(y_vals).size > 1
         half_size = n_rows // 2
@@ -755,24 +786,26 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
                 data_w_raw[selectedr, 0],
                 data_w_raw[selectedr, 2],
             )
-            ps_fair = separation(
-                data_fair_raw[selectedr, 1],
-                data_fair_raw[selectedr, 0],
-                data_fair_raw[selectedr, 2],
-            )
+            if train_fairreg:
+                ps_fair = separation(
+                    data_fair_raw[selectedr, 1],
+                    data_fair_raw[selectedr, 0],
+                    data_fair_raw[selectedr, 2],
+                )
             violate += min(ps) < alpha
             violate_w += min(ps_w) < alpha
-            violate_fair += min(ps_fair) < alpha
+            if train_fairreg:
+                violate_fair += min(ps_fair) < alpha
 
         for _ in range(r):
             if not has_comparable_pairs:
                 continue
 
-            i1 = np.empty(n_rows, dtype=np.int64)
-            i2 = np.empty(n_rows, dtype=np.int64)
+            i1 = np.empty(num_comp_pairs, dtype=np.int64)
+            i2 = np.empty(num_comp_pairs, dtype=np.int64)
             filled = 0
-            while filled < n_rows:
-                remaining = n_rows - filled
+            while filled < num_comp_pairs:
+                remaining = num_comp_pairs - filled
                 batch_size = max(remaining * 2, 256)
                 idx1 = np.random.randint(0, n_rows, size=batch_size)
                 idx2 = np.random.randint(0, n_rows, size=batch_size)
@@ -792,21 +825,22 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
                 min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
                 < alpha
             )
-            violate_comp_fair += (
-                min(
-                    comparative_separation(count_violation_fast(data_fair_raw, i1, i2))[
-                        0
-                    ]
+            if train_fairreg:
+                violate_comp_fair += (
+                    min(
+                        comparative_separation(
+                            count_violation_fast(data_fair_raw, i1, i2)
+                        )[0]
+                    )
+                    < alpha
                 )
-                < alpha
-            )
 
         m_bi = Metrics(y_test, predictions_kmeans)
         m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
-        m_fair_bi = Metrics(y_test, predictions_kmeans_fair)
+        m_fair_bi = Metrics(y_test, predictions_kmeans_fair) if train_fairreg else None
         I_sep_bi = m_bi.MI_con_info(test["sa"])
         I_sep_weighted_bi = m_weighted_bi.MI_con_info(test["sa"])
-        I_sep_fair_bi = m_fair_bi.MI_con_info(test["sa"])
+        I_sep_fair_bi = m_fair_bi.MI_con_info(test["sa"]) if train_fairreg else np.nan
 
         if isBinary:
             result = {
@@ -815,29 +849,39 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
                 "Acc_lr": accuracy_lr,
                 "Acc_unweight": accuracy_score(y_test, predictions_kmeans),
                 "Acc_weighted": accuracy_score(y_test, predictions_kmeans_weighted),
-                "Acc_fairreg": accuracy_score(y_test, predictions_kmeans_fair),
+                "Acc_fairreg": (
+                    accuracy_score(y_test, predictions_kmeans_fair)
+                    if train_fairreg
+                    else np.nan
+                ),
                 "F1_lr": f1_score_lr,
                 "F1_unweight": f1_score(y_test, predictions_kmeans),
                 "F1_weighted": f1_score(y_test, predictions_kmeans_weighted),
-                "F1_fairreg": f1_score(y_test, predictions_kmeans_fair),
+                "F1_fairreg": (
+                    f1_score(y_test, predictions_kmeans_fair)
+                    if train_fairreg
+                    else np.nan
+                ),
                 "AOD_lr": AOD_lr,
                 "AOD_unweight": m_bi.AOD(test["sa"]),
                 "AOD_weighted": m_weighted_bi.AOD(test["sa"]),
-                "AOD_fairreg": m_fair_bi.AOD(test["sa"]),
+                "AOD_fairreg": m_fair_bi.AOD(test["sa"]) if train_fairreg else np.nan,
                 "EOD_lr": EOD_lr,
                 "EOD_unweight": m_bi.EOD(test["sa"]),
                 "EOD_weighted": m_weighted_bi.EOD(test["sa"]),
-                "EOD_fairreg": m_fair_bi.EOD(test["sa"]),
+                "EOD_fairreg": m_fair_bi.EOD(test["sa"]) if train_fairreg else np.nan,
                 "I_sep_lr": I_sep_lr,
                 "I_sep_bi": I_sep_bi,
                 "I_sep_weighted_bi": I_sep_weighted_bi,
                 "I_sep_fairreg_bi": I_sep_fair_bi,
                 "violate_r": violate / r,
                 "violate_r_weighted": violate_w / r,
-                "violate_r_fairreg": violate_fair / r,
+                "violate_r_fairreg": violate_fair / r if train_fairreg else np.nan,
                 "violate_comp_r": violate_comp / r,
                 "violate_comp_r_w": violate_comp_w / r,
-                "violate_comp_r_fairreg": violate_comp_fair / r,
+                "violate_comp_r_fairreg": (
+                    violate_comp_fair / r if train_fairreg else np.nan
+                ),
             }
         else:
             result = {
@@ -846,29 +890,35 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
                 "MSE_lr": mse_lr,
                 "MSE_unweight": m_bi.mse(),
                 "MSE_weight": m_weighted_bi.mse(),
-                "MSE_fairreg": m_fair_bi.mse(),
+                "MSE_fairreg": m_fair_bi.mse() if train_fairreg else np.nan,
                 "spearman_lr": spearman_lr,
                 "spearman_unweighted": m_bi.spearmanr_coefficient(),
                 "spearman_weighted": m_weighted_bi.spearmanr_coefficient(),
-                "spearman_fairreg": m_fair_bi.spearmanr_coefficient(),
+                "spearman_fairreg": (
+                    m_fair_bi.spearmanr_coefficient() if train_fairreg else np.nan
+                ),
                 "pearson_lr": pearson_lr,
                 "pearson_unweighted": m_bi.pearsonr_coefficient(),
                 "pearson_weighted": m_weighted_bi.pearsonr_coefficient(),
-                "pearson_fairreg": m_fair_bi.pearsonr_coefficient(),
+                "pearson_fairreg": (
+                    m_fair_bi.pearsonr_coefficient() if train_fairreg else np.nan
+                ),
                 "I_sep_lr": I_sep_lr,
                 "I_sep_bi": I_sep_bi,
                 "I_sep_weighted_bi": I_sep_weighted_bi,
                 "I_sep_fairreg_bi": I_sep_fair_bi,
                 "violate_r": violate / r,
                 "violate_r_weighted": violate_w / r,
-                "violate_r_fairreg": violate_fair / r,
+                "violate_r_fairreg": violate_fair / r if train_fairreg else np.nan,
                 "violate_comp_r": violate_comp / r,
                 "violate_comp_r_w": violate_comp_w / r,
-                "violate_comp_r_fairreg": violate_comp_fair / r,
+                "violate_comp_r_fairreg": (
+                    violate_comp_fair / r if train_fairreg else np.nan
+                ),
             }
         results.append(result)
 
-    pair_strategy = "all" if use_all_pairs else str(num_comp_train)
+    pair_strategy = "all" if effective_use_all_pairs else str(num_comp_train)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(results).to_csv(
         RESULTS_DIR
@@ -878,13 +928,19 @@ def run_experiments(num_runs=10, dataset="scut", use_all_pairs=False, num_comp_t
 
 
 if __name__ == "__main__":
-    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
-    USE_ALL_PAIRS = False
+    USE_ALL_PAIRS = True
     NUM_COMP_TRAIN = 3
+    TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
+
     run_experiments(
         num_runs=NUM_RUNS,
         dataset=DATASET,
         use_all_pairs=USE_ALL_PAIRS,
         num_comp_train=NUM_COMP_TRAIN,
+        train_fairreg=TRAIN_FAIRREG,
     )
+
+    #TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
+    
