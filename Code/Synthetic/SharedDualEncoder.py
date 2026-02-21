@@ -65,11 +65,14 @@ def create_encoder(input_size, df_name):
         for layer in base_model.layers[-7:]:
             layer.trainable = True
 
+        # Keras 3 may not populate `base_model.input` until the model is called once.
+        _ = base_model(tf.keras.Input(shape=(224, 224, 3)))
+
         # Use the penultimate feature map (layer -4), then add a regression head.
         x = base_model.layers[-4].output
         x = Flatten()(x)
         output = Dense(1, activation="linear")(x)
-        model = tf.keras.Model(inputs=base_model.input, outputs=output)
+        model = tf.keras.Model(inputs=base_model.inputs, outputs=output)
 
     else:
         input_shape = (input_size, 1)
