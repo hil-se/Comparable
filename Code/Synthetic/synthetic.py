@@ -8,6 +8,8 @@ from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 # Suppress TensorFlow C++ INFO/WARNING logs (e.g., local_rendezvous messages).
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -679,7 +681,9 @@ def run_experiments(
             mse_lr = spearman_lr = pearson_lr = I_sep_lr = np.nan
         else:
             if isBinary:
-                clf = LogisticRegression().fit(train, y_train)
+                clf = make_pipeline(
+                    StandardScaler(), LogisticRegression(max_iter=2000)
+                ).fit(train, y_train)
             else:
                 clf = LinearRegression().fit(train, y_train)
             predictions_lr = clf.predict(test)
