@@ -216,8 +216,8 @@ def make_scut(P="P1"):
 
     # Parallel image loading with caching
     print(f"Loading {len(df)} images in parallel...")
-    pixels = DataProcessing.retrievePixels_batch(df["Filename"].tolist())
-    df["pixels"] = [p / 255.0 for p in pixels]
+    pixels = DataProcessing.retrievePixels_batch_vggface(df["Filename"].tolist())
+    df["pixels"] = pixels
     print("Images loaded.")
 
     fn = df["Filename"].astype(str)
@@ -274,9 +274,13 @@ def make_adult():
 def make_german():
     # seed = 42
     df = pd.read_csv(DATA_DIR / "german_credit_data.csv", index_col=0)
+    # Dataset headers/values may contain padded whitespace.
+    df.columns = df.columns.str.strip()
+    for c in df.select_dtypes(include="object").columns:
+        df[c] = df[c].str.strip()
     df = df.dropna()
-    df["Sex"] = df["Sex"].apply(lambda x: 1 if x == "male" else 0)
-    df["Risk"] = df["Risk"].apply(lambda x: 1 if x == "good" else 0)
+    df["Sex"] = df["Sex"].apply(lambda x: 1 if str(x).lower() == "male" else 0)
+    df["Risk"] = df["Risk"].apply(lambda x: 1 if str(x).lower() == "good" else 0)
 
     global isBinary
     dependent = "Risk"

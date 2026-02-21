@@ -11,55 +11,65 @@ def create_encoder(input_size, df_name):
     # output = tf.keras.layers.Dense(1, activation='linear')(input)
     # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
     if "scut" in df_name:
-        model = tf.keras.Sequential()
-        model.add(ZeroPadding2D((1, 1), input_shape=(250, 250, 3)))
-        model.add(Convolution2D(64, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(64, (3, 3), activation="relu"))
-        model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+        base_model = tf.keras.Sequential()
+        base_model.add(ZeroPadding2D((1, 1), input_shape=(224, 224, 3)))
+        base_model.add(Convolution2D(64, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(64, (3, 3), activation="relu"))
+        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(128, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(128, (3, 3), activation="relu"))
-        model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(128, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(128, (3, 3), activation="relu"))
+        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(256, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(256, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(256, (3, 3), activation="relu"))
-        model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(256, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(256, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(256, (3, 3), activation="relu"))
+        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation="relu"))
-        model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
+        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation="relu"))
-        model.add(ZeroPadding2D((1, 1)))
-        model.add(Convolution2D(512, (3, 3), activation="relu"))
-        model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
+        base_model.add(ZeroPadding2D((1, 1)))
+        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
+        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-        model.add(Convolution2D(4096, (7, 7), activation="relu"))
-        model.add(Dropout(0.5))
-        model.add(Convolution2D(4096, (1, 1), activation="relu"))
-        model.add(Dropout(0.5))
-        model.add(Convolution2D(2622, (1, 1)))
-        model.add(Flatten())
-        model.add(Activation("softmax"))
+        base_model.add(Convolution2D(4096, (7, 7), activation="relu"))
+        base_model.add(Dropout(0.5))
+        base_model.add(Convolution2D(4096, (1, 1), activation="relu"))
+        base_model.add(Dropout(0.5))
+        base_model.add(Convolution2D(2622, (1, 1)))
+        base_model.add(Flatten())
+        base_model.add(Activation("softmax"))
 
-        # pre-trained weights of vgg-face model.
-        # you can find it here: https://drive.google.com/file/d/1CPSeum3HpopfomUEK1gybeuIVoeJT_Eo/view?usp=sharing
-        # related blog post: https://sefiks.com/2018/08/06/deep-face-recognition-with-keras/
-        model.load_weights("../../Data/vgg_face_weights.h5")
+        # Pre-trained weights of VGG-Face model.
+        base_model.load_weights("../../Data/vgg_face_weights.h5")
+
+        # Follow tutorial transfer-learning style: keep only last few layers trainable.
+        for layer in base_model.layers[:-7]:
+            layer.trainable = False
+        for layer in base_model.layers[-7:]:
+            layer.trainable = True
+
+        # Use the penultimate feature map (layer -4), then add a regression head.
+        x = base_model.layers[-4].output
+        x = Flatten()(x)
+        output = Dense(1, activation="linear")(x)
+        model = tf.keras.Model(inputs=base_model.input, outputs=output)
 
     else:
         input_shape = (input_size, 1)

@@ -11,6 +11,7 @@ width = 250
 
 # Global cache for loaded images
 _image_cache = {}
+_image_cache_vggface = {}
 
 
 def loadData(col="Average", num_img=5500):
@@ -46,6 +47,38 @@ def retrievePixels_batch(paths):
     """Load multiple images in parallel"""
     with ThreadPoolExecutor(max_workers=8) as executor:
         results = list(executor.map(retrievePixels, paths))
+    return results
+
+
+def _preprocess_vggface(x):
+    # VGG-Face preprocessing: RGB -> BGR and channel-wise mean subtraction.
+    x = x.astype("float32")
+    x = x[..., ::-1]
+    x[..., 0] -= 93.5940
+    x[..., 1] -= 104.7624
+    x[..., 2] -= 129.1863
+    return x
+
+
+def retrievePixels_vggface(path):
+    # Cache key must include target size / preprocessing variant.
+    key = ("vggface_224", path)
+    if key in _image_cache_vggface:
+        return _image_cache_vggface[key]
+
+    folder_path = "../../Data/Images/"
+    img = tf.keras.utils.load_img(folder_path + path, target_size=(224, 224))
+    x = tf.keras.utils.img_to_array(img)
+    x = _preprocess_vggface(x)
+
+    _image_cache_vggface[key] = x
+    return x
+
+
+def retrievePixels_batch_vggface(paths):
+    """Load multiple images in parallel with VGG-Face preprocessing."""
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(retrievePixels_vggface, paths))
     return results
 
 
