@@ -51,13 +51,8 @@ def retrievePixels_batch(paths):
 
 
 def _preprocess_vggface(x):
-    # VGG-Face preprocessing: RGB -> BGR and channel-wise mean subtraction.
-    x = x.astype("float32")
-    x = x[..., ::-1]
-    x[..., 0] -= 93.5940
-    x[..., 1] -= 104.7624
-    x[..., 2] -= 129.1863
-    return x
+    # Tutorial-compatible preprocessing: keep RGB and scale to [0, 1].
+    return x.astype("float32") / 255.0
 
 
 def retrievePixels_vggface(path):
@@ -76,7 +71,7 @@ def retrievePixels_vggface(path):
 
 
 def retrievePixels_batch_vggface(paths):
-    """Load multiple images in parallel with VGG-Face preprocessing."""
+    """Load multiple images in parallel with tutorial-compatible preprocessing."""
     with ThreadPoolExecutor(max_workers=8) as executor:
         results = list(executor.map(retrievePixels_vggface, paths))
     return results
