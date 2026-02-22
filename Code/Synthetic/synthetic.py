@@ -950,5 +950,4 @@ if __name__ == "__main__":
         train_fairreg=TRAIN_FAIRREG,
     )
 
-    #TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
-    
+    # TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
