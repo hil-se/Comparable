@@ -248,6 +248,10 @@ def make_adult():
     # seed = 18
     df = pd.read_csv(DATA_DIR / "adult.csv", na_values=["?"])
     # df = df.sample(frac=0.1)
+    # Adult CSV headers/values may include padded whitespace.
+    df.columns = df.columns.str.strip()
+    for c in df.select_dtypes(include="object").columns:
+        df[c] = df[c].str.strip()
     df = df.dropna()
     df["gender"] = df["gender"].apply(lambda x: 1 if x == "Male" else 0)
     df["income"] = df["income"].apply(lambda x: 1 if x == ">50K" else 0)
@@ -936,7 +940,7 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "lsac"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
     USE_ALL_PAIRS = False
     NUM_COMP_TRAIN = 1
