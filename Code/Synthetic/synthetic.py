@@ -212,7 +212,7 @@ def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
     return df, "df6"
 
 
-def make_scut(P="P1"):
+def make_scut(P="P3"):
     df = pd.read_csv(DATA_DIR / "ImageExp" / "Selected_Ratings.csv")
     df = df[["Filename", P]]
 
