@@ -287,10 +287,13 @@ def make_german():
     df = df.dropna()
     df["Sex"] = df["Sex"].apply(lambda x: 1 if str(x).lower() == "male" else 0)
     df["Risk"] = df["Risk"].apply(lambda x: 1 if str(x).lower() == "good" else 0)
+    # Treat age as binary sensitive attribute using the dataset median cutoff.
+    age_median = df["Age"].median()
+    df["Age"] = (df["Age"] >= age_median).astype(int)
 
     global isBinary
     dependent = "Risk"
-    sa = "Sex"
+    sa = "Age"
 
     df = df.rename(columns={sa: "sa"})
 
@@ -315,8 +318,9 @@ def make_heart():
 
     global isBinary
     dependent = "output"
-    sa = "sex"
-
+    # Treat age as binary sensitive attribute (older vs younger).
+    df["age"] = (df["age"] >= 55).astype(int)
+    sa = "age"
     df = df.rename(columns={sa: "sa"})
 
     X_train, X_test = _split_with_output(df, dependent)
@@ -348,7 +352,7 @@ def make_compas():
     df["two_year_recid"] = df["two_year_recid"].apply(lambda x: 1 if x == 0 else 0)
 
     global isBinary
-    sa = "sex"
+    sa = "race"
     df = df.rename(columns={sa: "sa"})
 
     df = pd.get_dummies(
@@ -611,8 +615,18 @@ def run_experiments(
     train_fairreg=True,
     num_comp_pairs_ratio=0.1,
 ):
+    sa_by_dataset = {
+        "scut": "gender",
+        "adult": "gender",
+        "german": "age",
+        "heart": "age",
+        "compas": "race",
+        "comm": "race",
+        "lsac": "race",
+    }
     results = []
     output_df_name = None
+    output_sa_name = sa_by_dataset.get(dataset, "sa")
     output_nc = 0
     effective_use_all_pairs = use_all_pairs or dataset in {"german", "heart"}
 
@@ -934,7 +948,7 @@ def run_experiments(
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(results).to_csv(
         RESULTS_DIR
-        / f"FairReweighing_violate_r_{output_df_name}_{output_nc}_{pair_strategy}.csv",
+        / f"{output_df_name}_{output_sa_name}_{output_nc}_{pair_strategy}.csv",
         index=False,
     )
 
