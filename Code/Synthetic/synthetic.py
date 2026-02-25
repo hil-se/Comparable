@@ -314,6 +314,8 @@ def make_german():
 def make_heart():
     # seed = 42
     df = pd.read_csv(DATA_DIR / "heart.csv")
+    # Some copies of heart.csv have spaces after commas in headers (e.g., " output").
+    df.columns = df.columns.str.strip()
     df = df.dropna()
 
     global isBinary
@@ -954,9 +956,9 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "lsac"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
-    USE_ALL_PAIRS = False
+    USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     NUM_COMP_PAIRS_RATIO = 0.01
