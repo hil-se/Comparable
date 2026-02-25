@@ -485,7 +485,6 @@ def separation(y, y_pred, s):
 
 alpha = 0.05
 r = 100
-WEIGHT_FORMULA = "eq15"
 FAIRNESS_LAMBDA = 0.1
 
 
@@ -610,6 +609,7 @@ def run_experiments(
     use_all_pairs=False,
     num_comp_train=1,
     train_fairreg=True,
+    num_comp_pairs_ratio=0.1,
 ):
     results = []
     output_df_name = None
@@ -783,7 +783,7 @@ def run_experiments(
         violate_comp = violate_comp_w = violate_comp_fair = 0
         violate = violate_w = violate_fair = 0
         n_rows = len(data_raw)
-        num_comp_pairs = max(1, int(np.ceil(0.1 * n_rows)))
+        num_comp_pairs_eval = max(1, int(np.ceil(float(num_comp_pairs_ratio) * n_rows)))
         y_vals = data_raw[:, 1]
         has_comparable_pairs = np.unique(y_vals).size > 1
         half_size = n_rows // 2
@@ -813,11 +813,11 @@ def run_experiments(
             if not has_comparable_pairs:
                 continue
 
-            i1 = np.empty(num_comp_pairs, dtype=np.int64)
-            i2 = np.empty(num_comp_pairs, dtype=np.int64)
+            i1 = np.empty(num_comp_pairs_eval, dtype=np.int64)
+            i2 = np.empty(num_comp_pairs_eval, dtype=np.int64)
             filled = 0
-            while filled < num_comp_pairs:
-                remaining = num_comp_pairs - filled
+            while filled < num_comp_pairs_eval:
+                remaining = num_comp_pairs_eval - filled
                 batch_size = max(remaining * 2, 256)
                 idx1 = np.random.randint(0, n_rows, size=batch_size)
                 idx2 = np.random.randint(0, n_rows, size=batch_size)
@@ -856,8 +856,8 @@ def run_experiments(
 
         if isBinary:
             result = {
-                "weight_formula": WEIGHT_FORMULA,
                 "fairness_lambda": FAIRNESS_LAMBDA,
+                "num_comp_pairs_eval": num_comp_pairs_eval,
                 "Acc_lr": accuracy_lr,
                 "Acc_unweight": accuracy_score(y_test, predictions_kmeans),
                 "Acc_weighted": accuracy_score(y_test, predictions_kmeans_weighted),
@@ -897,8 +897,8 @@ def run_experiments(
             }
         else:
             result = {
-                "weight_formula": WEIGHT_FORMULA,
                 "fairness_lambda": FAIRNESS_LAMBDA,
+                "num_comp_pairs_eval": num_comp_pairs_eval,
                 "MSE_lr": mse_lr,
                 "MSE_unweight": m_bi.mse(),
                 "MSE_weight": m_weighted_bi.mse(),
@@ -940,11 +940,12 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
     USE_ALL_PAIRS = False
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
+    NUM_COMP_PAIRS_RATIO = 0.01
 
     run_experiments(
         num_runs=NUM_RUNS,
@@ -952,6 +953,7 @@ if __name__ == "__main__":
         use_all_pairs=USE_ALL_PAIRS,
         num_comp_train=NUM_COMP_TRAIN,
         train_fairreg=TRAIN_FAIRREG,
+        num_comp_pairs_ratio=NUM_COMP_PAIRS_RATIO,
     )
 
     # TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
