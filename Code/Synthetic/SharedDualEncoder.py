@@ -6,10 +6,7 @@ K = tf.keras.backend
 
 
 def create_encoder(input_size, df_name):
-    # input = tf.keras.layers.Input(shape=(input_size,))
-    # x = tf.keras.layers.Dense(32, activation='relu')(input)
-    # output = tf.keras.layers.Dense(1, activation='linear')(input)
-    # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
+
     if "scut" in df_name:
         base_model = tf.keras.Sequential()
         base_model.add(ZeroPadding2D((1, 1), input_shape=(224, 224, 3)))
@@ -75,21 +72,10 @@ def create_encoder(input_size, df_name):
         model = tf.keras.Model(inputs=base_model.inputs, outputs=output)
 
     else:
-        input_shape = (input_size, 1)
-
+        # Fast, interpretable encoder for tabular (non-scut) datasets.
         model = keras.Sequential(
             [
-                keras.layers.Input(shape=input_shape),
-                keras.layers.Conv1D(64, kernel_size=3, activation="relu"),
-                keras.layers.Conv1D(64, kernel_size=3, activation="relu"),
-                keras.layers.Dropout(0.5),
-                keras.layers.MaxPooling1D(pool_size=2),
-                keras.layers.Flatten(),
-                # keras.layers.Conv1D(128, kernel_size=3, activation="relu"),
-                # keras.layers.Conv1D(128, kernel_size=3, activation="relu"),
-                # keras.layers.GlobalAveragePooling1D(),
-                # keras.layers.Dropout(0.5),
-                # keras.layers.Dense(100, activation='relu'),
+                keras.layers.Input(shape=(input_size,)),
                 keras.layers.Dense(1, activation="linear"),
             ]
         )

@@ -973,3 +973,6 @@ if __name__ == "__main__":
     )
 
     # TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
+    # TODO: Add pearson and spearman metrics for scut dataset.
+    # TODO: try sigmoid activation for scut predictions before k-means to improve binarization. Consider other clustering methods or thresholds as well.
+    # TODO: Add contribution paragraph
