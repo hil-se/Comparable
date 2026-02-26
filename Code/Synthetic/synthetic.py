@@ -450,6 +450,17 @@ def remove_outliers(data):
     return X_filtered
 
 
+def kmeans_binarize_1d(data):
+    data_filt = remove_outliers(data)
+    km = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
+        data_filt.reshape(-1, 1)
+    )
+    labels = km.predict(data.reshape(-1, 1))
+    if km.cluster_centers_[0] > km.cluster_centers_[1]:
+        labels = 1 - labels
+    return labels
+
+
 def stats(x1, x2):
     denom = x1 + x2
     eps = np.finfo(float).eps
@@ -744,35 +755,11 @@ def run_experiments(
                 predictions_fair = np.full_like(predictions, np.nan, dtype=np.float64)
 
         if isBinary:
-            pred_filt = remove_outliers(predictions)
-            pred_w_filt = remove_outliers(predictions_weighted)
-
-            km = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
-                pred_filt.reshape(-1, 1)
-            )
-            predictions_kmeans = km.predict(predictions.reshape(-1, 1))
-            if km.cluster_centers_[0] > km.cluster_centers_[1]:
-                predictions_kmeans = 1 - predictions_kmeans
-
-            km_w = KMeans(n_clusters=2, n_init=10, max_iter=300, random_state=42).fit(
-                pred_w_filt.reshape(-1, 1)
-            )
-            predictions_kmeans_weighted = km_w.predict(
-                predictions_weighted.reshape(-1, 1)
-            )
-            if km_w.cluster_centers_[0] > km_w.cluster_centers_[1]:
-                predictions_kmeans_weighted = 1 - predictions_kmeans_weighted
+            predictions_kmeans = kmeans_binarize_1d(predictions)
+            predictions_kmeans_weighted = kmeans_binarize_1d(predictions_weighted)
 
             if train_fairreg:
-                pred_fair_filt = remove_outliers(predictions_fair)
-                km_fair = KMeans(
-                    n_clusters=2, n_init=10, max_iter=300, random_state=42
-                ).fit(pred_fair_filt.reshape(-1, 1))
-                predictions_kmeans_fair = km_fair.predict(
-                    predictions_fair.reshape(-1, 1)
-                )
-                if km_fair.cluster_centers_[0] > km_fair.cluster_centers_[1]:
-                    predictions_kmeans_fair = 1 - predictions_kmeans_fair
+                predictions_kmeans_fair = kmeans_binarize_1d(predictions_fair)
             else:
                 predictions_kmeans_fair = np.full_like(
                     predictions_kmeans, np.nan, dtype=np.float64
@@ -974,5 +961,6 @@ if __name__ == "__main__":
 
     # TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
     # TODO: Add pearson and spearman metrics for scut dataset.
-    # TODO: try sigmoid activation for scut predictions before k-means to improve binarization. Consider other clustering methods or thresholds as well.
-    # TODO: Add contribution paragraph
+    # TODO: try sigmoid activation encoder for scut
+    
+     # TODO: Add contribution paragraph
