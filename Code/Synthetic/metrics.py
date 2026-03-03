@@ -65,6 +65,10 @@ class Metrics:
                     tn += 1
         return tp, fp, tn, fn
 
+    @staticmethod
+    def _safe_div(num, den):
+        return float(num) / den if den != 0 else 0.0
+
     def EOD(self, s):
         # True positive rate (TPR)
         y0 = self.y[s == 0]
@@ -73,9 +77,9 @@ class Metrics:
         y1_pred = self.y_pred[s == 1]
 
         tp, fp, tn, fn = self.confusion(y0, y0_pred)
-        op0 = float(tp) / (tp + fn)
+        op0 = self._safe_div(tp, tp + fn)
         tp, fp, tn, fn = self.confusion(y1, y1_pred)
-        op1 = float(tp) / (tp + fn)
+        op1 = self._safe_div(tp, tp + fn)
         return op1 - op0
 
     def AOD(self, s):
@@ -86,9 +90,9 @@ class Metrics:
         y1_pred = self.y_pred[s == 1]
 
         tp, fp, tn, fn = self.confusion(y0, y0_pred)
-        od0 = float(tp) / (tp + fn) + float(fp) / (fp + tn)
+        od0 = self._safe_div(tp, tp + fn) + self._safe_div(fp, fp + tn)
         tp, fp, tn, fn = self.confusion(y1, y1_pred)
-        od1 = float(tp) / (tp + fn) + float(fp) / (fp + tn)
+        od1 = self._safe_div(tp, tp + fn) + self._safe_div(fp, fp + tn)
         return (od1 - od0) / 2
 
     def RBD(self, s):
@@ -348,11 +352,12 @@ class Metrics:
         pred_joint = model_joint.predict(joint)
         pred_margin = model_margin.predict(margin)
 
-        rse_joint = np.std(pred_joint - s)
-        rse_margin = np.std(pred_margin - s)
+        eps = np.finfo(float).eps
+        rse_joint = max(np.std(pred_joint - s), eps)
+        rse_margin = max(np.std(pred_margin - s), eps)
 
-        pdf_joint = norm.pdf(s, pred_joint, rse_joint)
-        pdf_margin = norm.pdf(s, pred_margin, rse_margin)
+        pdf_joint = np.clip(norm.pdf(s, pred_joint, rse_joint), eps, None)
+        pdf_margin = np.clip(norm.pdf(s, pred_margin, rse_margin), eps, None)
 
         Info = 0
 

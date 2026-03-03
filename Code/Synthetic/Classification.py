@@ -13,9 +13,12 @@ def _predict_labels_batch(test, dual_encoder, batch_size=2048):
     dataB = np.asarray(test["B"].tolist())
     if dataA.ndim > 2:
         batch_size = min(batch_size, 4)
-    raw_scores = (
-        dual_encoder.predict(dataA, dataB, batch_size=batch_size).numpy().reshape(-1)
-    )
+    scores = []
+    for start in range(0, len(dataA), batch_size):
+        end = min(start + batch_size, len(dataA))
+        batch_scores = dual_encoder.predict(dataA[start:end], dataB[start:end])
+        scores.append(np.asarray(batch_scores).reshape(-1))
+    raw_scores = np.concatenate(scores) if scores else np.array([], dtype=np.float32)
     return np.where(raw_scores < 0, -1, 1).tolist()
 
 
@@ -101,8 +104,11 @@ def learn(
         dual_encoder = DualEncoder.DualEncoderAll(
             encoder_A, encoder_B, y_true=np.array(y_true)
         )
+    # Full fine-tuning on pretrained SCUT backbone is more stable with a smaller LR.
+    learning_rate = 1e-4 if is_scut else 1e-3
     dual_encoder.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3), jit_compile=not is_scut
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        jit_compile=not is_scut,
     )
     # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     monitor_metric = "val_loss" if validation_data is not None else "loss"
@@ -112,13 +118,55 @@ def learn(
         min_delta=1e-4,
         restore_best_weights=True,
     )
-    dual_encoder.fit(
-        x=train_dataset,
-        epochs=epochs,
-        steps_per_epoch=steps_per_epoch,
-        verbose=0,
-        callbacks=[early_stopping],
-    )
+    fit_kwargs = {
+        "x": train_dataset,
+        "epochs": epochs,
+        "steps_per_epoch": steps_per_epoch,
+        "verbose": 0,
+        "callbacks": [early_stopping],
+    }
+    if validation_data is not None:
+        if isinstance(validation_data, pd.DataFrame):
+            val_first_a = np.asarray(validation_data["A"].iloc[0], dtype=np.float32)
+            val_first_b = np.asarray(validation_data["B"].iloc[0], dtype=np.float32)
+
+            def _val_row_generator():
+                for _, row in validation_data.iterrows():
+                    item = {
+                        "A": np.asarray(row["A"], dtype=np.float32),
+                        "B": np.asarray(row["B"], dtype=np.float32),
+                        "Label": np.float32(row["Label"]),
+                    }
+                    if "SA_A" in validation_data.columns and "SA_B" in validation_data.columns:
+                        item["SA_A"] = np.float32(row["SA_A"])
+                        item["SA_B"] = np.float32(row["SA_B"])
+                    if "Weights" in validation_data.columns:
+                        item["Weights"] = np.float32(row["Weights"])
+                    yield item
+
+            val_signature = {
+                "A": tf.TensorSpec(shape=val_first_a.shape, dtype=tf.float32),
+                "B": tf.TensorSpec(shape=val_first_b.shape, dtype=tf.float32),
+                "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
+            }
+            if "SA_A" in validation_data.columns and "SA_B" in validation_data.columns:
+                val_signature["SA_A"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+                val_signature["SA_B"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+            if "Weights" in validation_data.columns:
+                val_signature["Weights"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+
+            val_dataset = tf.data.Dataset.from_generator(
+                _val_row_generator, output_signature=val_signature
+            )
+            val_dataset = val_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+            fit_kwargs["validation_data"] = val_dataset
+            fit_kwargs["validation_steps"] = int(
+                np.ceil(len(validation_data) / batch_size)
+            )
+        else:
+            fit_kwargs["validation_data"] = validation_data
+
+    dual_encoder.fit(**fit_kwargs)
 
     return dual_encoder
 
