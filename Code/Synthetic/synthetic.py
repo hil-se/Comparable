@@ -943,12 +943,12 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "lsac"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
-    USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
+    USE_ALL_PAIRS = True  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
-    NUM_COMP_PAIRS_RATIO = 0.01
+    NUM_COMP_PAIRS_RATIO = 0.1
 
     run_experiments(
         num_runs=NUM_RUNS,
