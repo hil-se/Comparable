@@ -56,10 +56,8 @@ def create_encoder(input_size, df_name):
         # Pre-trained weights of VGG-Face model.
         base_model.load_weights("../../Data/vgg_face_weights.h5")
 
-        # Follow tutorial transfer-learning style: keep only last few layers trainable.
-        for layer in base_model.layers[:-7]:
-            layer.trainable = False
-        for layer in base_model.layers[-7:]:
+        # Full fine-tuning: train all backbone layers.
+        for layer in base_model.layers:
             layer.trainable = True
 
         # Keras 3 may not populate `base_model.input` until the model is called once.

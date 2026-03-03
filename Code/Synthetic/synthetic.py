@@ -212,7 +212,7 @@ def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
     return df, "df6"
 
 
-def make_scut(P="P3"):
+def make_scut(P="P1"):
     df = pd.read_csv(DATA_DIR / "ImageExp" / "Selected_Ratings.csv")
     df = df[["Filename", P]]
 
@@ -627,6 +627,7 @@ def run_experiments(
     num_comp_train=1,
     train_fairreg=True,
     num_comp_pairs_ratio=0.1,
+    model_epochs=100,
 ):
     sa_by_dataset = {
         "scut": "gender",
@@ -678,7 +679,7 @@ def run_experiments(
             val=None,
             y_true=data_tr_encoder["Label"].tolist(),
             shared=True,
-            epochs=100,
+            epochs=model_epochs,
             df_name=df_name,
         )
         dual_encoder_weighted = Classification.train_model(
@@ -686,7 +687,7 @@ def run_experiments(
             val=None,
             y_true=data_tr_encoder["Label"].tolist(),
             shared=True,
-            epochs=100,
+            epochs=model_epochs,
             train_weights=weights,
             val_weights=None,
             df_name=df_name,
@@ -698,9 +699,19 @@ def run_experiments(
                 val=None,
                 y_true=data_tr_encoder["Label"].tolist(),
                 shared=True,
-                epochs=100,
+                epochs=model_epochs,
                 df_name=df_name,
                 fairness_lambda=FAIRNESS_LAMBDA,
+            )
+        scut_vgg_baseline = None
+        if is_scut:
+            scut_train_pixels = np.stack(train["pixels"].values).astype(np.float32)
+            scut_train_targets = train[col].values.astype(np.float32)
+            scut_vgg_baseline = Classification.train_scut_vggface_baseline(
+                train_pixels=scut_train_pixels,
+                y_train=scut_train_targets,
+                epochs=model_epochs,
+                batch_size=2,
             )
 
         y_train = train[col]
@@ -737,6 +748,9 @@ def run_experiments(
             predictions_weighted = batched_score(
                 dual_encoder_weighted, test_vals, batch_size=4
             )
+            predictions_vgg = Classification.predict_scut_vggface_baseline(
+                scut_vgg_baseline, test_vals, batch_size=4
+            )
             if train_fairreg:
                 predictions_fair = batched_score(
                     dual_encoder_fair, test_vals, batch_size=4
@@ -749,6 +763,7 @@ def run_experiments(
             predictions_weighted = (
                 dual_encoder_weighted.score(test_vals).numpy().flatten()
             )
+            predictions_vgg = np.full_like(predictions, np.nan, dtype=np.float64)
             if train_fairreg:
                 predictions_fair = dual_encoder_fair.score(test_vals).numpy().flatten()
             else:
@@ -757,6 +772,9 @@ def run_experiments(
         if isBinary:
             predictions_kmeans = kmeans_binarize_1d(predictions)
             predictions_kmeans_weighted = kmeans_binarize_1d(predictions_weighted)
+            predictions_kmeans_vgg = np.full_like(
+                predictions_kmeans, np.nan, dtype=np.float64
+            )
 
             if train_fairreg:
                 predictions_kmeans_fair = kmeans_binarize_1d(predictions_fair)
@@ -767,6 +785,7 @@ def run_experiments(
         else:
             predictions_kmeans = predictions
             predictions_kmeans_weighted = predictions_weighted
+            predictions_kmeans_vgg = predictions_vgg
             predictions_kmeans_fair = (
                 predictions_fair
                 if train_fairreg
@@ -777,6 +796,11 @@ def run_experiments(
         data_w_raw = np.column_stack(
             [predictions_kmeans_weighted, y_test, test["sa"].values]
         )
+        data_vgg_raw = (
+            np.column_stack([predictions_kmeans_vgg, y_test, test["sa"].values])
+            if is_scut
+            else None
+        )
         data_fair_raw = (
             np.column_stack([predictions_kmeans_fair, y_test, test["sa"].values])
             if train_fairreg
@@ -785,6 +809,12 @@ def run_experiments(
 
         violate_comp = violate_comp_w = violate_comp_fair = 0
         violate = violate_w = violate_fair = 0
+        if is_scut:
+            violate_comp_vgg = 0
+            violate_vgg = 0
+        else:
+            violate_comp_vgg = np.nan
+            violate_vgg = np.nan
         n_rows = len(data_raw)
         num_comp_pairs_eval = max(1, int(np.ceil(float(num_comp_pairs_ratio) * n_rows)))
         y_vals = data_raw[:, 1]
@@ -801,6 +831,12 @@ def run_experiments(
                 data_w_raw[selectedr, 0],
                 data_w_raw[selectedr, 2],
             )
+            if is_scut:
+                ps_vgg = separation(
+                    data_vgg_raw[selectedr, 1],
+                    data_vgg_raw[selectedr, 0],
+                    data_vgg_raw[selectedr, 2],
+                )
             if train_fairreg:
                 ps_fair = separation(
                     data_fair_raw[selectedr, 1],
@@ -809,6 +845,8 @@ def run_experiments(
                 )
             violate += min(ps) < alpha
             violate_w += min(ps_w) < alpha
+            if is_scut:
+                violate_vgg += min(ps_vgg) < alpha
             if train_fairreg:
                 violate_fair += min(ps_fair) < alpha
 
@@ -840,6 +878,15 @@ def run_experiments(
                 min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
                 < alpha
             )
+            if is_scut:
+                violate_comp_vgg += (
+                    min(
+                        comparative_separation(
+                            count_violation_fast(data_vgg_raw, i1, i2)
+                        )[0]
+                    )
+                    < alpha
+                )
             if train_fairreg:
                 violate_comp_fair += (
                     min(
@@ -852,9 +899,11 @@ def run_experiments(
 
         m_bi = Metrics(y_test, predictions_kmeans)
         m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
+        m_vgg_bi = Metrics(y_test, predictions_kmeans_vgg) if is_scut else None
         m_fair_bi = Metrics(y_test, predictions_kmeans_fair) if train_fairreg else None
         I_sep_bi = m_bi.MI_con_info(test["sa"])
         I_sep_weighted_bi = m_weighted_bi.MI_con_info(test["sa"])
+        I_sep_vgg_bi = m_vgg_bi.MI_con_info(test["sa"]) if is_scut else np.nan
         I_sep_fair_bi = m_fair_bi.MI_con_info(test["sa"]) if train_fairreg else np.nan
 
         if isBinary:
@@ -905,28 +954,38 @@ def run_experiments(
                 "MSE_lr": mse_lr,
                 "MSE_unweight": m_bi.mse(),
                 "MSE_weight": m_weighted_bi.mse(),
+                "MSE_vgg_baseline": m_vgg_bi.mse() if is_scut else np.nan,
                 "MSE_fairreg": m_fair_bi.mse() if train_fairreg else np.nan,
                 "spearman_lr": spearman_lr,
                 "spearman_unweighted": m_bi.spearmanr_coefficient(),
                 "spearman_weighted": m_weighted_bi.spearmanr_coefficient(),
+                "spearman_vgg_baseline": (
+                    m_vgg_bi.spearmanr_coefficient() if is_scut else np.nan
+                ),
                 "spearman_fairreg": (
                     m_fair_bi.spearmanr_coefficient() if train_fairreg else np.nan
                 ),
                 "pearson_lr": pearson_lr,
                 "pearson_unweighted": m_bi.pearsonr_coefficient(),
                 "pearson_weighted": m_weighted_bi.pearsonr_coefficient(),
+                "pearson_vgg_baseline": (
+                    m_vgg_bi.pearsonr_coefficient() if is_scut else np.nan
+                ),
                 "pearson_fairreg": (
                     m_fair_bi.pearsonr_coefficient() if train_fairreg else np.nan
                 ),
                 "I_sep_lr": I_sep_lr,
                 "I_sep_bi": I_sep_bi,
                 "I_sep_weighted_bi": I_sep_weighted_bi,
+                "I_sep_vgg_baseline_bi": I_sep_vgg_bi,
                 "I_sep_fairreg_bi": I_sep_fair_bi,
                 "violate_r": violate / r,
                 "violate_r_weighted": violate_w / r,
+                "violate_r_vgg_baseline": violate_vgg / r,
                 "violate_r_fairreg": violate_fair / r if train_fairreg else np.nan,
                 "violate_comp_r": violate_comp / r,
                 "violate_comp_r_w": violate_comp_w / r,
+                "violate_comp_r_vgg_baseline": violate_comp_vgg / r,
                 "violate_comp_r_fairreg": (
                     violate_comp_fair / r if train_fairreg else np.nan
                 ),
@@ -943,12 +1002,13 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
-    NUM_RUNS = 10
-    USE_ALL_PAIRS = True  # Set False to use a fixed number of training pairs per instance.
+    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
+    NUM_RUNS = 5
+    USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     NUM_COMP_PAIRS_RATIO = 0.1
+    MODEL_EPOCHS = 100
 
     run_experiments(
         num_runs=NUM_RUNS,
@@ -957,6 +1017,7 @@ if __name__ == "__main__":
         num_comp_train=NUM_COMP_TRAIN,
         train_fairreg=TRAIN_FAIRREG,
         num_comp_pairs_ratio=NUM_COMP_PAIRS_RATIO,
+        model_epochs=MODEL_EPOCHS,
     )
 
     # TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.

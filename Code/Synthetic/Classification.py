@@ -123,6 +123,50 @@ def learn(
     return dual_encoder
 
 
+def train_scut_vggface_baseline(
+    train_pixels,
+    y_train,
+    epochs=100,
+    batch_size=2,
+    patience=10,
+):
+    """
+    Train a non-comparative SCUT baseline: VGG-Face regressor on single images.
+    """
+    train_pixels = np.asarray(train_pixels, dtype=np.float32)
+    y_train = np.asarray(y_train, dtype=np.float32)
+    if train_pixels.ndim != 4:
+        raise ValueError("train_pixels must have shape [N, H, W, C].")
+    if len(train_pixels) != len(y_train):
+        raise ValueError("train_pixels and y_train must have the same length.")
+
+    model = SharedDualEncoder.create_encoder(input_size=None, df_name="scut_baseline")
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+        loss="mse",
+    )
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="loss",
+        patience=patience,
+        min_delta=1e-4,
+        restore_best_weights=True,
+    )
+    model.fit(
+        train_pixels,
+        y_train,
+        epochs=epochs,
+        batch_size=min(batch_size, len(train_pixels)),
+        verbose=0,
+        callbacks=[early_stopping],
+    )
+    return model
+
+
+def predict_scut_vggface_baseline(model, pixels, batch_size=4):
+    pixels = np.asarray(pixels, dtype=np.float32)
+    return model.predict(pixels, batch_size=batch_size, verbose=0).reshape(-1)
+
+
 def train_model(
     train,
     val,
