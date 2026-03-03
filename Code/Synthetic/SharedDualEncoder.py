@@ -66,7 +66,7 @@ def create_encoder(input_size, df_name):
         # Use the penultimate feature map (layer -4), then add a regression head.
         x = base_model.layers[-4].output
         x = Flatten()(x)
-        output = Dense(1, activation="linear")(x)
+        output = Dense(1, activation="sigmoid")(x)
         model = tf.keras.Model(inputs=base_model.inputs, outputs=output)
 
     else:
