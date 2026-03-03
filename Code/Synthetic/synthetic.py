@@ -1002,12 +1002,12 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
-    NUM_RUNS = 5
+    DATASET = "comm"  # scut, adult, german, heart, compas, comm, lsac
+    NUM_RUNS = 10
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
-    NUM_COMP_TRAIN = 1
+    NUM_COMP_TRAIN = 10
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
-    NUM_COMP_PAIRS_RATIO = 0.1
+    NUM_COMP_PAIRS_RATIO = 0.01
     MODEL_EPOCHS = 100
 
     run_experiments(
