@@ -288,12 +288,12 @@ def make_german():
     df["Sex"] = df["Sex"].apply(lambda x: 1 if str(x).lower() == "male" else 0)
     df["Risk"] = df["Risk"].apply(lambda x: 1 if str(x).lower() == "good" else 0)
     # Treat age as binary sensitive attribute using the dataset median cutoff.
-    age_median = df["Age"].median()
-    df["Age"] = (df["Age"] >= age_median).astype(int)
+    # age_median = df["Age"].median()
+    # df["Age"] = (df["Age"] >= age_median).astype(int)
 
     global isBinary
     dependent = "Risk"
-    sa = "Age"
+    sa = "Sex"
 
     df = df.rename(columns={sa: "sa"})
 
@@ -1002,9 +1002,9 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
     NUM_RUNS = 10
-    USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
+    USE_ALL_PAIRS = True  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     NUM_COMP_PAIRS_RATIO = 0.1
