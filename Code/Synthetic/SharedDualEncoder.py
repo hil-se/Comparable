@@ -1,8 +1,11 @@
 import tensorflow as tf
 import keras
+from pathlib import Path
 from tensorflow.keras.layers import *
 
 K = tf.keras.backend
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR.parent.parent / "Data"
 
 
 def create_encoder(input_size, df_name):
@@ -54,7 +57,7 @@ def create_encoder(input_size, df_name):
         base_model.add(Activation("softmax"))
 
         # Pre-trained weights of VGG-Face model.
-        base_model.load_weights("../../Data/vgg_face_weights.h5")
+        base_model.load_weights(str(DATA_DIR / "vgg_face_weights.h5"))
 
         # Full fine-tuning: train all backbone layers.
         for layer in base_model.layers:
@@ -70,20 +73,11 @@ def create_encoder(input_size, df_name):
         model = tf.keras.Model(inputs=base_model.inputs, outputs=output)
 
     else:
-        # Tabular (non-SCUT) encoder as a basic 1D CNN.
+        # Tabular (non-SCUT) encoder: lightweight MLP for faster training.
         model = keras.Sequential(
             [
                 keras.layers.Input(shape=(input_size,)),
-                keras.layers.Reshape((input_size, 1)),
-                keras.layers.Conv1D(32, kernel_size=3, activation="relu", padding="same"),
-                keras.layers.BatchNormalization(),
-                keras.layers.Conv1D(64, kernel_size=3, activation="relu", padding="same"),
-                keras.layers.BatchNormalization(),
-                keras.layers.MaxPooling1D(pool_size=2),
-                keras.layers.Dropout(0.3),
-                keras.layers.GlobalAveragePooling1D(),
-                keras.layers.Dense(32, activation="relu"),
-                keras.layers.Dropout(0.2),
+                keras.layers.Dense(16, activation="relu"),
                 keras.layers.Dense(1, activation="linear"),
             ]
         )

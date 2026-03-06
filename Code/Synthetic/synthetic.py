@@ -212,7 +212,19 @@ def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
     return df, "df6"
 
 
-def make_scut(P="P1"):
+def _resolve_sa_choice(sa, default_sa, allowed_sa, dataset_name):
+    allowed = {k.lower(): v for k, v in allowed_sa.items()}
+    selected = default_sa.lower() if sa is None else str(sa).strip().lower()
+    if selected not in allowed:
+        valid = ", ".join(sorted(allowed))
+        raise ValueError(
+            f"Unsupported sensitive attribute '{sa}' for dataset '{dataset_name}'. "
+            f"Valid options: {valid}"
+        )
+    return selected, allowed[selected]
+
+
+def make_scut(P="P1", sa="gender"):
     df = pd.read_csv(DATA_DIR / "ImageExp" / "Selected_Ratings.csv")
     df = df[["Filename", P]]
 
@@ -229,9 +241,14 @@ def make_scut(P="P1"):
     df["gender"] = df["gender"].apply(lambda x: 1 if x == "M" else 0)
     df["race"] = df["race"].apply(lambda x: 1 if x == "C" else 0)
 
-    sa = "gender"
+    _, sa_col = _resolve_sa_choice(
+        sa=sa,
+        default_sa="gender",
+        allowed_sa={"gender": "gender", "race": "race"},
+        dataset_name="scut",
+    )
 
-    df = df.rename(columns={sa: "sa"})
+    df = df.rename(columns={sa_col: "sa"})
 
     global isBinary
     dependent = P
@@ -244,7 +261,7 @@ def make_scut(P="P1"):
     return df, "scut" + "_" + str(P), X_train, X_test
 
 
-def make_adult():
+def make_adult(sa="gender"):
     # seed = 18
     df = pd.read_csv(DATA_DIR / "adult.csv", na_values=["?"])
     # df = df.sample(frac=0.1)
@@ -258,13 +275,25 @@ def make_adult():
     dependent = "income"
 
     global isBinary
-    sa = "gender"
+    _, sa_col = _resolve_sa_choice(
+        sa=sa,
+        default_sa="gender",
+        allowed_sa={"gender": "gender", "race": "race"},
+        dataset_name="adult",
+    )
+    if sa_col == "race":
+        # Adult race is multi-class; use white vs non-white for a binary SA.
+        df["race"] = df["race"].apply(lambda x: 1 if x == "White" else 0)
 
-    df = df.rename(columns={sa: "sa"})
+    df = df.rename(columns={sa_col: "sa"})
+
+    dummy_cols = ["workclass", "marital-status", "occupation", "relationship", "race"]
+    if sa_col in dummy_cols:
+        dummy_cols.remove(sa_col)
 
     df = pd.get_dummies(
         df,
-        columns=["workclass", "marital-status", "occupation", "relationship", "race"],
+        columns=dummy_cols,
         dtype=float,
         drop_first=True,
     )
@@ -277,7 +306,7 @@ def make_adult():
     return df, "adult", X_train, X_test
 
 
-def make_german():
+def make_german(sa="sex"):
     # seed = 42
     df = pd.read_csv(DATA_DIR / "german_credit_data.csv", index_col=0)
     # Dataset headers/values may contain padded whitespace.
@@ -287,15 +316,19 @@ def make_german():
     df = df.dropna()
     df["Sex"] = df["Sex"].apply(lambda x: 1 if str(x).lower() == "male" else 0)
     df["Risk"] = df["Risk"].apply(lambda x: 1 if str(x).lower() == "good" else 0)
-    # Treat age as binary sensitive attribute using the dataset median cutoff.
-    # age_median = df["Age"].median()
-    # df["Age"] = (df["Age"] >= age_median).astype(int)
-
     global isBinary
     dependent = "Risk"
-    sa = "Sex"
+    _, sa_col = _resolve_sa_choice(
+        sa=sa,
+        default_sa="sex",
+        allowed_sa={"sex": "Sex", "age": "Age"},
+        dataset_name="german",
+    )
+    if sa_col == "Age":
+        age_median = df["Age"].median()
+        df["Age"] = (df["Age"] >= age_median).astype(int)
 
-    df = df.rename(columns={sa: "sa"})
+    df = df.rename(columns={sa_col: "sa"})
 
     df = pd.get_dummies(
         df,
@@ -311,7 +344,7 @@ def make_german():
     return df, "german", X_train, X_test
 
 
-def make_heart():
+def make_heart(sa="age"):
     # seed = 42
     df = pd.read_csv(DATA_DIR / "heart.csv")
     # Some copies of heart.csv have spaces after commas in headers (e.g., " output").
@@ -320,10 +353,16 @@ def make_heart():
 
     global isBinary
     dependent = "output"
-    # Treat age as binary sensitive attribute (older vs younger).
-    df["age"] = (df["age"] >= 55).astype(int)
-    sa = "age"
-    df = df.rename(columns={sa: "sa"})
+    _, sa_col = _resolve_sa_choice(
+        sa=sa,
+        default_sa="age",
+        allowed_sa={"age": "age", "sex": "sex"},
+        dataset_name="heart",
+    )
+    if sa_col == "age":
+        # Treat age as binary sensitive attribute (older vs younger).
+        df["age"] = (df["age"] >= 55).astype(int)
+    df = df.rename(columns={sa_col: "sa"})
 
     X_train, X_test = _split_with_output(df, dependent)
 
@@ -332,7 +371,7 @@ def make_heart():
     return df, "heart", X_train, X_test
 
 
-def make_compas():
+def make_compas(sa="race"):
     df = pd.read_csv(DATA_DIR / "compas-scores-two-years.csv")
     features_to_keep = [
         "sex",
@@ -354,8 +393,13 @@ def make_compas():
     df["two_year_recid"] = df["two_year_recid"].apply(lambda x: 1 if x == 0 else 0)
 
     global isBinary
-    sa = "race"
-    df = df.rename(columns={sa: "sa"})
+    _, sa_col = _resolve_sa_choice(
+        sa=sa,
+        default_sa="race",
+        allowed_sa={"race": "race", "sex": "sex"},
+        dataset_name="compas",
+    )
+    df = df.rename(columns={sa_col: "sa"})
 
     df = pd.get_dummies(
         df, columns=["age_cat", "c_charge_degree"], dtype=float, drop_first=True
@@ -370,7 +414,7 @@ def make_compas():
     return df, "compas", X_train, X_test
 
 
-def make_comm():
+def make_comm(sa="race"):
     # seed = 42
     df = pd.read_csv(DATA_DIR / "communities.csv")
     df = df.fillna(0)
@@ -393,9 +437,14 @@ def make_comm():
 
     global isBinary
     dependent = "ViolentCrimesPerPop"
-    sa = "race"
+    _, sa_col = _resolve_sa_choice(
+        sa=sa,
+        default_sa="race",
+        allowed_sa={"race": "race"},
+        dataset_name="comm",
+    )
 
-    df = df.rename(columns={sa: "sa"})
+    df = df.rename(columns={sa_col: "sa"})
 
     X_train, X_test = _split_with_output(df, dependent)
 
@@ -404,7 +453,7 @@ def make_comm():
     return df, "comm", X_train, X_test
 
 
-def make_lsac():
+def make_lsac(sa="race"):
     df = pd.read_csv(DATA_DIR / "lawschool.csv")
     df = df.dropna()
 
@@ -417,9 +466,14 @@ def make_lsac():
 
     global isBinary
     dependent = "ugpa"
-    sa = "race"
+    _, sa_col = _resolve_sa_choice(
+        sa=sa,
+        default_sa="race",
+        allowed_sa={"race": "race", "gender": "gender"},
+        dataset_name="lsac",
+    )
 
-    df = df.rename(columns={sa: "sa"})
+    df = df.rename(columns={sa_col: "sa"})
 
     X_train, X_test = _split_with_output(df, dependent)
 
@@ -604,7 +658,7 @@ def _compute_pair_weights(pair_meta_df):
     return weights
 
 
-def _load_dataset(dataset_name):
+def _load_dataset(dataset_name, sa=None):
     dataset_loaders = {
         "scut": make_scut,
         "adult": make_adult,
@@ -617,12 +671,13 @@ def _load_dataset(dataset_name):
     if dataset_name not in dataset_loaders:
         valid = ", ".join(sorted(dataset_loaders))
         raise ValueError(f"Unknown dataset '{dataset_name}'. Valid options: {valid}")
-    return dataset_loaders[dataset_name]()
+    return dataset_loaders[dataset_name](sa=sa)
 
 
 def run_experiments(
     num_runs=10,
     dataset="scut",
+    sa=None,
     use_all_pairs=False,
     num_comp_train=1,
     train_fairreg=True,
@@ -632,7 +687,7 @@ def run_experiments(
     sa_by_dataset = {
         "scut": "gender",
         "adult": "gender",
-        "german": "age",
+        "german": "sex",
         "heart": "age",
         "compas": "race",
         "comm": "race",
@@ -640,12 +695,14 @@ def run_experiments(
     }
     results = []
     output_df_name = None
-    output_sa_name = sa_by_dataset.get(dataset, "sa")
+    output_sa_name = (
+        sa_by_dataset.get(dataset, "sa") if sa is None else str(sa).strip().lower()
+    )
     output_nc = 0
     effective_use_all_pairs = use_all_pairs or dataset in {"german", "heart"}
 
     for _ in range(num_runs):
-        _, df_name, train, test = _load_dataset(dataset)
+        _, df_name, train, test = _load_dataset(dataset, sa=output_sa_name)
         output_df_name = df_name
         train = train.reset_index(drop=True)
         test = test.reset_index(drop=True)
@@ -668,6 +725,23 @@ def run_experiments(
             use_all_pairs=effective_use_all_pairs,
             num_comp_train=num_comp_train,
         )
+        # Guard against degenerate splits where sampled pairs are all ties.
+        # Fall back once to all-pairs before failing loudly.
+        if not train_pairs and not effective_use_all_pairs:
+            train_pairs, pair_meta = _build_train_pairs(
+                train_vals=train_vals,
+                col_idx=col_idx,
+                sa_idx=sa_idx,
+                pixels_idx=pixels_idx,
+                is_scut=is_scut,
+                use_all_pairs=True,
+                num_comp_train=num_comp_train,
+            )
+        if not train_pairs:
+            raise ValueError(
+                "No non-tied comparable training pairs were generated. "
+                "Try use_all_pairs=True or adjust the train/test split."
+            )
 
         data_tr_encoder = pd.DataFrame(train_pairs)
         output_nc = len(data_tr_encoder)
@@ -808,47 +882,51 @@ def run_experiments(
         )
 
         violate_comp = violate_comp_w = violate_comp_fair = 0
-        violate = violate_w = violate_fair = 0
+        violate = violate_w = violate_fair = np.nan
+        violate_vgg = np.nan
         if is_scut:
             violate_comp_vgg = 0
-            violate_vgg = 0
         else:
             violate_comp_vgg = np.nan
-            violate_vgg = np.nan
         n_rows = len(data_raw)
         num_comp_pairs_eval = max(1, int(np.ceil(float(num_comp_pairs_ratio) * n_rows)))
         y_vals = data_raw[:, 1]
         has_comparable_pairs = np.unique(y_vals).size > 1
         half_size = n_rows // 2
 
-        for _ in range(r):
-            selectedr = np.random.choice(n_rows, size=half_size, replace=False)
-            ps = separation(
-                data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2]
-            )
-            ps_w = separation(
-                data_w_raw[selectedr, 1],
-                data_w_raw[selectedr, 0],
-                data_w_raw[selectedr, 2],
-            )
+        # `separation` is a binary fairness test; report it only for binary tasks.
+        if isBinary:
+            violate = violate_w = violate_fair = 0
             if is_scut:
-                ps_vgg = separation(
-                    data_vgg_raw[selectedr, 1],
-                    data_vgg_raw[selectedr, 0],
-                    data_vgg_raw[selectedr, 2],
+                violate_vgg = 0
+            for _ in range(r):
+                selectedr = np.random.choice(n_rows, size=half_size, replace=False)
+                ps = separation(
+                    data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2]
                 )
-            if train_fairreg:
-                ps_fair = separation(
-                    data_fair_raw[selectedr, 1],
-                    data_fair_raw[selectedr, 0],
-                    data_fair_raw[selectedr, 2],
+                ps_w = separation(
+                    data_w_raw[selectedr, 1],
+                    data_w_raw[selectedr, 0],
+                    data_w_raw[selectedr, 2],
                 )
-            violate += min(ps) < alpha
-            violate_w += min(ps_w) < alpha
-            if is_scut:
-                violate_vgg += min(ps_vgg) < alpha
-            if train_fairreg:
-                violate_fair += min(ps_fair) < alpha
+                if is_scut:
+                    ps_vgg = separation(
+                        data_vgg_raw[selectedr, 1],
+                        data_vgg_raw[selectedr, 0],
+                        data_vgg_raw[selectedr, 2],
+                    )
+                if train_fairreg:
+                    ps_fair = separation(
+                        data_fair_raw[selectedr, 1],
+                        data_fair_raw[selectedr, 0],
+                        data_fair_raw[selectedr, 2],
+                    )
+                violate += min(ps) < alpha
+                violate_w += min(ps_w) < alpha
+                if is_scut:
+                    violate_vgg += min(ps_vgg) < alpha
+                if train_fairreg:
+                    violate_fair += min(ps_fair) < alpha
 
         for _ in range(r):
             if not has_comparable_pairs:
@@ -1003,6 +1081,7 @@ def run_experiments(
 
 if __name__ == "__main__":
     DATASET = "compas"  # scut, adult, german, heart, compas, comm, lsac
+    SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 10
     USE_ALL_PAIRS = True  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 5
@@ -1013,6 +1092,7 @@ if __name__ == "__main__":
     run_experiments(
         num_runs=NUM_RUNS,
         dataset=DATASET,
+        sa=SA,
         use_all_pairs=USE_ALL_PAIRS,
         num_comp_train=NUM_COMP_TRAIN,
         train_fairreg=TRAIN_FAIRREG,

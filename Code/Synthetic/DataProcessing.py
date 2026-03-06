@@ -1,5 +1,6 @@
 import random
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pandas as pd
 import tensorflow as tf
@@ -12,14 +13,16 @@ width = 250
 # Global cache for loaded images
 _image_cache = {}
 _image_cache_vggface = {}
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR.parent.parent / "Data"
 
 
 def loadData(col="Average", num_img=5500):
     if col == "Average":
-        data = pd.read_csv("../../Data/ImageExp/Selected_Ratings.csv")
+        data = pd.read_csv(DATA_DIR / "ImageExp" / "Selected_Ratings.csv")
         data = data[["Filename", col]]
     else:
-        data = pd.read_csv("../../Data/ImageExp/All_Ratings.csv")
+        data = pd.read_csv(DATA_DIR / "ImageExp" / "All_Ratings.csv")
         data = data[data["Rater"] == int(col)][["Filename", "Rating"]].rename(
             columns={"Filename": "Filename", "Rating": col}
         )
@@ -34,8 +37,8 @@ def retrievePixels(path):
     if path in _image_cache:
         return _image_cache[path]
 
-    folder_path = "../../Data/Images/"
-    img = tf.keras.utils.load_img(folder_path + path, target_size=(height, width))
+    folder_path = DATA_DIR / "Images"
+    img = tf.keras.utils.load_img(str(folder_path / path), target_size=(height, width))
     x = tf.keras.utils.img_to_array(img)
 
     # Cache the result
@@ -61,8 +64,8 @@ def retrievePixels_vggface(path):
     if key in _image_cache_vggface:
         return _image_cache_vggface[key]
 
-    folder_path = "../../Data/Images/"
-    img = tf.keras.utils.load_img(folder_path + path, target_size=(224, 224))
+    folder_path = DATA_DIR / "Images"
+    img = tf.keras.utils.load_img(str(folder_path / path), target_size=(224, 224))
     x = tf.keras.utils.img_to_array(img)
     x = _preprocess_vggface(x)
 
