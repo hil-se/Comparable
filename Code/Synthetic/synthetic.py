@@ -1080,7 +1080,7 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
@@ -1104,4 +1104,9 @@ if __name__ == "__main__":
     # TODO: Add pearson and spearman metrics for scut dataset.
     # TODO: try sigmoid activation encoder for scut
     
-     # TODO: Add contribution paragraph
+    # TODO: Add contribution paragraph
+
+    # TODO: Try using sigmoid activation for non-scut datasets as well, to see if it improves fairness metrics. Plot the prediction and see if it's already well-seperated
+    # TODO: Switch to SGD compiler and try different learning rates, including decaying learning rates.
+
+    # TODO: Include another baseline with one encoder

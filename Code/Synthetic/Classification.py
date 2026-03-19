@@ -106,11 +106,15 @@ def learn(
         )
     # Full fine-tuning on pretrained SCUT backbone is more stable with a smaller LR.
     learning_rate = 1e-4 if is_scut else 1e-3
+    optimizer = (
+        tf.keras.optimizers.SGD(learning_rate=learning_rate)
+        if is_scut
+        else tf.keras.optimizers.Adam(learning_rate=learning_rate)
+    )
     dual_encoder.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        optimizer=optimizer,
         jit_compile=not is_scut,
     )
-    # dual_encoder.compile(optimizer=tf.keras.optimizers.legacy.SGD(learning_rate=0.001))
     monitor_metric = "val_loss" if validation_data is not None else "loss"
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor=monitor_metric,
@@ -190,7 +194,7 @@ def train_scut_vggface_baseline(
 
     model = SharedDualEncoder.create_encoder(input_size=None, df_name="scut_baseline")
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=1e-4),
         loss="mse",
     )
     early_stopping = tf.keras.callbacks.EarlyStopping(

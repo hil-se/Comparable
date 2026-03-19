@@ -69,14 +69,22 @@ def create_encoder(input_size, df_name):
         # Use the penultimate feature map (layer -4), then add a regression head.
         x = base_model.layers[-4].output
         x = Flatten()(x)
-        output = Dense(1, activation="sigmoid")(x)
+        output = Dense(1, activation="linear")(x)
         model = tf.keras.Model(inputs=base_model.inputs, outputs=output)
 
     else:
-        # Tabular (non-SCUT) encoder: lightweight MLP for faster training.
+        # Tabular (non-SCUT) encoder: basic 1D CNN over the feature vector.
         model = keras.Sequential(
             [
                 keras.layers.Input(shape=(input_size,)),
+                keras.layers.Reshape((input_size, 1)),
+                keras.layers.Conv1D(
+                    filters=16, kernel_size=3, padding="same", activation="relu"
+                ),
+                keras.layers.Conv1D(
+                    filters=32, kernel_size=3, padding="same", activation="relu"
+                ),
+                keras.layers.GlobalMaxPooling1D(),
                 keras.layers.Dense(16, activation="relu"),
                 keras.layers.Dense(1, activation="linear"),
             ]
