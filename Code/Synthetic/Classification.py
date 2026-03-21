@@ -6,6 +6,8 @@ from scipy import stats
 import DualEncoder
 import SharedDualEncoder
 
+PAIRWISE_DECISION_THRESHOLD = 0.0
+
 
 def _predict_labels_batch(test, dual_encoder, batch_size=2048):
     """Batch inference to avoid per-row Python/TensorFlow overhead."""
@@ -19,7 +21,7 @@ def _predict_labels_batch(test, dual_encoder, batch_size=2048):
         batch_scores = dual_encoder.predict(dataA[start:end], dataB[start:end])
         scores.append(np.asarray(batch_scores).reshape(-1))
     raw_scores = np.concatenate(scores) if scores else np.array([], dtype=np.float32)
-    return np.where(raw_scores < 0, -1, 1).tolist()
+    return np.where(raw_scores < PAIRWISE_DECISION_THRESHOLD, -1, 1).tolist()
 
 
 def learn(

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
@@ -21,9 +22,11 @@ import DataProcessing
 from metrics import Metrics
 
 isBinary = True
+PAIRWISE_DECISION_THRESHOLD = 0.0
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
 RESULTS_DIR = BASE_DIR / "Results"
+HISTOGRAM_DIR = RESULTS_DIR / "Histograms"
 
 
 def retrievePixels(path, height, width):
@@ -72,7 +75,7 @@ def comp_pred(test, dual_encoder):
         #     prediction = 0
 
         # Labels: -1, 1
-        if prediction < 0:
+        if prediction < PAIRWISE_DECISION_THRESHOLD:
             prediction = 0
         else:
             prediction = 1
@@ -515,6 +518,31 @@ def kmeans_binarize_1d(data):
     return labels
 
 
+def plot_prediction_histogram(predictions, output_path, title, bins=80):
+    predictions = np.asarray(predictions, dtype=np.float64)
+    finite_predictions = predictions[np.isfinite(predictions)]
+    if finite_predictions.size == 0:
+        return
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    ax.hist(
+        finite_predictions,
+        bins=min(bins, max(40, int(np.sqrt(finite_predictions.size) * 2))),
+        color="#4C78A8",
+        edgecolor="white",
+        alpha=0.9,
+    )
+    ax.set_title(title)
+    ax.set_xlabel("Raw prediction score")
+    ax.set_ylabel("Count")
+    ax.grid(axis="y", alpha=0.2)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
 def stats(x1, x2):
     denom = x1 + x2
     eps = np.finfo(float).eps
@@ -701,7 +729,7 @@ def run_experiments(
     output_nc = 0
     effective_use_all_pairs = use_all_pairs or dataset in {"german", "heart"}
 
-    for _ in range(num_runs):
+    for run_idx in range(num_runs):
         _, df_name, train, test = _load_dataset(dataset, sa=output_sa_name)
         output_df_name = df_name
         train = train.reset_index(drop=True)
@@ -844,6 +872,32 @@ def run_experiments(
                 predictions_fair = np.full_like(predictions, np.nan, dtype=np.float64)
 
         if isBinary:
+            pair_strategy = "all" if effective_use_all_pairs else str(num_comp_train)
+            hist_prefix = (
+                f"{df_name}_{output_sa_name}_run{run_idx + 1}_{pair_strategy}"
+            )
+            plot_prediction_histogram(
+                predictions,
+                HISTOGRAM_DIR / f"{hist_prefix}_unweighted.png",
+                title=f"{df_name} raw predictions before k-means (run {run_idx + 1})",
+            )
+            plot_prediction_histogram(
+                predictions_weighted,
+                HISTOGRAM_DIR / f"{hist_prefix}_weighted.png",
+                title=(
+                    f"{df_name} weighted raw predictions before k-means "
+                    f"(run {run_idx + 1})"
+                ),
+            )
+            if train_fairreg:
+                plot_prediction_histogram(
+                    predictions_fair,
+                    HISTOGRAM_DIR / f"{hist_prefix}_fairreg.png",
+                    title=(
+                        f"{df_name} fairreg raw predictions before k-means "
+                        f"(run {run_idx + 1})"
+                    ),
+                )
             predictions_kmeans = kmeans_binarize_1d(predictions)
             predictions_kmeans_weighted = kmeans_binarize_1d(predictions_weighted)
             predictions_kmeans_vgg = np.full_like(
@@ -1080,7 +1134,7 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "scut"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "heart"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
