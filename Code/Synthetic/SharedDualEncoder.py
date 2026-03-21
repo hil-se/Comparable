@@ -86,7 +86,7 @@ def create_encoder(input_size, df_name):
                 ),
                 keras.layers.GlobalMaxPooling1D(),
                 keras.layers.Dense(16, activation="relu"),
-                keras.layers.Dense(1, activation="linear"),
+                keras.layers.Dense(1, activation="sigmoid"),
             ]
         )
 

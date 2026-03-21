@@ -224,7 +224,7 @@ def _resolve_sa_choice(sa, default_sa, allowed_sa, dataset_name):
     return selected, allowed[selected]
 
 
-def make_scut(P="P1", sa="gender"):
+def make_scut(P="P2", sa="gender"):
     df = pd.read_csv(DATA_DIR / "ImageExp" / "Selected_Ratings.csv")
     df = df[["Filename", P]]
 
@@ -1086,7 +1086,7 @@ if __name__ == "__main__":
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
-    NUM_COMP_PAIRS_RATIO = 0.01
+    NUM_COMP_PAIRS_RATIO = 0.1
     MODEL_EPOCHS = 100
 
     run_experiments(
