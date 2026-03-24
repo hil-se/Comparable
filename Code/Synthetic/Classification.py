@@ -221,6 +221,53 @@ def predict_scut_vggface_baseline(model, pixels, batch_size=4):
     return model.predict(pixels, batch_size=batch_size, verbose=0).reshape(-1)
 
 
+def train_single_encoder_baseline(
+    train_features,
+    y_train,
+    is_binary,
+    epochs=100,
+    batch_size=512,
+    patience=10,
+):
+    """
+    Train a non-comparative tabular baseline with a single encoder.
+    """
+    train_features = np.asarray(train_features, dtype=np.float32)
+    y_train = np.asarray(y_train, dtype=np.float32)
+    if train_features.ndim != 2:
+        raise ValueError("train_features must have shape [N, D].")
+    if len(train_features) != len(y_train):
+        raise ValueError("train_features and y_train must have the same length.")
+
+    model = SharedDualEncoder.create_encoder(
+        input_size=train_features.shape[1], df_name="tabular_baseline"
+    )
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+        loss="binary_crossentropy" if is_binary else "mse",
+    )
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="loss",
+        patience=patience,
+        min_delta=1e-4,
+        restore_best_weights=True,
+    )
+    model.fit(
+        train_features,
+        y_train,
+        epochs=epochs,
+        batch_size=min(batch_size, len(train_features)),
+        verbose=0,
+        callbacks=[early_stopping],
+    )
+    return model
+
+
+def predict_single_encoder_baseline(model, features, batch_size=2048):
+    features = np.asarray(features, dtype=np.float32)
+    return model.predict(features, batch_size=batch_size, verbose=0).reshape(-1)
+
+
 def train_model(
     train,
     val,

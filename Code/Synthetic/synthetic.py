@@ -817,6 +817,15 @@ def run_experiments(
             )
 
         y_train = train[col]
+        single_encoder_baseline = None
+        if not is_scut:
+            train_single_features = train.drop(columns=[col]).values.astype(np.float32)
+            single_encoder_baseline = Classification.train_single_encoder_baseline(
+                train_features=train_single_features,
+                y_train=y_train.values.astype(np.float32),
+                is_binary=isBinary,
+                epochs=model_epochs,
+            )
         train = train.drop(columns=[col])
         test = test.drop(columns=[col])
 
@@ -831,7 +840,16 @@ def run_experiments(
             else:
                 clf = LinearRegression().fit(train, y_train)
             predictions_lr = clf.predict(test)
+            predictions_single_encoder = Classification.predict_single_encoder_baseline(
+                single_encoder_baseline,
+                test.values.astype(np.float32),
+            )
+            if isBinary:
+                predictions_single_encoder = (predictions_single_encoder >= 0.5).astype(
+                    int
+                )
             m_lr = Metrics(y_test, predictions_lr)
+            m_single_encoder = Metrics(y_test, predictions_single_encoder)
 
             if isBinary:
                 accuracy_lr = accuracy_score(y_test, predictions_lr)
@@ -929,6 +947,11 @@ def run_experiments(
             if is_scut
             else None
         )
+        data_single_encoder_raw = (
+            np.column_stack([predictions_single_encoder, y_test, test["sa"].values])
+            if not is_scut
+            else None
+        )
         data_fair_raw = (
             np.column_stack([predictions_kmeans_fair, y_test, test["sa"].values])
             if train_fairreg
@@ -937,11 +960,13 @@ def run_experiments(
 
         violate_comp = violate_comp_w = violate_comp_fair = 0
         violate = violate_w = violate_fair = np.nan
+        violate_single_encoder = np.nan
         violate_vgg = np.nan
         if is_scut:
             violate_comp_vgg = 0
         else:
             violate_comp_vgg = np.nan
+            violate_comp_single_encoder = 0
         n_rows = len(data_raw)
         num_comp_pairs_eval = max(1, int(np.ceil(float(num_comp_pairs_ratio) * n_rows)))
         y_vals = data_raw[:, 1]
@@ -951,6 +976,8 @@ def run_experiments(
         # `separation` is a binary fairness test; report it only for binary tasks.
         if isBinary:
             violate = violate_w = violate_fair = 0
+            if not is_scut:
+                violate_single_encoder = 0
             if is_scut:
                 violate_vgg = 0
             for _ in range(r):
@@ -963,6 +990,12 @@ def run_experiments(
                     data_w_raw[selectedr, 0],
                     data_w_raw[selectedr, 2],
                 )
+                if not is_scut:
+                    ps_single_encoder = separation(
+                        data_single_encoder_raw[selectedr, 1],
+                        data_single_encoder_raw[selectedr, 0],
+                        data_single_encoder_raw[selectedr, 2],
+                    )
                 if is_scut:
                     ps_vgg = separation(
                         data_vgg_raw[selectedr, 1],
@@ -977,6 +1010,8 @@ def run_experiments(
                     )
                 violate += min(ps) < alpha
                 violate_w += min(ps_w) < alpha
+                if not is_scut:
+                    violate_single_encoder += min(ps_single_encoder) < alpha
                 if is_scut:
                     violate_vgg += min(ps_vgg) < alpha
                 if train_fairreg:
@@ -1010,6 +1045,15 @@ def run_experiments(
                 min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
                 < alpha
             )
+            if not is_scut:
+                violate_comp_single_encoder += (
+                    min(
+                        comparative_separation(
+                            count_violation_fast(data_single_encoder_raw, i1, i2)
+                        )[0]
+                    )
+                    < alpha
+                )
             if is_scut:
                 violate_comp_vgg += (
                     min(
@@ -1032,10 +1076,16 @@ def run_experiments(
         m_bi = Metrics(y_test, predictions_kmeans)
         m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
         m_vgg_bi = Metrics(y_test, predictions_kmeans_vgg) if is_scut else None
+        m_single_encoder_bi = (
+            Metrics(y_test, predictions_single_encoder) if not is_scut else None
+        )
         m_fair_bi = Metrics(y_test, predictions_kmeans_fair) if train_fairreg else None
         I_sep_bi = m_bi.MI_con_info(test["sa"])
         I_sep_weighted_bi = m_weighted_bi.MI_con_info(test["sa"])
         I_sep_vgg_bi = m_vgg_bi.MI_con_info(test["sa"]) if is_scut else np.nan
+        I_sep_single_encoder_bi = (
+            m_single_encoder_bi.MI_con_info(test["sa"]) if not is_scut else np.nan
+        )
         I_sep_fair_bi = m_fair_bi.MI_con_info(test["sa"]) if train_fairreg else np.nan
 
         if isBinary:
@@ -1043,6 +1093,11 @@ def run_experiments(
                 "fairness_lambda": FAIRNESS_LAMBDA,
                 "num_comp_pairs_eval": num_comp_pairs_eval,
                 "Acc_lr": accuracy_lr,
+                "Acc_single_encoder": (
+                    accuracy_score(y_test, predictions_single_encoder)
+                    if not is_scut
+                    else np.nan
+                ),
                 "Acc_unweight": accuracy_score(y_test, predictions_kmeans),
                 "Acc_weighted": accuracy_score(y_test, predictions_kmeans_weighted),
                 "Acc_fairreg": (
@@ -1051,6 +1106,11 @@ def run_experiments(
                     else np.nan
                 ),
                 "F1_lr": f1_score_lr,
+                "F1_single_encoder": (
+                    f1_score(y_test, predictions_single_encoder)
+                    if not is_scut
+                    else np.nan
+                ),
                 "F1_unweight": f1_score(y_test, predictions_kmeans),
                 "F1_weighted": f1_score(y_test, predictions_kmeans_weighted),
                 "F1_fairreg": (
@@ -1059,21 +1119,34 @@ def run_experiments(
                     else np.nan
                 ),
                 "AOD_lr": AOD_lr,
+                "AOD_single_encoder": (
+                    m_single_encoder_bi.AOD(test["sa"]) if not is_scut else np.nan
+                ),
                 "AOD_unweight": m_bi.AOD(test["sa"]),
                 "AOD_weighted": m_weighted_bi.AOD(test["sa"]),
                 "AOD_fairreg": m_fair_bi.AOD(test["sa"]) if train_fairreg else np.nan,
                 "EOD_lr": EOD_lr,
+                "EOD_single_encoder": (
+                    m_single_encoder_bi.EOD(test["sa"]) if not is_scut else np.nan
+                ),
                 "EOD_unweight": m_bi.EOD(test["sa"]),
                 "EOD_weighted": m_weighted_bi.EOD(test["sa"]),
                 "EOD_fairreg": m_fair_bi.EOD(test["sa"]) if train_fairreg else np.nan,
                 "I_sep_lr": I_sep_lr,
+                "I_sep_single_encoder_bi": I_sep_single_encoder_bi,
                 "I_sep_bi": I_sep_bi,
                 "I_sep_weighted_bi": I_sep_weighted_bi,
                 "I_sep_fairreg_bi": I_sep_fair_bi,
                 "violate_r": violate / r,
+                "violate_r_single_encoder": (
+                    violate_single_encoder / r if not is_scut else np.nan
+                ),
                 "violate_r_weighted": violate_w / r,
                 "violate_r_fairreg": violate_fair / r if train_fairreg else np.nan,
                 "violate_comp_r": violate_comp / r,
+                "violate_comp_r_single_encoder": (
+                    violate_comp_single_encoder / r if not is_scut else np.nan
+                ),
                 "violate_comp_r_w": violate_comp_w / r,
                 "violate_comp_r_fairreg": (
                     violate_comp_fair / r if train_fairreg else np.nan
@@ -1084,11 +1157,19 @@ def run_experiments(
                 "fairness_lambda": FAIRNESS_LAMBDA,
                 "num_comp_pairs_eval": num_comp_pairs_eval,
                 "MSE_lr": mse_lr,
+                "MSE_single_encoder": (
+                    m_single_encoder_bi.mse() if not is_scut else np.nan
+                ),
                 "MSE_unweight": m_bi.mse(),
                 "MSE_weight": m_weighted_bi.mse(),
                 "MSE_vgg_baseline": m_vgg_bi.mse() if is_scut else np.nan,
                 "MSE_fairreg": m_fair_bi.mse() if train_fairreg else np.nan,
                 "spearman_lr": spearman_lr,
+                "spearman_single_encoder": (
+                    m_single_encoder_bi.spearmanr_coefficient()
+                    if not is_scut
+                    else np.nan
+                ),
                 "spearman_unweighted": m_bi.spearmanr_coefficient(),
                 "spearman_weighted": m_weighted_bi.spearmanr_coefficient(),
                 "spearman_vgg_baseline": (
@@ -1098,6 +1179,11 @@ def run_experiments(
                     m_fair_bi.spearmanr_coefficient() if train_fairreg else np.nan
                 ),
                 "pearson_lr": pearson_lr,
+                "pearson_single_encoder": (
+                    m_single_encoder_bi.pearsonr_coefficient()
+                    if not is_scut
+                    else np.nan
+                ),
                 "pearson_unweighted": m_bi.pearsonr_coefficient(),
                 "pearson_weighted": m_weighted_bi.pearsonr_coefficient(),
                 "pearson_vgg_baseline": (
@@ -1107,15 +1193,22 @@ def run_experiments(
                     m_fair_bi.pearsonr_coefficient() if train_fairreg else np.nan
                 ),
                 "I_sep_lr": I_sep_lr,
+                "I_sep_single_encoder_bi": I_sep_single_encoder_bi,
                 "I_sep_bi": I_sep_bi,
                 "I_sep_weighted_bi": I_sep_weighted_bi,
                 "I_sep_vgg_baseline_bi": I_sep_vgg_bi,
                 "I_sep_fairreg_bi": I_sep_fair_bi,
                 "violate_r": violate / r,
+                "violate_r_single_encoder": (
+                    violate_single_encoder / r if not is_scut else np.nan
+                ),
                 "violate_r_weighted": violate_w / r,
                 "violate_r_vgg_baseline": violate_vgg / r,
                 "violate_r_fairreg": violate_fair / r if train_fairreg else np.nan,
                 "violate_comp_r": violate_comp / r,
+                "violate_comp_r_single_encoder": (
+                    violate_comp_single_encoder / r if not is_scut else np.nan
+                ),
                 "violate_comp_r_w": violate_comp_w / r,
                 "violate_comp_r_vgg_baseline": violate_comp_vgg / r,
                 "violate_comp_r_fairreg": (
@@ -1140,7 +1233,7 @@ if __name__ == "__main__":
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
-    NUM_COMP_PAIRS_RATIO = 0.1
+    NUM_COMP_PAIRS_RATIO = 0.01
     MODEL_EPOCHS = 100
 
     run_experiments(
