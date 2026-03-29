@@ -1227,11 +1227,11 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "compas"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
-    NUM_COMP_TRAIN = 1
+    NUM_COMP_TRAIN = 5
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     NUM_COMP_PAIRS_RATIO = 0.01
     MODEL_EPOCHS = 100
@@ -1257,3 +1257,6 @@ if __name__ == "__main__":
     # TODO: Switch to SGD compiler and try different learning rates, including decaying learning rates.
 
     # TODO: Include another baseline with one encoder
+    # TODO: Try sigmoid with single encoder
+    # TODO: Try SGD with non-scut datasets as well, to see if it improves fairness metrics. Plot the prediction and see if it's already well-seperated
+    # TODO: Run on local and see acuuracy change
