@@ -128,7 +128,7 @@ def learn(
         "x": train_dataset,
         "epochs": epochs,
         "steps_per_epoch": steps_per_epoch,
-        "verbose": 0,
+        "verbose": 2 if shared else 0,
         "callbacks": [early_stopping],
     }
     if validation_data is not None:
@@ -180,6 +180,8 @@ def learn(
 def train_scut_vggface_baseline(
     train_pixels,
     y_train,
+    val_pixels=None,
+    y_val=None,
     epochs=100,
     batch_size=2,
     patience=10,
@@ -193,26 +195,37 @@ def train_scut_vggface_baseline(
         raise ValueError("train_pixels must have shape [N, H, W, C].")
     if len(train_pixels) != len(y_train):
         raise ValueError("train_pixels and y_train must have the same length.")
+    if val_pixels is not None or y_val is not None:
+        if val_pixels is None or y_val is None:
+            raise ValueError("val_pixels and y_val must be provided together.")
+        val_pixels = np.asarray(val_pixels, dtype=np.float32)
+        y_val = np.asarray(y_val, dtype=np.float32)
+        if len(val_pixels) != len(y_val):
+            raise ValueError("val_pixels and y_val must have the same length.")
 
     model = SharedDualEncoder.create_encoder(input_size=None, df_name="scut_baseline")
     model.compile(
         optimizer=tf.keras.optimizers.SGD(learning_rate=1e-4),
         loss="mse",
     )
+    monitor_metric = "val_loss" if val_pixels is not None else "loss"
     early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor="loss",
+        monitor=monitor_metric,
         patience=patience,
         min_delta=1e-4,
         restore_best_weights=True,
     )
-    model.fit(
-        train_pixels,
-        y_train,
-        epochs=epochs,
-        batch_size=min(batch_size, len(train_pixels)),
-        verbose=0,
-        callbacks=[early_stopping],
-    )
+    fit_kwargs = {
+        "x": train_pixels,
+        "y": y_train,
+        "epochs": epochs,
+        "batch_size": min(batch_size, len(train_pixels)),
+        "verbose": 0,
+        "callbacks": [early_stopping],
+    }
+    if val_pixels is not None:
+        fit_kwargs["validation_data"] = (val_pixels, y_val)
+    model.fit(**fit_kwargs)
     return model
 
 
@@ -225,6 +238,8 @@ def train_single_encoder_baseline(
     train_features,
     y_train,
     is_binary,
+    val_features=None,
+    y_val=None,
     epochs=100,
     batch_size=512,
     patience=10,
@@ -238,6 +253,13 @@ def train_single_encoder_baseline(
         raise ValueError("train_features must have shape [N, D].")
     if len(train_features) != len(y_train):
         raise ValueError("train_features and y_train must have the same length.")
+    if val_features is not None or y_val is not None:
+        if val_features is None or y_val is None:
+            raise ValueError("val_features and y_val must be provided together.")
+        val_features = np.asarray(val_features, dtype=np.float32)
+        y_val = np.asarray(y_val, dtype=np.float32)
+        if len(val_features) != len(y_val):
+            raise ValueError("val_features and y_val must have the same length.")
 
     model = SharedDualEncoder.create_encoder(
         input_size=train_features.shape[1], df_name="tabular_baseline"
@@ -246,20 +268,24 @@ def train_single_encoder_baseline(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
         loss="binary_crossentropy" if is_binary else "mse",
     )
+    monitor_metric = "val_loss" if val_features is not None else "loss"
     early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor="loss",
+        monitor=monitor_metric,
         patience=patience,
         min_delta=1e-4,
         restore_best_weights=True,
     )
-    model.fit(
-        train_features,
-        y_train,
-        epochs=epochs,
-        batch_size=min(batch_size, len(train_features)),
-        verbose=0,
-        callbacks=[early_stopping],
-    )
+    fit_kwargs = {
+        "x": train_features,
+        "y": y_train,
+        "epochs": epochs,
+        "batch_size": min(batch_size, len(train_features)),
+        "verbose": 0,
+        "callbacks": [early_stopping],
+    }
+    if val_features is not None:
+        fit_kwargs["validation_data"] = (val_features, y_val)
+    model.fit(**fit_kwargs)
     return model
 
 
@@ -288,14 +314,21 @@ def train_model(
         train_weights = train_weights[perm]
     else:
         train = train.sample(frac=1).reset_index(drop=True)
+    if val is not None:
+        val = val.reset_index(drop=True).copy()
+        if val_weights is not None:
+            val_weights = np.asarray(val_weights, dtype=np.float32)
+            if len(val_weights) != len(val):
+                raise ValueError("val_weights length must match validation data length.")
+            val["Weights"] = val_weights
     dual_encoder = learn(
         train,
         epochs=epochs,
-        validation_data=None,
+        validation_data=val,
         y_true=y_true,
         shared=shared,
         train_weights=train_weights,
-        val_weights=None,
+        val_weights=val_weights,
         df_name=df_name,
         fairness_lambda=fairness_lambda,
     )

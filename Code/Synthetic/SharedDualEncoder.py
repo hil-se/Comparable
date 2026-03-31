@@ -122,11 +122,11 @@ class DualEncoderAll(tf.keras.Model):
         Convert encoder output to one scalar per sample.
         Handles both shape [batch, 1] and higher-dimensional outputs (e.g. [batch, 2622]).
         """
-        encoding = tf.cast(encoding, tf.float32)
-        encoding = tf.reshape(encoding, [tf.shape(encoding)[0], -1])
-        return tf.reduce_mean(encoding, axis=1)
+        encoding = keras.ops.cast(encoding, "float32")
+        encoding = keras.ops.reshape(encoding, (keras.ops.shape(encoding)[0], -1))
+        return keras.ops.mean(encoding, axis=1)
 
-    def compute_loss(
+    def _compute_pairwise_loss(
         self, encodings_A, encodings_B, y, sample_weight=None, sa_a=None, sa_b=None
     ):
         encodings_A = self._to_scalar(encodings_A)
@@ -210,7 +210,7 @@ class DualEncoderAll(tf.keras.Model):
             encodings_A, encodings_B, y, sa_a_out, sa_b_out = self(x, trainable=True)
             sa_a = sa_a if sa_a is not None else sa_a_out
             sa_b = sa_b if sa_b is not None else sa_b_out
-            loss = self.compute_loss(
+            loss = self._compute_pairwise_loss(
                 encodings_A,
                 encodings_B,
                 y,
@@ -223,6 +223,31 @@ class DualEncoderAll(tf.keras.Model):
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
         # loss is now a scalar, so the Mean metric is happy.
+        self.loss_tracker.update_state(loss)
+        return {"loss": self.loss_tracker.result()}
+
+    def test_step(self, data):
+        if isinstance(data, tuple):
+            x = data[0]
+        else:
+            x = data
+
+        sample_weight = x.get("Weights", None) if isinstance(x, dict) else None
+        sa_a = x.get("SA_A", None) if isinstance(x, dict) else None
+        sa_b = x.get("SA_B", None) if isinstance(x, dict) else None
+
+        encodings_A, encodings_B, y, sa_a_out, sa_b_out = self(x, trainable=False)
+        sa_a = sa_a if sa_a is not None else sa_a_out
+        sa_b = sa_b if sa_b is not None else sa_b_out
+        loss = self._compute_pairwise_loss(
+            encodings_A,
+            encodings_B,
+            y,
+            sample_weight=sample_weight,
+            sa_a=sa_a,
+            sa_b=sa_b,
+        )
+
         self.loss_tracker.update_state(loss)
         return {"loss": self.loss_tracker.result()}
 
