@@ -1,4 +1,8 @@
+import contextlib
 import os
+import sys
+import traceback
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -27,6 +31,57 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
 RESULTS_DIR = BASE_DIR / "Results"
 HISTOGRAM_DIR = RESULTS_DIR / "Histograms"
+TRAINING_LOG_DIR = RESULTS_DIR / "TrainingLogs"
+
+
+class _TeeStream:
+    def __init__(self, console_stream, log_stream):
+        self.console_stream = console_stream
+        self.log_stream = log_stream
+
+    def write(self, data):
+        self.console_stream.write(data)
+        self.log_stream.write(data)
+        return len(data)
+
+    def flush(self):
+        self.console_stream.flush()
+        self.log_stream.flush()
+
+    def writelines(self, lines):
+        for line in lines:
+            self.write(line)
+
+    def __getattr__(self, name):
+        return getattr(self.console_stream, name)
+
+
+def _default_training_log_path(dataset, sa):
+    dataset_name = str(dataset).strip().lower().replace(" ", "_")
+    sa_name = "default" if sa is None else str(sa).strip().lower().replace(" ", "_")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return TRAINING_LOG_DIR / f"{dataset_name}_{sa_name}_{timestamp}.log"
+
+
+@contextlib.contextmanager
+def _tee_training_output(log_path):
+    if log_path is None:
+        yield None
+        return
+
+    resolved_path = Path(log_path).expanduser().resolve()
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+
+    current_stdout = sys.stdout
+    current_stderr = sys.stderr
+    with resolved_path.open("a", encoding="utf-8", buffering=1) as log_file:
+        tee_stdout = _TeeStream(current_stdout, log_file)
+        tee_stderr = _TeeStream(current_stderr, log_file)
+        with contextlib.redirect_stdout(tee_stdout), contextlib.redirect_stderr(
+            tee_stderr
+        ):
+            print(f"Training log file: {resolved_path}")
+            yield resolved_path
 
 
 def retrievePixels(path, height, width):
@@ -744,7 +799,7 @@ def _load_dataset(dataset_name, sa=None):
     return dataset_loaders[dataset_name](sa=sa)
 
 
-def run_experiments(
+def _run_experiments_impl(
     num_runs=10,
     dataset="scut",
     sa=None,
@@ -871,6 +926,7 @@ def run_experiments(
             )
         scut_vgg_baseline = None
         if is_scut:
+            print(f"[Run {run_idx + 1}/{num_runs}] Training SCUT VGG-Face baseline...")
             scut_train_pixels = np.stack(train["pixels"].values).astype(np.float32)
             scut_train_targets = train[col].values.astype(np.float32)
             (
@@ -895,6 +951,7 @@ def run_experiments(
         y_train = train[col]
         single_encoder_baseline = None
         if not is_scut and train_single_encoder:
+            print(f"[Run {run_idx + 1}/{num_runs}] Training single encoder baseline...")
             train_single_features = train.drop(columns=[col]).values.astype(np.float32)
             (
                 train_single_features,
@@ -1342,17 +1399,59 @@ def run_experiments(
     )
 
 
+def run_experiments(
+    num_runs=10,
+    dataset="scut",
+    sa=None,
+    use_all_pairs=False,
+    num_comp_train=1,
+    train_fairreg=True,
+    train_single_encoder=True,
+    plot_histograms=True,
+    num_comp_pairs_ratio=0.1,
+    model_epochs=100,
+    validation_fraction=0.1,
+    training_log_path=None,
+):
+    with _tee_training_output(training_log_path) as resolved_log_path:
+        if resolved_log_path is not None:
+            print(
+                "Starting experiments "
+                f"(dataset={dataset}, sensitive_attribute={sa or 'default'})."
+            )
+        try:
+            _run_experiments_impl(
+                num_runs=num_runs,
+                dataset=dataset,
+                sa=sa,
+                use_all_pairs=use_all_pairs,
+                num_comp_train=num_comp_train,
+                train_fairreg=train_fairreg,
+                train_single_encoder=train_single_encoder,
+                plot_histograms=plot_histograms,
+                num_comp_pairs_ratio=num_comp_pairs_ratio,
+                model_epochs=model_epochs,
+                validation_fraction=validation_fraction,
+            )
+        except Exception:
+            if resolved_log_path is not None:
+                print("\nExperiment failed. Traceback:", file=sys.stderr)
+                traceback.print_exc()
+            raise
+
+
 if __name__ == "__main__":
     DATASET = "compas"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
-    NUM_COMP_TRAIN = 1
+    NUM_COMP_TRAIN = 5
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = False  # Set False to skip single-encoder baseline training.
     PLOT_HISTOGRAMS = False  # Set False to skip writing prediction histogram images.
     NUM_COMP_PAIRS_RATIO = 0.1
     MODEL_EPOCHS = 100
+    TRAINING_LOG_PATH = _default_training_log_path(DATASET, SA)
 
     run_experiments(
         num_runs=NUM_RUNS,
@@ -1365,6 +1464,7 @@ if __name__ == "__main__":
         plot_histograms=PLOT_HISTOGRAMS,
         num_comp_pairs_ratio=NUM_COMP_PAIRS_RATIO,
         model_epochs=MODEL_EPOCHS,
+        training_log_path=TRAINING_LOG_PATH,
     )
 
     # TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
