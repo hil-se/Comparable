@@ -1,7 +1,6 @@
 import contextlib
 import os
 import sys
-import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -94,6 +93,42 @@ def retrievePixels(path, height, width):
 
 
 col = "output"
+DATASET_DEFAULT_SA = {
+    "scut": "gender",
+    "adult": "gender",
+    "german": "sex",
+    "heart": "age",
+    "compas": "race",
+    "comm": "race",
+    "lsac": "race",
+}
+
+
+def _binary_encode(series, positive_value):
+    return series.eq(positive_value).astype(int)
+
+
+def _strip_text_columns(df):
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+    text_cols = df.select_dtypes(include="object").columns
+    if len(text_cols):
+        df[text_cols] = df[text_cols].apply(lambda values: values.str.strip())
+    return df
+
+
+def _resolve_sa_column(sa, default_sa, allowed_sa, dataset_name):
+    return _resolve_sa_choice(sa, default_sa, allowed_sa, dataset_name)[1]
+
+
+def _finalize_dataset(df, dependent, dataset_name, is_binary, model_df=None):
+    global isBinary
+    X_train, X_test = _split_with_output(
+        df if model_df is None else model_df,
+        dependent,
+    )
+    isBinary = is_binary
+    return df, dataset_name, X_train, X_test
 
 
 def _split_with_output(df, dependent, test_size=0.2):
@@ -293,62 +328,49 @@ def make_scut(P="P2", sa="gender"):
     print("Images loaded.")
 
     fn = df["Filename"].astype(str)
-    df["race"] = fn.str[0].fillna("")
-    df["gender"] = fn.str[1].fillna("")
+    df["gender"] = _binary_encode(fn.str[1].fillna(""), "M")
+    df["race"] = _binary_encode(fn.str[0].fillna(""), "C")
 
-    df["gender"] = df["gender"].apply(lambda x: 1 if x == "M" else 0)
-    df["race"] = df["race"].apply(lambda x: 1 if x == "C" else 0)
-
-    _, sa_col = _resolve_sa_choice(
-        sa=sa,
+    sa_col = _resolve_sa_column(
+        sa,
         default_sa="gender",
         allowed_sa={"gender": "gender", "race": "race"},
         dataset_name="scut",
     )
-
     df = df.rename(columns={sa_col: "sa"})
-
-    global isBinary
     dependent = P
-
     model_df = df[["pixels", "sa", dependent]]
-    X_train, X_test = _split_with_output(model_df, dependent)
-
-    isBinary = False
-
-    return df, "scut" + "_" + str(P), X_train, X_test
+    return _finalize_dataset(
+        df,
+        dependent,
+        f"scut_{P}",
+        is_binary=False,
+        model_df=model_df,
+    )
 
 
 def make_adult(sa="gender"):
-    # seed = 18
-    df = pd.read_csv(DATA_DIR / "adult.csv", na_values=["?"])
-    # df = df.sample(frac=0.1)
-    # Adult CSV headers/values may include padded whitespace.
-    df.columns = df.columns.str.strip()
-    for c in df.select_dtypes(include="object").columns:
-        df[c] = df[c].str.strip()
+    df = _strip_text_columns(pd.read_csv(DATA_DIR / "adult.csv", na_values=["?"]))
     df = df.dropna()
-    df["gender"] = df["gender"].apply(lambda x: 1 if x == "Male" else 0)
-    df["income"] = df["income"].apply(lambda x: 1 if x == ">50K" else 0)
+    df["gender"] = _binary_encode(df["gender"], "Male")
+    df["income"] = _binary_encode(df["income"], ">50K")
     dependent = "income"
 
-    global isBinary
-    _, sa_col = _resolve_sa_choice(
-        sa=sa,
+    sa_col = _resolve_sa_column(
+        sa,
         default_sa="gender",
         allowed_sa={"gender": "gender", "race": "race"},
         dataset_name="adult",
     )
     if sa_col == "race":
-        # Adult race is multi-class; use white vs non-white for a binary SA.
-        df["race"] = df["race"].apply(lambda x: 1 if x == "White" else 0)
+        df["race"] = _binary_encode(df["race"], "White")
 
     df = df.rename(columns={sa_col: "sa"})
-
-    dummy_cols = ["workclass", "marital-status", "occupation", "relationship", "race"]
-    if sa_col in dummy_cols:
-        dummy_cols.remove(sa_col)
-
+    dummy_cols = [
+        column
+        for column in ["workclass", "marital-status", "occupation", "relationship", "race"]
+        if column != sa_col
+    ]
     df = pd.get_dummies(
         df,
         columns=dummy_cols,
@@ -357,27 +379,24 @@ def make_adult(sa="gender"):
     )
 
     model_df = df.drop(columns=["education", "native-country"])
-    X_train, X_test = _split_with_output(model_df, dependent)
-
-    isBinary = True
-
-    return df, "adult", X_train, X_test
+    return _finalize_dataset(
+        df,
+        dependent,
+        "adult",
+        is_binary=True,
+        model_df=model_df,
+    )
 
 
 def make_german(sa="sex"):
-    # seed = 42
-    df = pd.read_csv(DATA_DIR / "german_credit_data.csv", index_col=0)
-    # Dataset headers/values may contain padded whitespace.
-    df.columns = df.columns.str.strip()
-    for c in df.select_dtypes(include="object").columns:
-        df[c] = df[c].str.strip()
-    df = df.dropna()
-    df["Sex"] = df["Sex"].apply(lambda x: 1 if str(x).lower() == "male" else 0)
-    df["Risk"] = df["Risk"].apply(lambda x: 1 if str(x).lower() == "good" else 0)
-    global isBinary
+    df = _strip_text_columns(
+        pd.read_csv(DATA_DIR / "german_credit_data.csv", index_col=0)
+    ).dropna()
+    df["Sex"] = df["Sex"].str.lower().eq("male").astype(int)
+    df["Risk"] = df["Risk"].str.lower().eq("good").astype(int)
     dependent = "Risk"
-    _, sa_col = _resolve_sa_choice(
-        sa=sa,
+    sa_col = _resolve_sa_column(
+        sa,
         default_sa="sex",
         allowed_sa={"sex": "Sex", "age": "Age"},
         dataset_name="german",
@@ -394,43 +413,26 @@ def make_german(sa="sex"):
         dtype=float,
         drop_first=True,
     )
-
-    X_train, X_test = _split_with_output(df, dependent)
-
-    isBinary = True
-
-    return df, "german", X_train, X_test
+    return _finalize_dataset(df, dependent, "german", is_binary=True)
 
 
 def make_heart(sa="age"):
-    # seed = 42
-    df = pd.read_csv(DATA_DIR / "heart.csv")
-    # Some copies of heart.csv have spaces after commas in headers (e.g., " output").
-    df.columns = df.columns.str.strip()
-    df = df.dropna()
+    df = _strip_text_columns(pd.read_csv(DATA_DIR / "heart.csv")).dropna()
 
-    global isBinary
     dependent = "output"
-    _, sa_col = _resolve_sa_choice(
-        sa=sa,
+    sa_col = _resolve_sa_column(
+        sa,
         default_sa="age",
         allowed_sa={"age": "age", "sex": "sex"},
         dataset_name="heart",
     )
     if sa_col == "age":
-        # Treat age as binary sensitive attribute (older vs younger).
         df["age"] = (df["age"] >= 55).astype(int)
     df = df.rename(columns={sa_col: "sa"})
-
-    X_train, X_test = _split_with_output(df, dependent)
-
-    isBinary = True
-
-    return df, "heart", X_train, X_test
+    return _finalize_dataset(df, dependent, "heart", is_binary=True)
 
 
 def make_compas(sa="race"):
-    df = pd.read_csv(DATA_DIR / "compas-scores-two-years.csv")
     features_to_keep = [
         "sex",
         "age",
@@ -443,16 +445,15 @@ def make_compas(sa="race"):
         "c_charge_degree",
         "two_year_recid",
     ]
-    df = df[features_to_keep]
-    df["sex"] = df["sex"].apply(lambda x: 1 if x == "Male" else 0)
-    # discretize race: Caucasian vs. non-Caucasian
-    df["race"] = df["race"].apply(lambda x: 1 if x == "Caucasian" else 0)
-    # prefer 0 (no recid) as label 1
-    df["two_year_recid"] = df["two_year_recid"].apply(lambda x: 1 if x == 0 else 0)
+    df = _strip_text_columns(
+        pd.read_csv(DATA_DIR / "compas-scores-two-years.csv", usecols=features_to_keep)
+    )
+    df["sex"] = _binary_encode(df["sex"], "Male")
+    df["race"] = _binary_encode(df["race"], "Caucasian")
+    df["two_year_recid"] = (df["two_year_recid"] == 0).astype(int)
 
-    global isBinary
-    _, sa_col = _resolve_sa_choice(
-        sa=sa,
+    sa_col = _resolve_sa_column(
+        sa,
         default_sa="race",
         allowed_sa={"race": "race", "sex": "sex"},
         dataset_name="compas",
@@ -464,80 +465,50 @@ def make_compas(sa="race"):
     )
 
     dependent = "two_year_recid"
-
-    X_train, X_test = _split_with_output(df, dependent)
-
-    isBinary = True
-
-    return df, "compas", X_train, X_test
+    return _finalize_dataset(df, dependent, "compas", is_binary=True)
 
 
 def make_comm(sa="race"):
-    # seed = 42
     df = pd.read_csv(DATA_DIR / "communities.csv")
     df = df.fillna(0)
-    B = "racepctblack"
-    W = "racePctWhite"
-    A = "racePctAsian"
-    H = "racePctHisp"
-    sens_features = [2, 3, 4, 5]
-    df_sens = df.iloc[:, sens_features]
+    race_columns = ["racepctblack", "racePctWhite", "racePctAsian", "racePctHisp"]
+    majority_race = majority_pop(df[race_columns])
+    df["race"] = majority_race.map(
+        {"racepctblack": 0, "racePctWhite": 1, "racePctAsian": 0, "racePctHisp": 0}
+    )
+    df = df.drop(columns=race_columns)
 
-    maj = majority_pop(df_sens)
-
-    a = maj.map({B: 0, W: 1, A: 0, H: 0})
-
-    df["race"] = a
-    df = df.drop(H, axis=1)
-    df = df.drop(B, axis=1)
-    df = df.drop(W, axis=1)
-    df = df.drop(A, axis=1)
-
-    global isBinary
     dependent = "ViolentCrimesPerPop"
-    _, sa_col = _resolve_sa_choice(
-        sa=sa,
+    sa_col = _resolve_sa_column(
+        sa,
         default_sa="race",
         allowed_sa={"race": "race"},
         dataset_name="comm",
     )
 
     df = df.rename(columns={sa_col: "sa"})
-
-    X_train, X_test = _split_with_output(df, dependent)
-
-    isBinary = False
-
-    return df, "comm", X_train, X_test
+    return _finalize_dataset(df, dependent, "comm", is_binary=False)
 
 
 def make_lsac(sa="race"):
     df = pd.read_csv(DATA_DIR / "lawschool.csv")
     df = df.dropna()
 
-    df["race"] = [int(race == 7.0) for race in df["race"]]
-    y = df["ugpa"]
-    df["ugpa"] = np.array(y / max(y))
-
+    df["race"] = (df["race"] == 7.0).astype(int)
+    df["ugpa"] = df["ugpa"] / df["ugpa"].max()
     df["gender"] = df["gender"].map({"male": 1, "female": 0})
-    df["bar1"] = [int(grade == "P") for grade in df["bar1"]]
+    df["bar1"] = _binary_encode(df["bar1"], "P")
 
-    global isBinary
     dependent = "ugpa"
-    _, sa_col = _resolve_sa_choice(
-        sa=sa,
+    sa_col = _resolve_sa_column(
+        sa,
         default_sa="race",
         allowed_sa={"race": "race", "gender": "gender"},
         dataset_name="lsac",
     )
 
     df = df.rename(columns={sa_col: "sa"})
-
-    X_train, X_test = _split_with_output(df, dependent)
-
-    isBinary = False
-
-    return df, "lsac", X_train, X_test
+    return _finalize_dataset(df, dependent, "lsac", is_binary=False)
 
 
 def majority_pop(a):
@@ -971,6 +942,7 @@ def _run_experiments_impl(
                 train_features=train_single_features,
                 y_train=train_single_targets,
                 is_binary=isBinary,
+                output_activation=single_encoder_activation,
                 val_features=val_single_features,
                 y_val=val_single_targets,
                 epochs=model_epochs,
@@ -1445,16 +1417,16 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "lsac"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "compas"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
-    NUM_COMP_TRAIN = 1
+    NUM_COMP_TRAIN = 5
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
     PLOT_HISTOGRAMS = False  # Set False to skip writing prediction histogram images.
     NUM_COMP_PAIRS_RATIO = 0.1
-    MODEL_EPOCHS = 100
+    MODEL_EPOCHS = 500
     TRAINING_LOG_PATH = _default_training_log_path(DATASET, SA)
 
     run_experiments(

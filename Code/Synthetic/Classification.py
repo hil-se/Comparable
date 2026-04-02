@@ -244,6 +244,7 @@ def train_single_encoder_baseline(
     train_features,
     y_train,
     is_binary,
+    output_activation=None,
     val_features=None,
     y_val=None,
     epochs=100,
@@ -267,7 +268,8 @@ def train_single_encoder_baseline(
         if len(val_features) != len(y_val):
             raise ValueError("val_features and y_val must have the same length.")
 
-    output_activation = "sigmoid" if is_binary else "linear"
+    if output_activation is None:
+        output_activation = "sigmoid" if is_binary else "linear"
     model = SharedDualEncoder.create_encoder(
         input_size=train_features.shape[1],
         df_name="tabular_baseline",
