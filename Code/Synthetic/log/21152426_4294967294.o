@@ -1556,3 +1556,5 @@ Epoch 69/100
 Epoch 70/100
 5144/5144 - 108s - 21ms/step - loss: 0.1111 - val_loss: 0.1223
 Epoch 71/100
+5144/5144 - 108s - 21ms/step - loss: 0.1100 - val_loss: 0.1276
+Epoch 72/100
