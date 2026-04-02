@@ -1,0 +1,10 @@
+Training log file: /home/xx4455/Comparable/Code/Synthetic/Results/TrainingLogs/scut_default_20260401_123557.log
+Starting experiments (dataset=scut, sensitive_attribute=default).
+Loading 5500 images in parallel...
+Images loaded.
+[Run 1/5] Training shared encoder (unweighted)...
+Epoch 1/100
+5202/5202 - 128s - 25ms/step - loss: 0.8119 - val_loss: 0.4567
+Epoch 2/100
+5202/5202 - 137s - 26ms/step - loss: 0.4343 - val_loss: 0.0000e+00
+Epoch 3/100

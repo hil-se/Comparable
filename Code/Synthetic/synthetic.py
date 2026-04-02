@@ -951,7 +951,11 @@ def _run_experiments_impl(
         y_train = train[col]
         single_encoder_baseline = None
         if not is_scut and train_single_encoder:
-            print(f"[Run {run_idx + 1}/{num_runs}] Training single encoder baseline...")
+            single_encoder_activation = "sigmoid" if isBinary else "linear"
+            print(
+                f"[Run {run_idx + 1}/{num_runs}] Training single encoder baseline "
+                f"({single_encoder_activation} head)..."
+            )
             train_single_features = train.drop(columns=[col]).values.astype(np.float32)
             (
                 train_single_features,
@@ -1441,13 +1445,13 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "compas"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "lsac"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
-    NUM_COMP_TRAIN = 5
+    NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
-    TRAIN_SINGLE_ENCODER = False  # Set False to skip single-encoder baseline training.
+    TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
     PLOT_HISTOGRAMS = False  # Set False to skip writing prediction histogram images.
     NUM_COMP_PAIRS_RATIO = 0.1
     MODEL_EPOCHS = 100
@@ -1478,5 +1482,6 @@ if __name__ == "__main__":
 
     # TODO: Include another baseline with one encoder
     # TODO: Try sigmoid with single encoder
-    # TODO: Try SGD with non-scut datasets as well, to see if it improves fairness metrics. Plot the prediction and see if it's already well-seperated
+    # TODO: Try SGD with non-scut datasets as well, to see if it improves fairness metrics
     # TODO: Run on local and see acuuracy change
+    # TODO: Try linear single encoder with regression dataset, and sigmoid single encoder with classification datasets

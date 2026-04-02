@@ -164,7 +164,13 @@ def learn(
             val_dataset = tf.data.Dataset.from_generator(
                 _val_row_generator, output_signature=val_signature
             )
-            val_dataset = val_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+            # Keep validation available across epochs when Keras consumes a fixed
+            # number of validation steps from the same dataset iterator.
+            val_dataset = (
+                val_dataset.batch(batch_size)
+                .repeat()
+                .prefetch(tf.data.AUTOTUNE)
+            )
             fit_kwargs["validation_data"] = val_dataset
             fit_kwargs["validation_steps"] = int(
                 np.ceil(len(validation_data) / batch_size)
@@ -261,8 +267,11 @@ def train_single_encoder_baseline(
         if len(val_features) != len(y_val):
             raise ValueError("val_features and y_val must have the same length.")
 
+    output_activation = "sigmoid" if is_binary else "linear"
     model = SharedDualEncoder.create_encoder(
-        input_size=train_features.shape[1], df_name="tabular_baseline"
+        input_size=train_features.shape[1],
+        df_name="tabular_baseline",
+        output_activation=output_activation,
     )
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),

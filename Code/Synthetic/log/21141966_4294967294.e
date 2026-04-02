@@ -1,0 +1,24 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1775011922.820108 3275120 service.cc:145] XLA service 0x1e27b050 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+I0000 00:00:1775011922.820268 3275120 service.cc:153]   StreamExecutor device (0): NVIDIA A100-PCIE-40GB, Compute Capability 8.0
+I0000 00:00:1775011927.732765 3275120 device_compiler.h:188] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)

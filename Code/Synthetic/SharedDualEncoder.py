@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
 
 
-def create_encoder(input_size, df_name):
+def create_encoder(input_size, df_name, output_activation="linear"):
 
     if df_name is not None and "scut" in df_name:
         base_model = tf.keras.Sequential()
@@ -69,7 +69,7 @@ def create_encoder(input_size, df_name):
         # Use the penultimate feature map (layer -4), then add a regression head.
         x = base_model.layers[-4].output
         x = Flatten()(x)
-        output = Dense(1, activation="linear")(x)
+        output = Dense(1, activation=output_activation)(x)
         model = tf.keras.Model(inputs=base_model.inputs, outputs=output)
 
     else:
@@ -86,7 +86,7 @@ def create_encoder(input_size, df_name):
                 ),
                 keras.layers.GlobalMaxPooling1D(),
                 keras.layers.Dense(16, activation="relu"),
-                keras.layers.Dense(1, activation="linear"),
+                keras.layers.Dense(1, activation=output_activation),
             ]
         )
 

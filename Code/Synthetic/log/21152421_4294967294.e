@@ -1,0 +1,6 @@
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+2026-04-01 12:36:43.180706: E tensorflow/core/grappler/optimizers/meta_optimizer.cc:961] layout failed: INVALID_ARGUMENT: Size of values 0 does not match size of permutation 4 @ fanin shape inStatefulPartitionedCall/dual_encoder_all_1/functional_39_1/dropout_1/stateless_dropout/SelectV2-2-TransposeNHWCToNCHW-LayoutOptimizer
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+[2026-04-01T12:41:57.116] error: *** JOB 21152421 ON skl-a-39 CANCELLED AT 2026-04-01T12:41:57 DUE to SIGNAL Terminated ***

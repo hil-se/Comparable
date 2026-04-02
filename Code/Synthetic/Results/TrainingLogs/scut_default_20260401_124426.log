@@ -1,0 +1,1576 @@
+Training log file: /home/xx4455/Comparable/Code/Synthetic/Results/TrainingLogs/scut_default_20260401_124426.log
+Starting experiments (dataset=scut, sensitive_attribute=default).
+Loading 5500 images in parallel...
+Images loaded.
+[Run 1/5] Training shared encoder (unweighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5207/5207 - 118s - 23ms/step - loss: 0.8765 - val_loss: 0.4529
+Epoch 2/100
+5207/5207 - 110s - 21ms/step - loss: 0.4488 - val_loss: 0.3802
+Epoch 3/100
+5207/5207 - 110s - 21ms/step - loss: 0.3925 - val_loss: 0.3465
+Epoch 4/100
+5207/5207 - 110s - 21ms/step - loss: 0.3602 - val_loss: 0.3280
+Epoch 5/100
+5207/5207 - 110s - 21ms/step - loss: 0.3355 - val_loss: 0.3000
+Epoch 6/100
+5207/5207 - 110s - 21ms/step - loss: 0.3119 - val_loss: 0.2767
+Epoch 7/100
+5207/5207 - 110s - 21ms/step - loss: 0.2921 - val_loss: 0.2614
+Epoch 8/100
+5207/5207 - 110s - 21ms/step - loss: 0.2749 - val_loss: 0.2531
+Epoch 9/100
+5207/5207 - 110s - 21ms/step - loss: 0.2614 - val_loss: 0.2378
+Epoch 10/100
+5207/5207 - 110s - 21ms/step - loss: 0.2468 - val_loss: 0.2233
+Epoch 11/100
+5207/5207 - 110s - 21ms/step - loss: 0.2360 - val_loss: 0.2152
+Epoch 12/100
+5207/5207 - 110s - 21ms/step - loss: 0.2254 - val_loss: 0.2037
+Epoch 13/100
+5207/5207 - 110s - 21ms/step - loss: 0.2185 - val_loss: 0.2133
+Epoch 14/100
+5207/5207 - 110s - 21ms/step - loss: 0.2097 - val_loss: 0.1899
+Epoch 15/100
+5207/5207 - 110s - 21ms/step - loss: 0.2048 - val_loss: 0.1871
+Epoch 16/100
+5207/5207 - 110s - 21ms/step - loss: 0.1964 - val_loss: 0.1783
+Epoch 17/100
+5207/5207 - 109s - 21ms/step - loss: 0.1923 - val_loss: 0.1862
+Epoch 18/100
+5207/5207 - 110s - 21ms/step - loss: 0.1864 - val_loss: 0.1732
+Epoch 19/100
+5207/5207 - 110s - 21ms/step - loss: 0.1815 - val_loss: 0.1700
+Epoch 20/100
+5207/5207 - 110s - 21ms/step - loss: 0.1790 - val_loss: 0.1644
+Epoch 21/100
+5207/5207 - 109s - 21ms/step - loss: 0.1751 - val_loss: 0.1646
+Epoch 22/100
+5207/5207 - 110s - 21ms/step - loss: 0.1727 - val_loss: 0.1612
+Epoch 23/100
+5207/5207 - 110s - 21ms/step - loss: 0.1700 - val_loss: 0.1598
+Epoch 24/100
+5207/5207 - 110s - 21ms/step - loss: 0.1665 - val_loss: 0.1583
+Epoch 25/100
+5207/5207 - 110s - 21ms/step - loss: 0.1637 - val_loss: 0.1530
+Epoch 26/100
+5207/5207 - 110s - 21ms/step - loss: 0.1615 - val_loss: 0.1518
+Epoch 27/100
+5207/5207 - 110s - 21ms/step - loss: 0.1598 - val_loss: 0.1488
+Epoch 28/100
+5207/5207 - 110s - 21ms/step - loss: 0.1576 - val_loss: 0.1478
+Epoch 29/100
+5207/5207 - 110s - 21ms/step - loss: 0.1555 - val_loss: 0.1594
+Epoch 30/100
+5207/5207 - 110s - 21ms/step - loss: 0.1537 - val_loss: 0.1471
+Epoch 31/100
+5207/5207 - 109s - 21ms/step - loss: 0.1522 - val_loss: 0.1491
+Epoch 32/100
+5207/5207 - 109s - 21ms/step - loss: 0.1496 - val_loss: 0.1497
+Epoch 33/100
+5207/5207 - 109s - 21ms/step - loss: 0.1474 - val_loss: 0.1548
+Epoch 34/100
+5207/5207 - 109s - 21ms/step - loss: 0.1462 - val_loss: 0.1472
+Epoch 35/100
+5207/5207 - 110s - 21ms/step - loss: 0.1451 - val_loss: 0.1416
+Epoch 36/100
+5207/5207 - 109s - 21ms/step - loss: 0.1438 - val_loss: 0.1496
+Epoch 37/100
+5207/5207 - 110s - 21ms/step - loss: 0.1423 - val_loss: 0.1395
+Epoch 38/100
+5207/5207 - 109s - 21ms/step - loss: 0.1412 - val_loss: 0.1495
+Epoch 39/100
+5207/5207 - 110s - 21ms/step - loss: 0.1398 - val_loss: 0.1450
+Epoch 40/100
+5207/5207 - 109s - 21ms/step - loss: 0.1385 - val_loss: 0.1416
+Epoch 41/100
+5207/5207 - 110s - 21ms/step - loss: 0.1364 - val_loss: 0.1388
+Epoch 42/100
+5207/5207 - 110s - 21ms/step - loss: 0.1360 - val_loss: 0.1381
+Epoch 43/100
+5207/5207 - 110s - 21ms/step - loss: 0.1341 - val_loss: 0.1383
+Epoch 44/100
+5207/5207 - 109s - 21ms/step - loss: 0.1325 - val_loss: 0.1320
+Epoch 45/100
+5207/5207 - 109s - 21ms/step - loss: 0.1320 - val_loss: 0.1335
+Epoch 46/100
+5207/5207 - 109s - 21ms/step - loss: 0.1312 - val_loss: 0.1541
+Epoch 47/100
+5207/5207 - 109s - 21ms/step - loss: 0.1287 - val_loss: 0.1379
+Epoch 48/100
+5207/5207 - 110s - 21ms/step - loss: 0.1276 - val_loss: 0.1296
+Epoch 49/100
+5207/5207 - 110s - 21ms/step - loss: 0.1267 - val_loss: 0.1291
+Epoch 50/100
+5207/5207 - 109s - 21ms/step - loss: 0.1252 - val_loss: 0.1453
+Epoch 51/100
+5207/5207 - 109s - 21ms/step - loss: 0.1243 - val_loss: 0.1326
+Epoch 52/100
+5207/5207 - 109s - 21ms/step - loss: 0.1233 - val_loss: 0.1299
+Epoch 53/100
+5207/5207 - 110s - 21ms/step - loss: 0.1220 - val_loss: 0.1323
+Epoch 54/100
+5207/5207 - 111s - 21ms/step - loss: 0.1210 - val_loss: 0.1327
+Epoch 55/100
+5207/5207 - 113s - 22ms/step - loss: 0.1193 - val_loss: 0.1301
+Epoch 56/100
+5207/5207 - 117s - 22ms/step - loss: 0.1191 - val_loss: 0.1269
+Epoch 57/100
+5207/5207 - 112s - 22ms/step - loss: 0.1190 - val_loss: 0.1358
+Epoch 58/100
+5207/5207 - 124s - 24ms/step - loss: 0.1174 - val_loss: 0.1179
+Epoch 59/100
+5207/5207 - 112s - 22ms/step - loss: 0.1173 - val_loss: 0.1415
+Epoch 60/100
+5207/5207 - 109s - 21ms/step - loss: 0.1159 - val_loss: 0.1373
+Epoch 61/100
+5207/5207 - 110s - 21ms/step - loss: 0.1156 - val_loss: 0.1209
+Epoch 62/100
+5207/5207 - 109s - 21ms/step - loss: 0.1143 - val_loss: 0.1263
+Epoch 63/100
+5207/5207 - 112s - 22ms/step - loss: 0.1137 - val_loss: 0.1280
+Epoch 64/100
+5207/5207 - 125s - 24ms/step - loss: 0.1140 - val_loss: 0.1238
+Epoch 65/100
+5207/5207 - 125s - 24ms/step - loss: 0.1129 - val_loss: 0.1268
+Epoch 66/100
+5207/5207 - 123s - 24ms/step - loss: 0.1120 - val_loss: 0.1263
+Epoch 67/100
+5207/5207 - 123s - 24ms/step - loss: 0.1116 - val_loss: 0.1233
+Epoch 68/100
+5207/5207 - 124s - 24ms/step - loss: 0.1109 - val_loss: 0.1239
+[Run 1/5] Training shared encoder (weighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5207/5207 - 128s - 24ms/step - loss: 0.8750 - val_loss: 0.4662
+Epoch 2/100
+5207/5207 - 125s - 24ms/step - loss: 0.4537 - val_loss: 0.3910
+Epoch 3/100
+5207/5207 - 126s - 24ms/step - loss: 0.3970 - val_loss: 0.3553
+Epoch 4/100
+5207/5207 - 125s - 24ms/step - loss: 0.3628 - val_loss: 0.3249
+Epoch 5/100
+5207/5207 - 125s - 24ms/step - loss: 0.3358 - val_loss: 0.3027
+Epoch 6/100
+5207/5207 - 125s - 24ms/step - loss: 0.3165 - val_loss: 0.2850
+Epoch 7/100
+5207/5207 - 126s - 24ms/step - loss: 0.2955 - val_loss: 0.2680
+Epoch 8/100
+5207/5207 - 126s - 24ms/step - loss: 0.2777 - val_loss: 0.2482
+Epoch 9/100
+5207/5207 - 126s - 24ms/step - loss: 0.2629 - val_loss: 0.2329
+Epoch 10/100
+5207/5207 - 126s - 24ms/step - loss: 0.2496 - val_loss: 0.2194
+Epoch 11/100
+5207/5207 - 127s - 24ms/step - loss: 0.2374 - val_loss: 0.2133
+Epoch 12/100
+5207/5207 - 126s - 24ms/step - loss: 0.2269 - val_loss: 0.2118
+Epoch 13/100
+5207/5207 - 126s - 24ms/step - loss: 0.2183 - val_loss: 0.1949
+Epoch 14/100
+5207/5207 - 125s - 24ms/step - loss: 0.2113 - val_loss: 0.1974
+Epoch 15/100
+5207/5207 - 126s - 24ms/step - loss: 0.2031 - val_loss: 0.1994
+Epoch 16/100
+5207/5207 - 127s - 24ms/step - loss: 0.1972 - val_loss: 0.1786
+Epoch 17/100
+5207/5207 - 125s - 24ms/step - loss: 0.1919 - val_loss: 0.2128
+Epoch 18/100
+5207/5207 - 126s - 24ms/step - loss: 0.1876 - val_loss: 0.2034
+Epoch 19/100
+5207/5207 - 125s - 24ms/step - loss: 0.1834 - val_loss: 0.1728
+Epoch 20/100
+5207/5207 - 126s - 24ms/step - loss: 0.1786 - val_loss: 0.1659
+Epoch 21/100
+5207/5207 - 126s - 24ms/step - loss: 0.1744 - val_loss: 0.1617
+Epoch 22/100
+5207/5207 - 127s - 24ms/step - loss: 0.1716 - val_loss: 0.1582
+Epoch 23/100
+5207/5207 - 127s - 24ms/step - loss: 0.1688 - val_loss: 0.1577
+Epoch 24/100
+5207/5207 - 126s - 24ms/step - loss: 0.1666 - val_loss: 0.1531
+Epoch 25/100
+5207/5207 - 126s - 24ms/step - loss: 0.1650 - val_loss: 0.1571
+Epoch 26/100
+5207/5207 - 126s - 24ms/step - loss: 0.1629 - val_loss: 0.1757
+Epoch 27/100
+5207/5207 - 127s - 24ms/step - loss: 0.1600 - val_loss: 0.1494
+Epoch 28/100
+5207/5207 - 126s - 24ms/step - loss: 0.1578 - val_loss: 0.1561
+Epoch 29/100
+5207/5207 - 126s - 24ms/step - loss: 0.1562 - val_loss: 0.1657
+Epoch 30/100
+5207/5207 - 126s - 24ms/step - loss: 0.1541 - val_loss: 0.1513
+Epoch 31/100
+5207/5207 - 126s - 24ms/step - loss: 0.1516 - val_loss: 0.1483
+Epoch 32/100
+5207/5207 - 127s - 24ms/step - loss: 0.1501 - val_loss: 0.1438
+Epoch 33/100
+5207/5207 - 127s - 24ms/step - loss: 0.1487 - val_loss: 0.1430
+Epoch 34/100
+5207/5207 - 127s - 24ms/step - loss: 0.1459 - val_loss: 0.1479
+Epoch 35/100
+5207/5207 - 126s - 24ms/step - loss: 0.1451 - val_loss: 0.1451
+Epoch 36/100
+5207/5207 - 126s - 24ms/step - loss: 0.1441 - val_loss: 0.1476
+Epoch 37/100
+5207/5207 - 127s - 24ms/step - loss: 0.1425 - val_loss: 0.1389
+Epoch 38/100
+5207/5207 - 125s - 24ms/step - loss: 0.1399 - val_loss: 0.1432
+Epoch 39/100
+5207/5207 - 126s - 24ms/step - loss: 0.1393 - val_loss: 0.1359
+Epoch 40/100
+5207/5207 - 126s - 24ms/step - loss: 0.1373 - val_loss: 0.1362
+Epoch 41/100
+5207/5207 - 127s - 24ms/step - loss: 0.1360 - val_loss: 0.1324
+Epoch 42/100
+5207/5207 - 126s - 24ms/step - loss: 0.1355 - val_loss: 0.1341
+Epoch 43/100
+5207/5207 - 126s - 24ms/step - loss: 0.1325 - val_loss: 0.1319
+Epoch 44/100
+5207/5207 - 126s - 24ms/step - loss: 0.1322 - val_loss: 0.1314
+Epoch 45/100
+5207/5207 - 127s - 24ms/step - loss: 0.1306 - val_loss: 0.1352
+Epoch 46/100
+5207/5207 - 126s - 24ms/step - loss: 0.1291 - val_loss: 0.1308
+Epoch 47/100
+5207/5207 - 126s - 24ms/step - loss: 0.1277 - val_loss: 0.1317
+Epoch 48/100
+5207/5207 - 126s - 24ms/step - loss: 0.1270 - val_loss: 0.1265
+Epoch 49/100
+5207/5207 - 126s - 24ms/step - loss: 0.1253 - val_loss: 0.1287
+Epoch 50/100
+5207/5207 - 125s - 24ms/step - loss: 0.1244 - val_loss: 0.1291
+Epoch 51/100
+5207/5207 - 127s - 24ms/step - loss: 0.1229 - val_loss: 0.1261
+Epoch 52/100
+5207/5207 - 126s - 24ms/step - loss: 0.1228 - val_loss: 0.1237
+Epoch 53/100
+5207/5207 - 127s - 24ms/step - loss: 0.1209 - val_loss: 0.1250
+Epoch 54/100
+5207/5207 - 129s - 25ms/step - loss: 0.1191 - val_loss: 0.1169
+Epoch 55/100
+5207/5207 - 129s - 25ms/step - loss: 0.1188 - val_loss: 0.1171
+Epoch 56/100
+5207/5207 - 128s - 24ms/step - loss: 0.1180 - val_loss: 0.1163
+Epoch 57/100
+5207/5207 - 126s - 24ms/step - loss: 0.1167 - val_loss: 0.1275
+Epoch 58/100
+5207/5207 - 127s - 24ms/step - loss: 0.1167 - val_loss: 0.1135
+Epoch 59/100
+5207/5207 - 126s - 24ms/step - loss: 0.1156 - val_loss: 0.1156
+Epoch 60/100
+5207/5207 - 126s - 24ms/step - loss: 0.1144 - val_loss: 0.1119
+Epoch 61/100
+5207/5207 - 127s - 24ms/step - loss: 0.1136 - val_loss: 0.1121
+Epoch 62/100
+5207/5207 - 125s - 24ms/step - loss: 0.1132 - val_loss: 0.1118
+Epoch 63/100
+5207/5207 - 126s - 24ms/step - loss: 0.1127 - val_loss: 0.1139
+Epoch 64/100
+5207/5207 - 126s - 24ms/step - loss: 0.1118 - val_loss: 0.1103
+Epoch 65/100
+5207/5207 - 126s - 24ms/step - loss: 0.1112 - val_loss: 0.1104
+Epoch 66/100
+5207/5207 - 127s - 24ms/step - loss: 0.1106 - val_loss: 0.1121
+Epoch 67/100
+5207/5207 - 128s - 24ms/step - loss: 0.1092 - val_loss: 0.1091
+Epoch 68/100
+5207/5207 - 127s - 24ms/step - loss: 0.1097 - val_loss: 0.1099
+Epoch 69/100
+5207/5207 - 128s - 25ms/step - loss: 0.1094 - val_loss: 0.1054
+Epoch 70/100
+5207/5207 - 128s - 24ms/step - loss: 0.1072 - val_loss: 0.1039
+Epoch 71/100
+5207/5207 - 128s - 25ms/step - loss: 0.1075 - val_loss: 0.1121
+Epoch 72/100
+5207/5207 - 127s - 24ms/step - loss: 0.1073 - val_loss: 0.1059
+Epoch 73/100
+5207/5207 - 126s - 24ms/step - loss: 0.1068 - val_loss: 0.1090
+Epoch 74/100
+5207/5207 - 126s - 24ms/step - loss: 0.1060 - val_loss: 0.1067
+Epoch 75/100
+5207/5207 - 129s - 25ms/step - loss: 0.1061 - val_loss: 0.1035
+Epoch 76/100
+5207/5207 - 127s - 24ms/step - loss: 0.1056 - val_loss: 0.1125
+Epoch 77/100
+5207/5207 - 127s - 24ms/step - loss: 0.1051 - val_loss: 0.1048
+Epoch 78/100
+5207/5207 - 128s - 25ms/step - loss: 0.1048 - val_loss: 0.1030
+Epoch 79/100
+5207/5207 - 127s - 24ms/step - loss: 0.1042 - val_loss: 0.1024
+Epoch 80/100
+5207/5207 - 127s - 24ms/step - loss: 0.1033 - val_loss: 0.1037
+Epoch 81/100
+5207/5207 - 127s - 24ms/step - loss: 0.1029 - val_loss: 0.1047
+Epoch 82/100
+5207/5207 - 126s - 24ms/step - loss: 0.1035 - val_loss: 0.1068
+Epoch 83/100
+5207/5207 - 126s - 24ms/step - loss: 0.1031 - val_loss: 0.1012
+Epoch 84/100
+5207/5207 - 126s - 24ms/step - loss: 0.1023 - val_loss: 0.1009
+Epoch 85/100
+5207/5207 - 126s - 24ms/step - loss: 0.1025 - val_loss: 0.1007
+Epoch 86/100
+5207/5207 - 126s - 24ms/step - loss: 0.1017 - val_loss: 0.1034
+Epoch 87/100
+5207/5207 - 126s - 24ms/step - loss: 0.1020 - val_loss: 0.1008
+Epoch 88/100
+5207/5207 - 126s - 24ms/step - loss: 0.1013 - val_loss: 0.1002
+Epoch 89/100
+5207/5207 - 126s - 24ms/step - loss: 0.1006 - val_loss: 0.1040
+Epoch 90/100
+5207/5207 - 125s - 24ms/step - loss: 0.1010 - val_loss: 0.1005
+Epoch 91/100
+5207/5207 - 126s - 24ms/step - loss: 0.1009 - val_loss: 0.1023
+Epoch 92/100
+5207/5207 - 126s - 24ms/step - loss: 0.1006 - val_loss: 0.0994
+Epoch 93/100
+5207/5207 - 126s - 24ms/step - loss: 0.0996 - val_loss: 0.1003
+Epoch 94/100
+5207/5207 - 127s - 24ms/step - loss: 0.0999 - val_loss: 0.0989
+Epoch 95/100
+5207/5207 - 126s - 24ms/step - loss: 0.0994 - val_loss: 0.0997
+Epoch 96/100
+5207/5207 - 125s - 24ms/step - loss: 0.0995 - val_loss: 0.0996
+Epoch 97/100
+5207/5207 - 126s - 24ms/step - loss: 0.0990 - val_loss: 0.1001
+Epoch 98/100
+5207/5207 - 126s - 24ms/step - loss: 0.0985 - val_loss: 0.1003
+Epoch 99/100
+5207/5207 - 126s - 24ms/step - loss: 0.0987 - val_loss: 0.0984
+Epoch 100/100
+5207/5207 - 125s - 24ms/step - loss: 0.0988 - val_loss: 0.1000
+[Run 1/5] Training SCUT VGG-Face baseline...
+Loading 5500 images in parallel...
+Images loaded.
+[Run 2/5] Training shared encoder (unweighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5131/5131 - 127s - 25ms/step - loss: 0.8452 - val_loss: 0.4702
+Epoch 2/100
+5131/5131 - 124s - 24ms/step - loss: 0.4444 - val_loss: 0.4079
+Epoch 3/100
+5131/5131 - 125s - 24ms/step - loss: 0.3913 - val_loss: 0.3662
+Epoch 4/100
+5131/5131 - 124s - 24ms/step - loss: 0.3596 - val_loss: 0.3306
+Epoch 5/100
+5131/5131 - 124s - 24ms/step - loss: 0.3303 - val_loss: 0.3098
+Epoch 6/100
+5131/5131 - 125s - 24ms/step - loss: 0.3087 - val_loss: 0.2807
+Epoch 7/100
+5131/5131 - 124s - 24ms/step - loss: 0.2883 - val_loss: 0.2626
+Epoch 8/100
+5131/5131 - 124s - 24ms/step - loss: 0.2738 - val_loss: 0.2469
+Epoch 9/100
+5131/5131 - 124s - 24ms/step - loss: 0.2576 - val_loss: 0.2345
+Epoch 10/100
+5131/5131 - 124s - 24ms/step - loss: 0.2470 - val_loss: 0.2386
+Epoch 11/100
+5131/5131 - 124s - 24ms/step - loss: 0.2347 - val_loss: 0.2136
+Epoch 12/100
+5131/5131 - 125s - 24ms/step - loss: 0.2270 - val_loss: 0.2024
+Epoch 13/100
+5131/5131 - 124s - 24ms/step - loss: 0.2180 - val_loss: 0.1979
+Epoch 14/100
+5131/5131 - 124s - 24ms/step - loss: 0.2112 - val_loss: 0.1964
+Epoch 15/100
+5131/5131 - 124s - 24ms/step - loss: 0.2043 - val_loss: 0.1865
+Epoch 16/100
+5131/5131 - 124s - 24ms/step - loss: 0.1997 - val_loss: 0.1817
+Epoch 17/100
+5131/5131 - 125s - 24ms/step - loss: 0.1943 - val_loss: 0.1740
+Epoch 18/100
+5131/5131 - 124s - 24ms/step - loss: 0.1907 - val_loss: 0.1815
+Epoch 19/100
+5131/5131 - 124s - 24ms/step - loss: 0.1853 - val_loss: 0.1662
+Epoch 20/100
+5131/5131 - 124s - 24ms/step - loss: 0.1804 - val_loss: 0.1601
+Epoch 21/100
+5131/5131 - 123s - 24ms/step - loss: 0.1776 - val_loss: 0.1624
+Epoch 22/100
+5131/5131 - 124s - 24ms/step - loss: 0.1750 - val_loss: 0.1572
+Epoch 23/100
+5131/5131 - 124s - 24ms/step - loss: 0.1712 - val_loss: 0.1511
+Epoch 24/100
+5131/5131 - 123s - 24ms/step - loss: 0.1690 - val_loss: 0.1568
+Epoch 25/100
+5131/5131 - 124s - 24ms/step - loss: 0.1662 - val_loss: 0.1516
+Epoch 26/100
+5131/5131 - 124s - 24ms/step - loss: 0.1643 - val_loss: 0.1480
+Epoch 27/100
+5131/5131 - 123s - 24ms/step - loss: 0.1621 - val_loss: 0.1528
+Epoch 28/100
+5131/5131 - 123s - 24ms/step - loss: 0.1600 - val_loss: 0.1632
+Epoch 29/100
+5131/5131 - 124s - 24ms/step - loss: 0.1587 - val_loss: 0.1480
+Epoch 30/100
+5131/5131 - 124s - 24ms/step - loss: 0.1576 - val_loss: 0.1519
+Epoch 31/100
+5131/5131 - 124s - 24ms/step - loss: 0.1553 - val_loss: 0.1403
+Epoch 32/100
+5131/5131 - 123s - 24ms/step - loss: 0.1535 - val_loss: 0.1470
+Epoch 33/100
+5131/5131 - 123s - 24ms/step - loss: 0.1521 - val_loss: 0.1418
+Epoch 34/100
+5131/5131 - 124s - 24ms/step - loss: 0.1511 - val_loss: 0.1412
+Epoch 35/100
+5131/5131 - 124s - 24ms/step - loss: 0.1506 - val_loss: 0.1331
+Epoch 36/100
+5131/5131 - 126s - 25ms/step - loss: 0.1482 - val_loss: 0.1335
+Epoch 37/100
+5131/5131 - 124s - 24ms/step - loss: 0.1478 - val_loss: 0.1521
+Epoch 38/100
+5131/5131 - 123s - 24ms/step - loss: 0.1456 - val_loss: 0.1302
+Epoch 39/100
+5131/5131 - 124s - 24ms/step - loss: 0.1448 - val_loss: 0.1311
+Epoch 40/100
+5131/5131 - 124s - 24ms/step - loss: 0.1441 - val_loss: 0.1384
+Epoch 41/100
+5131/5131 - 125s - 24ms/step - loss: 0.1423 - val_loss: 0.1283
+Epoch 42/100
+5131/5131 - 123s - 24ms/step - loss: 0.1412 - val_loss: 0.1403
+Epoch 43/100
+5131/5131 - 124s - 24ms/step - loss: 0.1399 - val_loss: 0.1273
+Epoch 44/100
+5131/5131 - 124s - 24ms/step - loss: 0.1382 - val_loss: 0.1267
+Epoch 45/100
+5131/5131 - 124s - 24ms/step - loss: 0.1378 - val_loss: 0.1282
+Epoch 46/100
+5131/5131 - 124s - 24ms/step - loss: 0.1357 - val_loss: 0.1305
+Epoch 47/100
+5131/5131 - 123s - 24ms/step - loss: 0.1347 - val_loss: 0.1357
+Epoch 48/100
+5131/5131 - 123s - 24ms/step - loss: 0.1348 - val_loss: 0.1245
+Epoch 49/100
+5131/5131 - 124s - 24ms/step - loss: 0.1338 - val_loss: 0.1214
+Epoch 50/100
+5131/5131 - 124s - 24ms/step - loss: 0.1318 - val_loss: 0.1243
+Epoch 51/100
+5131/5131 - 116s - 23ms/step - loss: 0.1314 - val_loss: 0.1236
+Epoch 52/100
+5131/5131 - 114s - 22ms/step - loss: 0.1303 - val_loss: 0.1282
+Epoch 53/100
+5131/5131 - 114s - 22ms/step - loss: 0.1286 - val_loss: 0.1230
+Epoch 54/100
+5131/5131 - 114s - 22ms/step - loss: 0.1283 - val_loss: 0.1236
+Epoch 55/100
+5131/5131 - 114s - 22ms/step - loss: 0.1271 - val_loss: 0.1220
+Epoch 56/100
+5131/5131 - 113s - 22ms/step - loss: 0.1266 - val_loss: 0.1291
+Epoch 57/100
+5131/5131 - 114s - 22ms/step - loss: 0.1252 - val_loss: 0.1197
+Epoch 58/100
+5131/5131 - 115s - 22ms/step - loss: 0.1255 - val_loss: 0.1188
+Epoch 59/100
+5131/5131 - 114s - 22ms/step - loss: 0.1246 - val_loss: 0.1184
+Epoch 60/100
+5131/5131 - 114s - 22ms/step - loss: 0.1242 - val_loss: 0.1176
+Epoch 61/100
+5131/5131 - 112s - 22ms/step - loss: 0.1232 - val_loss: 0.1230
+Epoch 62/100
+5131/5131 - 115s - 22ms/step - loss: 0.1212 - val_loss: 0.1178
+Epoch 63/100
+5131/5131 - 109s - 21ms/step - loss: 0.1210 - val_loss: 0.1233
+Epoch 64/100
+5131/5131 - 108s - 21ms/step - loss: 0.1203 - val_loss: 0.1174
+Epoch 65/100
+5131/5131 - 108s - 21ms/step - loss: 0.1202 - val_loss: 0.1159
+Epoch 66/100
+5131/5131 - 108s - 21ms/step - loss: 0.1190 - val_loss: 0.1277
+Epoch 67/100
+5131/5131 - 108s - 21ms/step - loss: 0.1178 - val_loss: 0.1195
+Epoch 68/100
+5131/5131 - 108s - 21ms/step - loss: 0.1173 - val_loss: 0.1166
+Epoch 69/100
+5131/5131 - 107s - 21ms/step - loss: 0.1164 - val_loss: 0.1188
+Epoch 70/100
+5131/5131 - 108s - 21ms/step - loss: 0.1154 - val_loss: 0.1157
+Epoch 71/100
+5131/5131 - 108s - 21ms/step - loss: 0.1144 - val_loss: 0.1159
+Epoch 72/100
+5131/5131 - 108s - 21ms/step - loss: 0.1136 - val_loss: 0.1164
+Epoch 73/100
+5131/5131 - 108s - 21ms/step - loss: 0.1132 - val_loss: 0.1171
+Epoch 74/100
+5131/5131 - 108s - 21ms/step - loss: 0.1128 - val_loss: 0.1209
+Epoch 75/100
+5131/5131 - 108s - 21ms/step - loss: 0.1120 - val_loss: 0.1203
+Epoch 76/100
+5131/5131 - 108s - 21ms/step - loss: 0.1106 - val_loss: 0.1156
+Epoch 77/100
+5131/5131 - 108s - 21ms/step - loss: 0.1103 - val_loss: 0.1120
+Epoch 78/100
+5131/5131 - 113s - 22ms/step - loss: 0.1101 - val_loss: 0.1112
+Epoch 79/100
+5131/5131 - 108s - 21ms/step - loss: 0.1095 - val_loss: 0.1170
+Epoch 80/100
+5131/5131 - 107s - 21ms/step - loss: 0.1090 - val_loss: 0.1140
+Epoch 81/100
+5131/5131 - 108s - 21ms/step - loss: 0.1088 - val_loss: 0.1122
+Epoch 82/100
+5131/5131 - 108s - 21ms/step - loss: 0.1072 - val_loss: 0.1149
+Epoch 83/100
+5131/5131 - 108s - 21ms/step - loss: 0.1079 - val_loss: 0.1108
+Epoch 84/100
+5131/5131 - 108s - 21ms/step - loss: 0.1076 - val_loss: 0.1097
+Epoch 85/100
+5131/5131 - 108s - 21ms/step - loss: 0.1065 - val_loss: 0.1100
+Epoch 86/100
+5131/5131 - 108s - 21ms/step - loss: 0.1066 - val_loss: 0.1118
+Epoch 87/100
+5131/5131 - 108s - 21ms/step - loss: 0.1060 - val_loss: 0.1087
+Epoch 88/100
+5131/5131 - 108s - 21ms/step - loss: 0.1054 - val_loss: 0.1127
+Epoch 89/100
+5131/5131 - 108s - 21ms/step - loss: 0.1053 - val_loss: 0.1112
+Epoch 90/100
+5131/5131 - 108s - 21ms/step - loss: 0.1046 - val_loss: 0.1080
+Epoch 91/100
+5131/5131 - 108s - 21ms/step - loss: 0.1043 - val_loss: 0.1085
+Epoch 92/100
+5131/5131 - 108s - 21ms/step - loss: 0.1032 - val_loss: 0.1131
+Epoch 93/100
+5131/5131 - 108s - 21ms/step - loss: 0.1031 - val_loss: 0.1135
+Epoch 94/100
+5131/5131 - 107s - 21ms/step - loss: 0.1023 - val_loss: 0.1102
+Epoch 95/100
+5131/5131 - 108s - 21ms/step - loss: 0.1025 - val_loss: 0.1108
+Epoch 96/100
+5131/5131 - 108s - 21ms/step - loss: 0.1023 - val_loss: 0.1087
+Epoch 97/100
+5131/5131 - 108s - 21ms/step - loss: 0.1022 - val_loss: 0.1249
+Epoch 98/100
+5131/5131 - 108s - 21ms/step - loss: 0.1012 - val_loss: 0.1119
+Epoch 99/100
+5131/5131 - 108s - 21ms/step - loss: 0.1013 - val_loss: 0.1074
+Epoch 100/100
+5131/5131 - 108s - 21ms/step - loss: 0.1008 - val_loss: 0.1089
+[Run 2/5] Training shared encoder (weighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5131/5131 - 112s - 22ms/step - loss: 0.7731 - val_loss: 0.4531
+Epoch 2/100
+5131/5131 - 108s - 21ms/step - loss: 0.4362 - val_loss: 0.3934
+Epoch 3/100
+5131/5131 - 108s - 21ms/step - loss: 0.3897 - val_loss: 0.3598
+Epoch 4/100
+5131/5131 - 107s - 21ms/step - loss: 0.3553 - val_loss: 0.3304
+Epoch 5/100
+5131/5131 - 108s - 21ms/step - loss: 0.3305 - val_loss: 0.3109
+Epoch 6/100
+5131/5131 - 108s - 21ms/step - loss: 0.3089 - val_loss: 0.2898
+Epoch 7/100
+5131/5131 - 108s - 21ms/step - loss: 0.2915 - val_loss: 0.2812
+Epoch 8/100
+5131/5131 - 108s - 21ms/step - loss: 0.2752 - val_loss: 0.2609
+Epoch 9/100
+5131/5131 - 111s - 22ms/step - loss: 0.2603 - val_loss: 0.2407
+Epoch 10/100
+5131/5131 - 108s - 21ms/step - loss: 0.2479 - val_loss: 0.2392
+Epoch 11/100
+5131/5131 - 109s - 21ms/step - loss: 0.2345 - val_loss: 0.2084
+Epoch 12/100
+5131/5131 - 108s - 21ms/step - loss: 0.2243 - val_loss: 0.2073
+Epoch 13/100
+5131/5131 - 108s - 21ms/step - loss: 0.2183 - val_loss: 0.2117
+Epoch 14/100
+5131/5131 - 108s - 21ms/step - loss: 0.2106 - val_loss: 0.1960
+Epoch 15/100
+5131/5131 - 108s - 21ms/step - loss: 0.2034 - val_loss: 0.1956
+Epoch 16/100
+5131/5131 - 108s - 21ms/step - loss: 0.1990 - val_loss: 0.1846
+Epoch 17/100
+5131/5131 - 108s - 21ms/step - loss: 0.1936 - val_loss: 0.1965
+Epoch 18/100
+5131/5131 - 108s - 21ms/step - loss: 0.1885 - val_loss: 0.1799
+Epoch 19/100
+5131/5131 - 108s - 21ms/step - loss: 0.1855 - val_loss: 0.1629
+Epoch 20/100
+5131/5131 - 108s - 21ms/step - loss: 0.1807 - val_loss: 0.1610
+Epoch 21/100
+5131/5131 - 108s - 21ms/step - loss: 0.1770 - val_loss: 0.1598
+Epoch 22/100
+5131/5131 - 107s - 21ms/step - loss: 0.1723 - val_loss: 0.1652
+Epoch 23/100
+5131/5131 - 108s - 21ms/step - loss: 0.1708 - val_loss: 0.1527
+Epoch 24/100
+5131/5131 - 108s - 21ms/step - loss: 0.1683 - val_loss: 0.1476
+Epoch 25/100
+5131/5131 - 108s - 21ms/step - loss: 0.1653 - val_loss: 0.1503
+Epoch 26/100
+5131/5131 - 107s - 21ms/step - loss: 0.1635 - val_loss: 0.1600
+Epoch 27/100
+5131/5131 - 108s - 21ms/step - loss: 0.1614 - val_loss: 0.1464
+Epoch 28/100
+5131/5131 - 108s - 21ms/step - loss: 0.1585 - val_loss: 0.1601
+Epoch 29/100
+5131/5131 - 108s - 21ms/step - loss: 0.1566 - val_loss: 0.1424
+Epoch 30/100
+5131/5131 - 107s - 21ms/step - loss: 0.1546 - val_loss: 0.1457
+Epoch 31/100
+5131/5131 - 107s - 21ms/step - loss: 0.1526 - val_loss: 0.1497
+Epoch 32/100
+5131/5131 - 108s - 21ms/step - loss: 0.1503 - val_loss: 0.1347
+Epoch 33/100
+5131/5131 - 107s - 21ms/step - loss: 0.1484 - val_loss: 0.1350
+Epoch 34/100
+5131/5131 - 109s - 21ms/step - loss: 0.1468 - val_loss: 0.1392
+Epoch 35/100
+5131/5131 - 107s - 21ms/step - loss: 0.1469 - val_loss: 0.1351
+Epoch 36/100
+5131/5131 - 108s - 21ms/step - loss: 0.1450 - val_loss: 0.1342
+Epoch 37/100
+5131/5131 - 107s - 21ms/step - loss: 0.1429 - val_loss: 0.1345
+Epoch 38/100
+5131/5131 - 108s - 21ms/step - loss: 0.1420 - val_loss: 0.1318
+Epoch 39/100
+5131/5131 - 107s - 21ms/step - loss: 0.1399 - val_loss: 0.1394
+Epoch 40/100
+5131/5131 - 108s - 21ms/step - loss: 0.1383 - val_loss: 0.1336
+Epoch 41/100
+5131/5131 - 108s - 21ms/step - loss: 0.1374 - val_loss: 0.1302
+Epoch 42/100
+5131/5131 - 108s - 21ms/step - loss: 0.1366 - val_loss: 0.1287
+Epoch 43/100
+5131/5131 - 107s - 21ms/step - loss: 0.1352 - val_loss: 0.1350
+Epoch 44/100
+5131/5131 - 108s - 21ms/step - loss: 0.1337 - val_loss: 0.1284
+Epoch 45/100
+5131/5131 - 107s - 21ms/step - loss: 0.1333 - val_loss: 0.1341
+Epoch 46/100
+5131/5131 - 107s - 21ms/step - loss: 0.1321 - val_loss: 0.1312
+Epoch 47/100
+5131/5131 - 108s - 21ms/step - loss: 0.1303 - val_loss: 0.1361
+Epoch 48/100
+5131/5131 - 107s - 21ms/step - loss: 0.1293 - val_loss: 0.1314
+Epoch 49/100
+5131/5131 - 108s - 21ms/step - loss: 0.1281 - val_loss: 0.1262
+Epoch 50/100
+5131/5131 - 108s - 21ms/step - loss: 0.1277 - val_loss: 0.1242
+Epoch 51/100
+5131/5131 - 108s - 21ms/step - loss: 0.1267 - val_loss: 0.1288
+Epoch 52/100
+5131/5131 - 107s - 21ms/step - loss: 0.1260 - val_loss: 0.1267
+Epoch 53/100
+5131/5131 - 107s - 21ms/step - loss: 0.1248 - val_loss: 0.1259
+Epoch 54/100
+5131/5131 - 107s - 21ms/step - loss: 0.1233 - val_loss: 0.1252
+Epoch 55/100
+5131/5131 - 107s - 21ms/step - loss: 0.1224 - val_loss: 0.1260
+Epoch 56/100
+5131/5131 - 107s - 21ms/step - loss: 0.1217 - val_loss: 0.1286
+Epoch 57/100
+5131/5131 - 108s - 21ms/step - loss: 0.1214 - val_loss: 0.1296
+Epoch 58/100
+5131/5131 - 108s - 21ms/step - loss: 0.1208 - val_loss: 0.1212
+Epoch 59/100
+5131/5131 - 108s - 21ms/step - loss: 0.1201 - val_loss: 0.1207
+Epoch 60/100
+5131/5131 - 107s - 21ms/step - loss: 0.1188 - val_loss: 0.1231
+Epoch 61/100
+5131/5131 - 108s - 21ms/step - loss: 0.1170 - val_loss: 0.1199
+Epoch 62/100
+5131/5131 - 112s - 22ms/step - loss: 0.1170 - val_loss: 0.1276
+Epoch 63/100
+5131/5131 - 113s - 22ms/step - loss: 0.1164 - val_loss: 0.1349
+Epoch 64/100
+5131/5131 - 115s - 22ms/step - loss: 0.1156 - val_loss: 0.1183
+Epoch 65/100
+5131/5131 - 115s - 22ms/step - loss: 0.1149 - val_loss: 0.1208
+Epoch 66/100
+5131/5131 - 114s - 22ms/step - loss: 0.1143 - val_loss: 0.1192
+Epoch 67/100
+5131/5131 - 112s - 22ms/step - loss: 0.1146 - val_loss: 0.1166
+Epoch 68/100
+5131/5131 - 115s - 22ms/step - loss: 0.1127 - val_loss: 0.1164
+Epoch 69/100
+5131/5131 - 114s - 22ms/step - loss: 0.1129 - val_loss: 0.1180
+Epoch 70/100
+5131/5131 - 114s - 22ms/step - loss: 0.1119 - val_loss: 0.1176
+Epoch 71/100
+5131/5131 - 113s - 22ms/step - loss: 0.1116 - val_loss: 0.1196
+Epoch 72/100
+5131/5131 - 114s - 22ms/step - loss: 0.1113 - val_loss: 0.1198
+Epoch 73/100
+5131/5131 - 116s - 23ms/step - loss: 0.1110 - val_loss: 0.1162
+Epoch 74/100
+5131/5131 - 116s - 23ms/step - loss: 0.1101 - val_loss: 0.1223
+Epoch 75/100
+5131/5131 - 114s - 22ms/step - loss: 0.1094 - val_loss: 0.1099
+Epoch 76/100
+5131/5131 - 114s - 22ms/step - loss: 0.1089 - val_loss: 0.1102
+Epoch 77/100
+5131/5131 - 113s - 22ms/step - loss: 0.1093 - val_loss: 0.1121
+Epoch 78/100
+5131/5131 - 114s - 22ms/step - loss: 0.1079 - val_loss: 0.1153
+Epoch 79/100
+5131/5131 - 114s - 22ms/step - loss: 0.1076 - val_loss: 0.1118
+Epoch 80/100
+5131/5131 - 114s - 22ms/step - loss: 0.1074 - val_loss: 0.1096
+Epoch 81/100
+5131/5131 - 115s - 22ms/step - loss: 0.1079 - val_loss: 0.1147
+Epoch 82/100
+5131/5131 - 115s - 22ms/step - loss: 0.1068 - val_loss: 0.1088
+Epoch 83/100
+5131/5131 - 113s - 22ms/step - loss: 0.1064 - val_loss: 0.1087
+Epoch 84/100
+5131/5131 - 112s - 22ms/step - loss: 0.1057 - val_loss: 0.1100
+Epoch 85/100
+5131/5131 - 116s - 23ms/step - loss: 0.1057 - val_loss: 0.1130
+Epoch 86/100
+5131/5131 - 115s - 23ms/step - loss: 0.1053 - val_loss: 0.1110
+Epoch 87/100
+5131/5131 - 114s - 22ms/step - loss: 0.1047 - val_loss: 0.1097
+Epoch 88/100
+5131/5131 - 115s - 22ms/step - loss: 0.1040 - val_loss: 0.1095
+Epoch 89/100
+5131/5131 - 114s - 22ms/step - loss: 0.1038 - val_loss: 0.1149
+Epoch 90/100
+5131/5131 - 113s - 22ms/step - loss: 0.1037 - val_loss: 0.1105
+Epoch 91/100
+5131/5131 - 112s - 22ms/step - loss: 0.1038 - val_loss: 0.1089
+Epoch 92/100
+5131/5131 - 115s - 22ms/step - loss: 0.1037 - val_loss: 0.1088
+Epoch 93/100
+5131/5131 - 115s - 22ms/step - loss: 0.1033 - val_loss: 0.1097
+[Run 2/5] Training SCUT VGG-Face baseline...
+Loading 5500 images in parallel...
+Images loaded.
+[Run 3/5] Training shared encoder (unweighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5133/5133 - 118s - 23ms/step - loss: 0.7990 - val_loss: 0.4225
+Epoch 2/100
+5133/5133 - 116s - 23ms/step - loss: 0.4260 - val_loss: 0.3666
+Epoch 3/100
+5133/5133 - 116s - 23ms/step - loss: 0.3738 - val_loss: 0.3351
+Epoch 4/100
+5133/5133 - 115s - 22ms/step - loss: 0.3406 - val_loss: 0.3155
+Epoch 5/100
+5133/5133 - 114s - 22ms/step - loss: 0.3184 - val_loss: 0.2915
+Epoch 6/100
+5133/5133 - 116s - 23ms/step - loss: 0.2976 - val_loss: 0.2790
+Epoch 7/100
+5133/5133 - 115s - 22ms/step - loss: 0.2776 - val_loss: 0.2763
+Epoch 8/100
+5133/5133 - 116s - 23ms/step - loss: 0.2635 - val_loss: 0.2473
+Epoch 9/100
+5133/5133 - 115s - 22ms/step - loss: 0.2497 - val_loss: 0.2395
+Epoch 10/100
+5133/5133 - 115s - 22ms/step - loss: 0.2396 - val_loss: 0.2351
+Epoch 11/100
+5133/5133 - 113s - 22ms/step - loss: 0.2285 - val_loss: 0.2357
+Epoch 12/100
+5133/5133 - 113s - 22ms/step - loss: 0.2191 - val_loss: 0.2287
+Epoch 13/100
+5133/5133 - 113s - 22ms/step - loss: 0.2091 - val_loss: 0.2383
+Epoch 14/100
+5133/5133 - 113s - 22ms/step - loss: 0.2045 - val_loss: 0.2178
+Epoch 15/100
+5133/5133 - 115s - 22ms/step - loss: 0.1976 - val_loss: 0.2050
+Epoch 16/100
+5133/5133 - 115s - 22ms/step - loss: 0.1912 - val_loss: 0.2090
+Epoch 17/100
+5133/5133 - 115s - 22ms/step - loss: 0.1866 - val_loss: 0.1927
+Epoch 18/100
+5133/5133 - 115s - 22ms/step - loss: 0.1828 - val_loss: 0.1782
+Epoch 19/100
+5133/5133 - 112s - 22ms/step - loss: 0.1786 - val_loss: 0.1935
+Epoch 20/100
+5133/5133 - 112s - 22ms/step - loss: 0.1737 - val_loss: 0.1849
+Epoch 21/100
+5133/5133 - 116s - 23ms/step - loss: 0.1692 - val_loss: 0.1693
+Epoch 22/100
+5133/5133 - 114s - 22ms/step - loss: 0.1659 - val_loss: 0.1627
+Epoch 23/100
+5133/5133 - 116s - 23ms/step - loss: 0.1642 - val_loss: 0.1652
+Epoch 24/100
+5133/5133 - 115s - 22ms/step - loss: 0.1608 - val_loss: 0.1629
+Epoch 25/100
+5133/5133 - 115s - 22ms/step - loss: 0.1579 - val_loss: 0.1630
+Epoch 26/100
+5133/5133 - 115s - 22ms/step - loss: 0.1561 - val_loss: 0.1555
+Epoch 27/100
+5133/5133 - 115s - 22ms/step - loss: 0.1534 - val_loss: 0.1552
+Epoch 28/100
+5133/5133 - 116s - 23ms/step - loss: 0.1532 - val_loss: 0.1588
+Epoch 29/100
+5133/5133 - 114s - 22ms/step - loss: 0.1512 - val_loss: 0.1654
+Epoch 30/100
+5133/5133 - 114s - 22ms/step - loss: 0.1486 - val_loss: 0.1653
+Epoch 31/100
+5133/5133 - 114s - 22ms/step - loss: 0.1470 - val_loss: 0.1431
+Epoch 32/100
+5133/5133 - 115s - 22ms/step - loss: 0.1470 - val_loss: 0.1510
+Epoch 33/100
+5133/5133 - 114s - 22ms/step - loss: 0.1442 - val_loss: 0.1398
+Epoch 34/100
+5133/5133 - 115s - 22ms/step - loss: 0.1422 - val_loss: 0.1456
+Epoch 35/100
+5133/5133 - 113s - 22ms/step - loss: 0.1417 - val_loss: 0.1502
+Epoch 36/100
+5133/5133 - 114s - 22ms/step - loss: 0.1397 - val_loss: 0.1352
+Epoch 37/100
+5133/5133 - 116s - 23ms/step - loss: 0.1382 - val_loss: 0.1420
+Epoch 38/100
+5133/5133 - 115s - 22ms/step - loss: 0.1380 - val_loss: 0.1353
+Epoch 39/100
+5133/5133 - 116s - 23ms/step - loss: 0.1362 - val_loss: 0.1530
+Epoch 40/100
+5133/5133 - 116s - 23ms/step - loss: 0.1354 - val_loss: 0.1641
+Epoch 41/100
+5133/5133 - 114s - 22ms/step - loss: 0.1342 - val_loss: 0.1346
+Epoch 42/100
+5133/5133 - 113s - 22ms/step - loss: 0.1345 - val_loss: 0.1440
+Epoch 43/100
+5133/5133 - 115s - 22ms/step - loss: 0.1320 - val_loss: 0.1328
+Epoch 44/100
+5133/5133 - 113s - 22ms/step - loss: 0.1321 - val_loss: 0.1483
+Epoch 45/100
+5133/5133 - 116s - 23ms/step - loss: 0.1302 - val_loss: 0.1307
+Epoch 46/100
+5133/5133 - 114s - 22ms/step - loss: 0.1300 - val_loss: 0.1312
+Epoch 47/100
+5133/5133 - 115s - 22ms/step - loss: 0.1301 - val_loss: 0.1311
+Epoch 48/100
+5133/5133 - 114s - 22ms/step - loss: 0.1282 - val_loss: 0.1327
+Epoch 49/100
+5133/5133 - 114s - 22ms/step - loss: 0.1280 - val_loss: 0.1432
+Epoch 50/100
+5133/5133 - 114s - 22ms/step - loss: 0.1277 - val_loss: 0.1305
+Epoch 51/100
+5133/5133 - 115s - 22ms/step - loss: 0.1260 - val_loss: 0.1278
+Epoch 52/100
+5133/5133 - 113s - 22ms/step - loss: 0.1257 - val_loss: 0.1400
+Epoch 53/100
+5133/5133 - 115s - 22ms/step - loss: 0.1258 - val_loss: 0.1332
+Epoch 54/100
+5133/5133 - 114s - 22ms/step - loss: 0.1248 - val_loss: 0.1309
+Epoch 55/100
+5133/5133 - 113s - 22ms/step - loss: 0.1234 - val_loss: 0.1264
+Epoch 56/100
+5133/5133 - 115s - 22ms/step - loss: 0.1237 - val_loss: 0.1352
+Epoch 57/100
+5133/5133 - 114s - 22ms/step - loss: 0.1233 - val_loss: 0.1344
+Epoch 58/100
+5133/5133 - 115s - 22ms/step - loss: 0.1228 - val_loss: 0.1311
+Epoch 59/100
+5133/5133 - 115s - 22ms/step - loss: 0.1223 - val_loss: 0.1315
+Epoch 60/100
+5133/5133 - 114s - 22ms/step - loss: 0.1205 - val_loss: 0.1257
+Epoch 61/100
+5133/5133 - 116s - 23ms/step - loss: 0.1208 - val_loss: 0.1289
+Epoch 62/100
+5133/5133 - 115s - 22ms/step - loss: 0.1203 - val_loss: 0.1250
+Epoch 63/100
+5133/5133 - 115s - 22ms/step - loss: 0.1195 - val_loss: 0.1292
+Epoch 64/100
+5133/5133 - 116s - 23ms/step - loss: 0.1190 - val_loss: 0.1231
+Epoch 65/100
+5133/5133 - 114s - 22ms/step - loss: 0.1189 - val_loss: 0.1373
+Epoch 66/100
+5133/5133 - 115s - 22ms/step - loss: 0.1178 - val_loss: 0.1269
+Epoch 67/100
+5133/5133 - 113s - 22ms/step - loss: 0.1170 - val_loss: 0.1290
+Epoch 68/100
+5133/5133 - 113s - 22ms/step - loss: 0.1170 - val_loss: 0.1266
+Epoch 69/100
+5133/5133 - 116s - 23ms/step - loss: 0.1160 - val_loss: 0.1243
+Epoch 70/100
+5133/5133 - 114s - 22ms/step - loss: 0.1157 - val_loss: 0.1239
+Epoch 71/100
+5133/5133 - 115s - 22ms/step - loss: 0.1148 - val_loss: 0.1351
+Epoch 72/100
+5133/5133 - 114s - 22ms/step - loss: 0.1147 - val_loss: 0.1321
+Epoch 73/100
+5133/5133 - 112s - 22ms/step - loss: 0.1135 - val_loss: 0.1284
+Epoch 74/100
+5133/5133 - 114s - 22ms/step - loss: 0.1133 - val_loss: 0.1321
+[Run 3/5] Training shared encoder (weighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5133/5133 - 117s - 23ms/step - loss: 0.8136 - val_loss: 0.4307
+Epoch 2/100
+5133/5133 - 114s - 22ms/step - loss: 0.4293 - val_loss: 0.3815
+Epoch 3/100
+5133/5133 - 115s - 22ms/step - loss: 0.3763 - val_loss: 0.3426
+Epoch 4/100
+5133/5133 - 113s - 22ms/step - loss: 0.3446 - val_loss: 0.3139
+Epoch 5/100
+5133/5133 - 116s - 23ms/step - loss: 0.3168 - val_loss: 0.2978
+Epoch 6/100
+5133/5133 - 115s - 22ms/step - loss: 0.2974 - val_loss: 0.2707
+Epoch 7/100
+5133/5133 - 115s - 22ms/step - loss: 0.2781 - val_loss: 0.2765
+Epoch 8/100
+5133/5133 - 115s - 22ms/step - loss: 0.2613 - val_loss: 0.2557
+Epoch 9/100
+5133/5133 - 115s - 22ms/step - loss: 0.2472 - val_loss: 0.2464
+Epoch 10/100
+5133/5133 - 115s - 22ms/step - loss: 0.2336 - val_loss: 0.2195
+Epoch 11/100
+5133/5133 - 114s - 22ms/step - loss: 0.2240 - val_loss: 0.2232
+Epoch 12/100
+5133/5133 - 111s - 22ms/step - loss: 0.2137 - val_loss: 0.2036
+Epoch 13/100
+5133/5133 - 115s - 22ms/step - loss: 0.2067 - val_loss: 0.2198
+Epoch 14/100
+5133/5133 - 113s - 22ms/step - loss: 0.1992 - val_loss: 0.2006
+Epoch 15/100
+5133/5133 - 114s - 22ms/step - loss: 0.1935 - val_loss: 0.1875
+Epoch 16/100
+5133/5133 - 113s - 22ms/step - loss: 0.1884 - val_loss: 0.1908
+Epoch 17/100
+5133/5133 - 115s - 22ms/step - loss: 0.1826 - val_loss: 0.1922
+Epoch 18/100
+5133/5133 - 115s - 22ms/step - loss: 0.1788 - val_loss: 0.1703
+Epoch 19/100
+5133/5133 - 112s - 22ms/step - loss: 0.1745 - val_loss: 0.1745
+Epoch 20/100
+5133/5133 - 114s - 22ms/step - loss: 0.1710 - val_loss: 0.1739
+Epoch 21/100
+5133/5133 - 114s - 22ms/step - loss: 0.1686 - val_loss: 0.1586
+Epoch 22/100
+5133/5133 - 114s - 22ms/step - loss: 0.1650 - val_loss: 0.1683
+Epoch 23/100
+5133/5133 - 114s - 22ms/step - loss: 0.1624 - val_loss: 0.1738
+Epoch 24/100
+5133/5133 - 113s - 22ms/step - loss: 0.1595 - val_loss: 0.1547
+Epoch 25/100
+5133/5133 - 113s - 22ms/step - loss: 0.1583 - val_loss: 0.1672
+Epoch 26/100
+5133/5133 - 114s - 22ms/step - loss: 0.1548 - val_loss: 0.1547
+Epoch 27/100
+5133/5133 - 113s - 22ms/step - loss: 0.1529 - val_loss: 0.1658
+Epoch 28/100
+5133/5133 - 113s - 22ms/step - loss: 0.1508 - val_loss: 0.1702
+Epoch 29/100
+5133/5133 - 115s - 22ms/step - loss: 0.1501 - val_loss: 0.1512
+Epoch 30/100
+5133/5133 - 114s - 22ms/step - loss: 0.1474 - val_loss: 0.1495
+Epoch 31/100
+5133/5133 - 113s - 22ms/step - loss: 0.1467 - val_loss: 0.1765
+Epoch 32/100
+5133/5133 - 113s - 22ms/step - loss: 0.1456 - val_loss: 0.1385
+Epoch 33/100
+5133/5133 - 113s - 22ms/step - loss: 0.1436 - val_loss: 0.1426
+Epoch 34/100
+5133/5133 - 115s - 22ms/step - loss: 0.1423 - val_loss: 0.1359
+Epoch 35/100
+5133/5133 - 114s - 22ms/step - loss: 0.1410 - val_loss: 0.1341
+Epoch 36/100
+5133/5133 - 114s - 22ms/step - loss: 0.1401 - val_loss: 0.1379
+Epoch 37/100
+5133/5133 - 115s - 22ms/step - loss: 0.1396 - val_loss: 0.1450
+Epoch 38/100
+5133/5133 - 114s - 22ms/step - loss: 0.1375 - val_loss: 0.1452
+Epoch 39/100
+5133/5133 - 115s - 22ms/step - loss: 0.1368 - val_loss: 0.1468
+Epoch 40/100
+5133/5133 - 113s - 22ms/step - loss: 0.1359 - val_loss: 0.1309
+Epoch 41/100
+5133/5133 - 112s - 22ms/step - loss: 0.1340 - val_loss: 0.1403
+Epoch 42/100
+5133/5133 - 112s - 22ms/step - loss: 0.1349 - val_loss: 0.1510
+Epoch 43/100
+5133/5133 - 113s - 22ms/step - loss: 0.1330 - val_loss: 0.1345
+Epoch 44/100
+5133/5133 - 112s - 22ms/step - loss: 0.1321 - val_loss: 0.1409
+Epoch 45/100
+5133/5133 - 112s - 22ms/step - loss: 0.1314 - val_loss: 0.1315
+Epoch 46/100
+5133/5133 - 111s - 22ms/step - loss: 0.1306 - val_loss: 0.1522
+Epoch 47/100
+5133/5133 - 108s - 21ms/step - loss: 0.1296 - val_loss: 0.1393
+Epoch 48/100
+5133/5133 - 112s - 22ms/step - loss: 0.1294 - val_loss: 0.1334
+Epoch 49/100
+5133/5133 - 108s - 21ms/step - loss: 0.1281 - val_loss: 0.1277
+Epoch 50/100
+5133/5133 - 107s - 21ms/step - loss: 0.1281 - val_loss: 0.1447
+Epoch 51/100
+5133/5133 - 108s - 21ms/step - loss: 0.1274 - val_loss: 0.1260
+Epoch 52/100
+5133/5133 - 107s - 21ms/step - loss: 0.1268 - val_loss: 0.1279
+Epoch 53/100
+5133/5133 - 108s - 21ms/step - loss: 0.1258 - val_loss: 0.1281
+Epoch 54/100
+5133/5133 - 113s - 22ms/step - loss: 0.1258 - val_loss: 0.1286
+Epoch 55/100
+5133/5133 - 114s - 22ms/step - loss: 0.1248 - val_loss: 0.1294
+Epoch 56/100
+5133/5133 - 112s - 22ms/step - loss: 0.1247 - val_loss: 0.1299
+Epoch 57/100
+5133/5133 - 112s - 22ms/step - loss: 0.1235 - val_loss: 0.1273
+Epoch 58/100
+5133/5133 - 114s - 22ms/step - loss: 0.1234 - val_loss: 0.1282
+Epoch 59/100
+5133/5133 - 112s - 22ms/step - loss: 0.1229 - val_loss: 0.1467
+Epoch 60/100
+5133/5133 - 115s - 22ms/step - loss: 0.1230 - val_loss: 0.1327
+Epoch 61/100
+5133/5133 - 114s - 22ms/step - loss: 0.1218 - val_loss: 0.1327
+[Run 3/5] Training SCUT VGG-Face baseline...
+Loading 5500 images in parallel...
+Images loaded.
+[Run 4/5] Training shared encoder (unweighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5099/5099 - 113s - 22ms/step - loss: 0.8782 - val_loss: 0.4744
+Epoch 2/100
+5099/5099 - 107s - 21ms/step - loss: 0.4385 - val_loss: 0.3894
+Epoch 3/100
+5099/5099 - 108s - 21ms/step - loss: 0.3784 - val_loss: 0.3435
+Epoch 4/100
+5099/5099 - 108s - 21ms/step - loss: 0.3463 - val_loss: 0.3235
+Epoch 5/100
+5099/5099 - 107s - 21ms/step - loss: 0.3210 - val_loss: 0.3005
+Epoch 6/100
+5099/5099 - 107s - 21ms/step - loss: 0.2996 - val_loss: 0.2826
+Epoch 7/100
+5099/5099 - 108s - 21ms/step - loss: 0.2821 - val_loss: 0.2636
+Epoch 8/100
+5099/5099 - 107s - 21ms/step - loss: 0.2655 - val_loss: 0.2599
+Epoch 9/100
+5099/5099 - 108s - 21ms/step - loss: 0.2508 - val_loss: 0.2386
+Epoch 10/100
+5099/5099 - 107s - 21ms/step - loss: 0.2380 - val_loss: 0.2307
+Epoch 11/100
+5099/5099 - 107s - 21ms/step - loss: 0.2266 - val_loss: 0.2215
+Epoch 12/100
+5099/5099 - 108s - 21ms/step - loss: 0.2188 - val_loss: 0.2128
+Epoch 13/100
+5099/5099 - 107s - 21ms/step - loss: 0.2095 - val_loss: 0.2048
+Epoch 14/100
+5099/5099 - 107s - 21ms/step - loss: 0.2035 - val_loss: 0.1976
+Epoch 15/100
+5099/5099 - 107s - 21ms/step - loss: 0.1981 - val_loss: 0.2197
+Epoch 16/100
+5099/5099 - 108s - 21ms/step - loss: 0.1913 - val_loss: 0.1923
+Epoch 17/100
+5099/5099 - 108s - 21ms/step - loss: 0.1863 - val_loss: 0.1840
+Epoch 18/100
+5099/5099 - 107s - 21ms/step - loss: 0.1818 - val_loss: 0.1896
+Epoch 19/100
+5099/5099 - 107s - 21ms/step - loss: 0.1788 - val_loss: 0.1885
+Epoch 20/100
+5099/5099 - 107s - 21ms/step - loss: 0.1744 - val_loss: 0.1776
+Epoch 21/100
+5099/5099 - 107s - 21ms/step - loss: 0.1704 - val_loss: 0.1722
+Epoch 22/100
+5099/5099 - 107s - 21ms/step - loss: 0.1674 - val_loss: 0.1779
+Epoch 23/100
+5099/5099 - 107s - 21ms/step - loss: 0.1647 - val_loss: 0.1723
+Epoch 24/100
+5099/5099 - 107s - 21ms/step - loss: 0.1624 - val_loss: 0.1760
+Epoch 25/100
+5099/5099 - 108s - 21ms/step - loss: 0.1587 - val_loss: 0.1643
+Epoch 26/100
+5099/5099 - 107s - 21ms/step - loss: 0.1583 - val_loss: 0.1712
+Epoch 27/100
+5099/5099 - 108s - 21ms/step - loss: 0.1557 - val_loss: 0.1602
+Epoch 28/100
+5099/5099 - 107s - 21ms/step - loss: 0.1545 - val_loss: 0.1588
+Epoch 29/100
+5099/5099 - 107s - 21ms/step - loss: 0.1516 - val_loss: 0.1574
+Epoch 30/100
+5099/5099 - 107s - 21ms/step - loss: 0.1505 - val_loss: 0.1654
+Epoch 31/100
+5099/5099 - 108s - 21ms/step - loss: 0.1483 - val_loss: 0.1553
+Epoch 32/100
+5099/5099 - 107s - 21ms/step - loss: 0.1461 - val_loss: 0.1559
+Epoch 33/100
+5099/5099 - 107s - 21ms/step - loss: 0.1459 - val_loss: 0.1502
+Epoch 34/100
+5099/5099 - 107s - 21ms/step - loss: 0.1445 - val_loss: 0.1517
+Epoch 35/100
+5099/5099 - 107s - 21ms/step - loss: 0.1434 - val_loss: 0.1502
+Epoch 36/100
+5099/5099 - 107s - 21ms/step - loss: 0.1425 - val_loss: 0.1506
+Epoch 37/100
+5099/5099 - 107s - 21ms/step - loss: 0.1409 - val_loss: 0.1560
+Epoch 38/100
+5099/5099 - 107s - 21ms/step - loss: 0.1408 - val_loss: 0.1484
+Epoch 39/100
+5099/5099 - 107s - 21ms/step - loss: 0.1402 - val_loss: 0.1492
+Epoch 40/100
+5099/5099 - 107s - 21ms/step - loss: 0.1390 - val_loss: 0.1451
+Epoch 41/100
+5099/5099 - 107s - 21ms/step - loss: 0.1384 - val_loss: 0.1449
+Epoch 42/100
+5099/5099 - 107s - 21ms/step - loss: 0.1363 - val_loss: 0.1473
+Epoch 43/100
+5099/5099 - 107s - 21ms/step - loss: 0.1364 - val_loss: 0.1463
+Epoch 44/100
+5099/5099 - 107s - 21ms/step - loss: 0.1346 - val_loss: 0.1430
+Epoch 45/100
+5099/5099 - 107s - 21ms/step - loss: 0.1347 - val_loss: 0.1450
+Epoch 46/100
+5099/5099 - 107s - 21ms/step - loss: 0.1336 - val_loss: 0.1432
+Epoch 47/100
+5099/5099 - 107s - 21ms/step - loss: 0.1331 - val_loss: 0.1409
+Epoch 48/100
+5099/5099 - 107s - 21ms/step - loss: 0.1323 - val_loss: 0.1417
+Epoch 49/100
+5099/5099 - 107s - 21ms/step - loss: 0.1312 - val_loss: 0.1452
+Epoch 50/100
+5099/5099 - 107s - 21ms/step - loss: 0.1306 - val_loss: 0.1409
+Epoch 51/100
+5099/5099 - 107s - 21ms/step - loss: 0.1305 - val_loss: 0.1411
+Epoch 52/100
+5099/5099 - 107s - 21ms/step - loss: 0.1299 - val_loss: 0.1407
+Epoch 53/100
+5099/5099 - 107s - 21ms/step - loss: 0.1294 - val_loss: 0.1416
+Epoch 54/100
+5099/5099 - 107s - 21ms/step - loss: 0.1289 - val_loss: 0.1397
+Epoch 55/100
+5099/5099 - 107s - 21ms/step - loss: 0.1287 - val_loss: 0.1412
+Epoch 56/100
+5099/5099 - 107s - 21ms/step - loss: 0.1267 - val_loss: 0.1395
+Epoch 57/100
+5099/5099 - 107s - 21ms/step - loss: 0.1276 - val_loss: 0.1399
+Epoch 58/100
+5099/5099 - 107s - 21ms/step - loss: 0.1272 - val_loss: 0.1444
+Epoch 59/100
+5099/5099 - 107s - 21ms/step - loss: 0.1268 - val_loss: 0.1406
+Epoch 60/100
+5099/5099 - 107s - 21ms/step - loss: 0.1261 - val_loss: 0.1388
+Epoch 61/100
+5099/5099 - 107s - 21ms/step - loss: 0.1257 - val_loss: 0.1383
+Epoch 62/100
+5099/5099 - 107s - 21ms/step - loss: 0.1247 - val_loss: 0.1388
+Epoch 63/100
+5099/5099 - 107s - 21ms/step - loss: 0.1241 - val_loss: 0.1378
+Epoch 64/100
+5099/5099 - 107s - 21ms/step - loss: 0.1238 - val_loss: 0.1401
+Epoch 65/100
+5099/5099 - 107s - 21ms/step - loss: 0.1227 - val_loss: 0.1373
+Epoch 66/100
+5099/5099 - 107s - 21ms/step - loss: 0.1230 - val_loss: 0.1404
+Epoch 67/100
+5099/5099 - 107s - 21ms/step - loss: 0.1218 - val_loss: 0.1369
+Epoch 68/100
+5099/5099 - 107s - 21ms/step - loss: 0.1215 - val_loss: 0.1391
+Epoch 69/100
+5099/5099 - 107s - 21ms/step - loss: 0.1213 - val_loss: 0.1416
+Epoch 70/100
+5099/5099 - 107s - 21ms/step - loss: 0.1203 - val_loss: 0.1410
+Epoch 71/100
+5099/5099 - 107s - 21ms/step - loss: 0.1195 - val_loss: 0.1380
+Epoch 72/100
+5099/5099 - 107s - 21ms/step - loss: 0.1195 - val_loss: 0.1377
+Epoch 73/100
+5099/5099 - 107s - 21ms/step - loss: 0.1189 - val_loss: 0.1447
+Epoch 74/100
+5099/5099 - 107s - 21ms/step - loss: 0.1186 - val_loss: 0.1391
+Epoch 75/100
+5099/5099 - 107s - 21ms/step - loss: 0.1180 - val_loss: 0.1337
+Epoch 76/100
+5099/5099 - 107s - 21ms/step - loss: 0.1172 - val_loss: 0.1344
+Epoch 77/100
+5099/5099 - 107s - 21ms/step - loss: 0.1162 - val_loss: 0.1351
+Epoch 78/100
+5099/5099 - 107s - 21ms/step - loss: 0.1158 - val_loss: 0.1336
+Epoch 79/100
+5099/5099 - 107s - 21ms/step - loss: 0.1147 - val_loss: 0.1346
+Epoch 80/100
+5099/5099 - 107s - 21ms/step - loss: 0.1142 - val_loss: 0.1362
+Epoch 81/100
+5099/5099 - 107s - 21ms/step - loss: 0.1137 - val_loss: 0.1351
+Epoch 82/100
+5099/5099 - 107s - 21ms/step - loss: 0.1126 - val_loss: 0.1321
+Epoch 83/100
+5099/5099 - 107s - 21ms/step - loss: 0.1121 - val_loss: 0.1309
+Epoch 84/100
+5099/5099 - 107s - 21ms/step - loss: 0.1118 - val_loss: 0.1315
+Epoch 85/100
+5099/5099 - 107s - 21ms/step - loss: 0.1106 - val_loss: 0.1298
+Epoch 86/100
+5099/5099 - 107s - 21ms/step - loss: 0.1095 - val_loss: 0.1284
+Epoch 87/100
+5099/5099 - 107s - 21ms/step - loss: 0.1090 - val_loss: 0.1261
+Epoch 88/100
+5099/5099 - 107s - 21ms/step - loss: 0.1083 - val_loss: 0.1269
+Epoch 89/100
+5099/5099 - 107s - 21ms/step - loss: 0.1073 - val_loss: 0.1279
+Epoch 90/100
+5099/5099 - 107s - 21ms/step - loss: 0.1064 - val_loss: 0.1255
+Epoch 91/100
+5099/5099 - 107s - 21ms/step - loss: 0.1060 - val_loss: 0.1268
+Epoch 92/100
+5099/5099 - 107s - 21ms/step - loss: 0.1055 - val_loss: 0.1309
+Epoch 93/100
+5099/5099 - 107s - 21ms/step - loss: 0.1046 - val_loss: 0.1240
+Epoch 94/100
+5099/5099 - 107s - 21ms/step - loss: 0.1052 - val_loss: 0.1244
+Epoch 95/100
+5099/5099 - 107s - 21ms/step - loss: 0.1046 - val_loss: 0.1226
+Epoch 96/100
+5099/5099 - 107s - 21ms/step - loss: 0.1039 - val_loss: 0.1221
+Epoch 97/100
+5099/5099 - 107s - 21ms/step - loss: 0.1033 - val_loss: 0.1231
+Epoch 98/100
+5099/5099 - 107s - 21ms/step - loss: 0.1035 - val_loss: 0.1227
+Epoch 99/100
+5099/5099 - 107s - 21ms/step - loss: 0.1021 - val_loss: 0.1199
+Epoch 100/100
+5099/5099 - 107s - 21ms/step - loss: 0.1022 - val_loss: 0.1229
+[Run 4/5] Training shared encoder (weighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5099/5099 - 109s - 21ms/step - loss: 0.8290 - val_loss: 0.4750
+Epoch 2/100
+5099/5099 - 108s - 21ms/step - loss: 0.4270 - val_loss: 0.3999
+Epoch 3/100
+5099/5099 - 107s - 21ms/step - loss: 0.3748 - val_loss: 0.3431
+Epoch 4/100
+5099/5099 - 109s - 21ms/step - loss: 0.3435 - val_loss: 0.3247
+Epoch 5/100
+5099/5099 - 107s - 21ms/step - loss: 0.3197 - val_loss: 0.3071
+Epoch 6/100
+5099/5099 - 107s - 21ms/step - loss: 0.2991 - val_loss: 0.2933
+Epoch 7/100
+5099/5099 - 107s - 21ms/step - loss: 0.2811 - val_loss: 0.2941
+Epoch 8/100
+5099/5099 - 107s - 21ms/step - loss: 0.2652 - val_loss: 0.2596
+Epoch 9/100
+5099/5099 - 108s - 21ms/step - loss: 0.2528 - val_loss: 0.2460
+Epoch 10/100
+5099/5099 - 107s - 21ms/step - loss: 0.2413 - val_loss: 0.2375
+Epoch 11/100
+5099/5099 - 107s - 21ms/step - loss: 0.2291 - val_loss: 0.2271
+Epoch 12/100
+5099/5099 - 107s - 21ms/step - loss: 0.2193 - val_loss: 0.2190
+Epoch 13/100
+5099/5099 - 107s - 21ms/step - loss: 0.2122 - val_loss: 0.2125
+Epoch 14/100
+5099/5099 - 107s - 21ms/step - loss: 0.2062 - val_loss: 0.2064
+Epoch 15/100
+5099/5099 - 107s - 21ms/step - loss: 0.1997 - val_loss: 0.2007
+Epoch 16/100
+5099/5099 - 107s - 21ms/step - loss: 0.1932 - val_loss: 0.1936
+Epoch 17/100
+5099/5099 - 107s - 21ms/step - loss: 0.1886 - val_loss: 0.1934
+Epoch 18/100
+5099/5099 - 107s - 21ms/step - loss: 0.1844 - val_loss: 0.2001
+Epoch 19/100
+5099/5099 - 107s - 21ms/step - loss: 0.1798 - val_loss: 0.1885
+Epoch 20/100
+5099/5099 - 107s - 21ms/step - loss: 0.1759 - val_loss: 0.1757
+Epoch 21/100
+5099/5099 - 107s - 21ms/step - loss: 0.1727 - val_loss: 0.1746
+Epoch 22/100
+5099/5099 - 107s - 21ms/step - loss: 0.1693 - val_loss: 0.1722
+Epoch 23/100
+5099/5099 - 106s - 21ms/step - loss: 0.1671 - val_loss: 0.1749
+Epoch 24/100
+5099/5099 - 107s - 21ms/step - loss: 0.1646 - val_loss: 0.1729
+Epoch 25/100
+5099/5099 - 107s - 21ms/step - loss: 0.1611 - val_loss: 0.1665
+Epoch 26/100
+5099/5099 - 107s - 21ms/step - loss: 0.1595 - val_loss: 0.1651
+Epoch 27/100
+5099/5099 - 107s - 21ms/step - loss: 0.1580 - val_loss: 0.1685
+Epoch 28/100
+5099/5099 - 107s - 21ms/step - loss: 0.1561 - val_loss: 0.1599
+Epoch 29/100
+5099/5099 - 107s - 21ms/step - loss: 0.1537 - val_loss: 0.1604
+Epoch 30/100
+5099/5099 - 107s - 21ms/step - loss: 0.1526 - val_loss: 0.1601
+Epoch 31/100
+5099/5099 - 107s - 21ms/step - loss: 0.1503 - val_loss: 0.1580
+Epoch 32/100
+5099/5099 - 107s - 21ms/step - loss: 0.1496 - val_loss: 0.1573
+Epoch 33/100
+5099/5099 - 107s - 21ms/step - loss: 0.1471 - val_loss: 0.1569
+Epoch 34/100
+5099/5099 - 107s - 21ms/step - loss: 0.1474 - val_loss: 0.1553
+Epoch 35/100
+5099/5099 - 107s - 21ms/step - loss: 0.1451 - val_loss: 0.1698
+Epoch 36/100
+5099/5099 - 107s - 21ms/step - loss: 0.1446 - val_loss: 0.1519
+Epoch 37/100
+5099/5099 - 107s - 21ms/step - loss: 0.1424 - val_loss: 0.1543
+Epoch 38/100
+5099/5099 - 107s - 21ms/step - loss: 0.1419 - val_loss: 0.1515
+Epoch 39/100
+5099/5099 - 107s - 21ms/step - loss: 0.1409 - val_loss: 0.1522
+Epoch 40/100
+5099/5099 - 107s - 21ms/step - loss: 0.1398 - val_loss: 0.1496
+Epoch 41/100
+5099/5099 - 107s - 21ms/step - loss: 0.1394 - val_loss: 0.1553
+Epoch 42/100
+5099/5099 - 107s - 21ms/step - loss: 0.1382 - val_loss: 0.1509
+Epoch 43/100
+5099/5099 - 107s - 21ms/step - loss: 0.1377 - val_loss: 0.1476
+Epoch 44/100
+5099/5099 - 107s - 21ms/step - loss: 0.1370 - val_loss: 0.1496
+Epoch 45/100
+5099/5099 - 107s - 21ms/step - loss: 0.1362 - val_loss: 0.1493
+Epoch 46/100
+5099/5099 - 107s - 21ms/step - loss: 0.1345 - val_loss: 0.1482
+Epoch 47/100
+5099/5099 - 107s - 21ms/step - loss: 0.1336 - val_loss: 0.1457
+Epoch 48/100
+5099/5099 - 107s - 21ms/step - loss: 0.1326 - val_loss: 0.1463
+Epoch 49/100
+5099/5099 - 107s - 21ms/step - loss: 0.1326 - val_loss: 0.1426
+Epoch 50/100
+5099/5099 - 107s - 21ms/step - loss: 0.1315 - val_loss: 0.1450
+Epoch 51/100
+5099/5099 - 107s - 21ms/step - loss: 0.1313 - val_loss: 0.1417
+Epoch 52/100
+5099/5099 - 107s - 21ms/step - loss: 0.1299 - val_loss: 0.1421
+Epoch 53/100
+5099/5099 - 107s - 21ms/step - loss: 0.1292 - val_loss: 0.1402
+Epoch 54/100
+5099/5099 - 107s - 21ms/step - loss: 0.1282 - val_loss: 0.1399
+Epoch 55/100
+5099/5099 - 107s - 21ms/step - loss: 0.1279 - val_loss: 0.1399
+Epoch 56/100
+5099/5099 - 107s - 21ms/step - loss: 0.1270 - val_loss: 0.1394
+Epoch 57/100
+5099/5099 - 107s - 21ms/step - loss: 0.1261 - val_loss: 0.1381
+Epoch 58/100
+5099/5099 - 107s - 21ms/step - loss: 0.1246 - val_loss: 0.1379
+Epoch 59/100
+5099/5099 - 107s - 21ms/step - loss: 0.1246 - val_loss: 0.1414
+Epoch 60/100
+5099/5099 - 107s - 21ms/step - loss: 0.1236 - val_loss: 0.1369
+Epoch 61/100
+5099/5099 - 107s - 21ms/step - loss: 0.1230 - val_loss: 0.1388
+Epoch 62/100
+5099/5099 - 107s - 21ms/step - loss: 0.1226 - val_loss: 0.1386
+Epoch 63/100
+5099/5099 - 106s - 21ms/step - loss: 0.1223 - val_loss: 0.1371
+Epoch 64/100
+5099/5099 - 107s - 21ms/step - loss: 0.1207 - val_loss: 0.1361
+Epoch 65/100
+5099/5099 - 106s - 21ms/step - loss: 0.1198 - val_loss: 0.1418
+Epoch 66/100
+5099/5099 - 106s - 21ms/step - loss: 0.1193 - val_loss: 0.1378
+Epoch 67/100
+5099/5099 - 107s - 21ms/step - loss: 0.1177 - val_loss: 0.1346
+Epoch 68/100
+5099/5099 - 107s - 21ms/step - loss: 0.1179 - val_loss: 0.1325
+Epoch 69/100
+5099/5099 - 107s - 21ms/step - loss: 0.1174 - val_loss: 0.1307
+Epoch 70/100
+5099/5099 - 106s - 21ms/step - loss: 0.1166 - val_loss: 0.1313
+Epoch 71/100
+5099/5099 - 107s - 21ms/step - loss: 0.1152 - val_loss: 0.1293
+Epoch 72/100
+5099/5099 - 107s - 21ms/step - loss: 0.1147 - val_loss: 0.1289
+Epoch 73/100
+5099/5099 - 107s - 21ms/step - loss: 0.1141 - val_loss: 0.1288
+Epoch 74/100
+5099/5099 - 107s - 21ms/step - loss: 0.1134 - val_loss: 0.1305
+Epoch 75/100
+5099/5099 - 107s - 21ms/step - loss: 0.1128 - val_loss: 0.1268
+Epoch 76/100
+5099/5099 - 106s - 21ms/step - loss: 0.1120 - val_loss: 0.1283
+Epoch 77/100
+5099/5099 - 107s - 21ms/step - loss: 0.1121 - val_loss: 0.1266
+Epoch 78/100
+5099/5099 - 107s - 21ms/step - loss: 0.1106 - val_loss: 0.1248
+Epoch 79/100
+5099/5099 - 106s - 21ms/step - loss: 0.1106 - val_loss: 0.1250
+Epoch 80/100
+5099/5099 - 107s - 21ms/step - loss: 0.1100 - val_loss: 0.1236
+Epoch 81/100
+5099/5099 - 106s - 21ms/step - loss: 0.1095 - val_loss: 0.1278
+Epoch 82/100
+5099/5099 - 106s - 21ms/step - loss: 0.1089 - val_loss: 0.1278
+Epoch 83/100
+5099/5099 - 107s - 21ms/step - loss: 0.1084 - val_loss: 0.1240
+Epoch 84/100
+5099/5099 - 107s - 21ms/step - loss: 0.1084 - val_loss: 0.1226
+Epoch 85/100
+5099/5099 - 106s - 21ms/step - loss: 0.1075 - val_loss: 0.1242
+Epoch 86/100
+5099/5099 - 107s - 21ms/step - loss: 0.1071 - val_loss: 0.1262
+Epoch 87/100
+5099/5099 - 107s - 21ms/step - loss: 0.1069 - val_loss: 0.1223
+Epoch 88/100
+5099/5099 - 107s - 21ms/step - loss: 0.1064 - val_loss: 0.1209
+Epoch 89/100
+5099/5099 - 107s - 21ms/step - loss: 0.1063 - val_loss: 0.1207
+Epoch 90/100
+5099/5099 - 107s - 21ms/step - loss: 0.1055 - val_loss: 0.1261
+Epoch 91/100
+5099/5099 - 106s - 21ms/step - loss: 0.1051 - val_loss: 0.1218
+Epoch 92/100
+5099/5099 - 107s - 21ms/step - loss: 0.1057 - val_loss: 0.1203
+Epoch 93/100
+5099/5099 - 106s - 21ms/step - loss: 0.1049 - val_loss: 0.1207
+Epoch 94/100
+5099/5099 - 106s - 21ms/step - loss: 0.1047 - val_loss: 0.1210
+Epoch 95/100
+5099/5099 - 106s - 21ms/step - loss: 0.1045 - val_loss: 0.1211
+Epoch 96/100
+5099/5099 - 107s - 21ms/step - loss: 0.1039 - val_loss: 0.1202
+Epoch 97/100
+5099/5099 - 106s - 21ms/step - loss: 0.1030 - val_loss: 0.1220
+Epoch 98/100
+5099/5099 - 106s - 21ms/step - loss: 0.1036 - val_loss: 0.1214
+Epoch 99/100
+5099/5099 - 107s - 21ms/step - loss: 0.1028 - val_loss: 0.1205
+Epoch 100/100
+5099/5099 - 106s - 21ms/step - loss: 0.1020 - val_loss: 0.1205
+[Run 4/5] Training SCUT VGG-Face baseline...
+Loading 5500 images in parallel...
+Images loaded.
+[Run 5/5] Training shared encoder (unweighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5144/5144 - 111s - 22ms/step - loss: 0.8354 - val_loss: 0.4660
+Epoch 2/100
+5144/5144 - 109s - 21ms/step - loss: 0.4386 - val_loss: 0.3996
+Epoch 3/100
+5144/5144 - 108s - 21ms/step - loss: 0.3832 - val_loss: 0.3570
+Epoch 4/100
+5144/5144 - 108s - 21ms/step - loss: 0.3502 - val_loss: 0.3371
+Epoch 5/100
+5144/5144 - 108s - 21ms/step - loss: 0.3264 - val_loss: 0.3067
+Epoch 6/100
+5144/5144 - 108s - 21ms/step - loss: 0.3035 - val_loss: 0.2860
+Epoch 7/100
+5144/5144 - 108s - 21ms/step - loss: 0.2855 - val_loss: 0.2666
+Epoch 8/100
+5144/5144 - 108s - 21ms/step - loss: 0.2682 - val_loss: 0.3136
+Epoch 9/100
+5144/5144 - 108s - 21ms/step - loss: 0.2534 - val_loss: 0.2743
+Epoch 10/100
+5144/5144 - 109s - 21ms/step - loss: 0.2404 - val_loss: 0.2448
+Epoch 11/100
+5144/5144 - 109s - 21ms/step - loss: 0.2313 - val_loss: 0.2379
+Epoch 12/100
+5144/5144 - 109s - 21ms/step - loss: 0.2202 - val_loss: 0.2069
+Epoch 13/100
+5144/5144 - 108s - 21ms/step - loss: 0.2111 - val_loss: 0.2339
+Epoch 14/100
+5144/5144 - 109s - 21ms/step - loss: 0.2044 - val_loss: 0.1876
+Epoch 15/100
+5144/5144 - 108s - 21ms/step - loss: 0.1962 - val_loss: 0.1846
+Epoch 16/100
+5144/5144 - 108s - 21ms/step - loss: 0.1892 - val_loss: 0.2269
+Epoch 17/100
+5144/5144 - 108s - 21ms/step - loss: 0.1846 - val_loss: 0.2024
+Epoch 18/100
+5144/5144 - 108s - 21ms/step - loss: 0.1794 - val_loss: 0.1836
+Epoch 19/100
+5144/5144 - 108s - 21ms/step - loss: 0.1762 - val_loss: 0.1968
+Epoch 20/100
+5144/5144 - 108s - 21ms/step - loss: 0.1722 - val_loss: 0.1677
+Epoch 21/100
+5144/5144 - 108s - 21ms/step - loss: 0.1682 - val_loss: 0.1634
+Epoch 22/100
+5144/5144 - 108s - 21ms/step - loss: 0.1658 - val_loss: 0.1569
+Epoch 23/100
+5144/5144 - 108s - 21ms/step - loss: 0.1620 - val_loss: 0.1628
+Epoch 24/100
+5144/5144 - 108s - 21ms/step - loss: 0.1590 - val_loss: 0.1577
+Epoch 25/100
+5144/5144 - 108s - 21ms/step - loss: 0.1569 - val_loss: 0.1552
+Epoch 26/100
+5144/5144 - 108s - 21ms/step - loss: 0.1549 - val_loss: 0.1547
+Epoch 27/100
+5144/5144 - 108s - 21ms/step - loss: 0.1528 - val_loss: 0.1514
+Epoch 28/100
+5144/5144 - 108s - 21ms/step - loss: 0.1502 - val_loss: 0.1524
+Epoch 29/100
+5144/5144 - 108s - 21ms/step - loss: 0.1491 - val_loss: 0.1456
+Epoch 30/100
+5144/5144 - 108s - 21ms/step - loss: 0.1476 - val_loss: 0.1695
+Epoch 31/100
+5144/5144 - 108s - 21ms/step - loss: 0.1448 - val_loss: 0.1424
+Epoch 32/100
+5144/5144 - 108s - 21ms/step - loss: 0.1440 - val_loss: 0.1531
+Epoch 33/100
+5144/5144 - 108s - 21ms/step - loss: 0.1433 - val_loss: 0.1412
+Epoch 34/100
+5144/5144 - 108s - 21ms/step - loss: 0.1408 - val_loss: 0.1425
+Epoch 35/100
+5144/5144 - 108s - 21ms/step - loss: 0.1404 - val_loss: 0.1498
+Epoch 36/100
+5144/5144 - 108s - 21ms/step - loss: 0.1389 - val_loss: 0.1574
+Epoch 37/100
+5144/5144 - 108s - 21ms/step - loss: 0.1381 - val_loss: 0.1589
+Epoch 38/100
+5144/5144 - 108s - 21ms/step - loss: 0.1364 - val_loss: 0.1366
+Epoch 39/100
+5144/5144 - 108s - 21ms/step - loss: 0.1359 - val_loss: 0.1364
+Epoch 40/100
+5144/5144 - 108s - 21ms/step - loss: 0.1349 - val_loss: 0.1381
+Epoch 41/100
+5144/5144 - 108s - 21ms/step - loss: 0.1344 - val_loss: 0.1465
+Epoch 42/100
+5144/5144 - 108s - 21ms/step - loss: 0.1326 - val_loss: 0.1374
+Epoch 43/100
+5144/5144 - 108s - 21ms/step - loss: 0.1314 - val_loss: 0.1341
+Epoch 44/100
+5144/5144 - 108s - 21ms/step - loss: 0.1305 - val_loss: 0.1339
+Epoch 45/100
+5144/5144 - 108s - 21ms/step - loss: 0.1299 - val_loss: 0.1507
+Epoch 46/100
+5144/5144 - 108s - 21ms/step - loss: 0.1286 - val_loss: 0.1326
+Epoch 47/100
+5144/5144 - 108s - 21ms/step - loss: 0.1279 - val_loss: 0.1391
+Epoch 48/100
+5144/5144 - 108s - 21ms/step - loss: 0.1276 - val_loss: 0.1326
+Epoch 49/100
+5144/5144 - 108s - 21ms/step - loss: 0.1263 - val_loss: 0.1442
+Epoch 50/100
+5144/5144 - 108s - 21ms/step - loss: 0.1259 - val_loss: 0.1383
+Epoch 51/100
+5144/5144 - 108s - 21ms/step - loss: 0.1250 - val_loss: 0.1325
+Epoch 52/100
+5144/5144 - 108s - 21ms/step - loss: 0.1247 - val_loss: 0.1452
+Epoch 53/100
+5144/5144 - 108s - 21ms/step - loss: 0.1235 - val_loss: 0.1372
+Epoch 54/100
+5144/5144 - 108s - 21ms/step - loss: 0.1229 - val_loss: 0.1280
+Epoch 55/100
+5144/5144 - 108s - 21ms/step - loss: 0.1215 - val_loss: 0.1305
+Epoch 56/100
+5144/5144 - 108s - 21ms/step - loss: 0.1213 - val_loss: 0.1324
+Epoch 57/100
+5144/5144 - 108s - 21ms/step - loss: 0.1206 - val_loss: 0.1366
+Epoch 58/100
+5144/5144 - 108s - 21ms/step - loss: 0.1204 - val_loss: 0.1309
+Epoch 59/100
+5144/5144 - 108s - 21ms/step - loss: 0.1191 - val_loss: 0.1270
+Epoch 60/100
+5144/5144 - 108s - 21ms/step - loss: 0.1181 - val_loss: 0.1305
+Epoch 61/100
+5144/5144 - 108s - 21ms/step - loss: 0.1168 - val_loss: 0.1247
+Epoch 62/100
+5144/5144 - 108s - 21ms/step - loss: 0.1167 - val_loss: 0.1331
+Epoch 63/100
+5144/5144 - 108s - 21ms/step - loss: 0.1152 - val_loss: 0.1316
+Epoch 64/100
+5144/5144 - 108s - 21ms/step - loss: 0.1153 - val_loss: 0.1256
+Epoch 65/100
+5144/5144 - 108s - 21ms/step - loss: 0.1140 - val_loss: 0.1279
+Epoch 66/100
+5144/5144 - 108s - 21ms/step - loss: 0.1141 - val_loss: 0.1267
+Epoch 67/100
+5144/5144 - 108s - 21ms/step - loss: 0.1119 - val_loss: 0.1299
+Epoch 68/100
+5144/5144 - 108s - 21ms/step - loss: 0.1118 - val_loss: 0.1277
+Epoch 69/100
+5144/5144 - 108s - 21ms/step - loss: 0.1115 - val_loss: 0.1350
+Epoch 70/100
+5144/5144 - 108s - 21ms/step - loss: 0.1111 - val_loss: 0.1223
+Epoch 71/100

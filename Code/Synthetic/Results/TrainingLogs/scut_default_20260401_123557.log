@@ -1,0 +1,14 @@
+Training log file: /home/xx4455/Comparable/Code/Synthetic/Results/TrainingLogs/scut_default_20260401_123557.log
+Starting experiments (dataset=scut, sensitive_attribute=default).
+Loading 5500 images in parallel...
+Images loaded.
+[Run 1/5] Training shared encoder (unweighted)...
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Epoch 1/100
+5202/5202 - 128s - 25ms/step - loss: 0.8119 - val_loss: 0.4567
+Epoch 2/100
+/.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/._view/ackkilzxpxj5vqt4yijvagqylfanqzj6/lib/python3.11/contextlib.py:158: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self.gen.throw(typ, value, traceback)
+5202/5202 - 137s - 26ms/step - loss: 0.4343 - val_loss: 0.0000e+00
+Epoch 3/100
