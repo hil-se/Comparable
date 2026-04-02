@@ -24,7 +24,6 @@ import Classification
 import DataProcessing
 from metrics import Metrics
 
-isBinary = True
 PAIRWISE_DECISION_THRESHOLD = 0.0
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
@@ -46,10 +45,6 @@ class _TeeStream:
     def flush(self):
         self.console_stream.flush()
         self.log_stream.flush()
-
-    def writelines(self, lines):
-        for line in lines:
-            self.write(line)
 
     def __getattr__(self, name):
         return getattr(self.console_stream, name)
@@ -84,12 +79,9 @@ def _tee_training_output(log_path):
 
 
 def retrievePixels(path, height, width):
-    # img = tf.keras.utils.load_img("../data/images/"+path, grayscale=False
     folder_path = DATA_DIR / "Images"
-    # folder_path = "../../../XAI_Image/data/images/"
     img = tf.keras.utils.load_img(str(folder_path / path), target_size=(height, width))
-    x = tf.keras.utils.img_to_array(img)
-    return x
+    return tf.keras.utils.img_to_array(img)
 
 
 col = "output"
@@ -122,13 +114,11 @@ def _resolve_sa_column(sa, default_sa, allowed_sa, dataset_name):
 
 
 def _finalize_dataset(df, dependent, dataset_name, is_binary, model_df=None):
-    global isBinary
     X_train, X_test = _split_with_output(
         df if model_df is None else model_df,
         dependent,
     )
-    isBinary = is_binary
-    return df, dataset_name, X_train, X_test
+    return df, dataset_name, X_train, X_test, is_binary
 
 
 def _split_with_output(df, dependent, test_size=0.2):
@@ -277,31 +267,21 @@ def count_violation_fast(arr: np.ndarray, i1: np.ndarray, i2: np.ndarray) -> dic
 
 
 def batched_score(dual_encoder, inputs, batch_size=32):
-    n = len(inputs)
-    scores = []
-    for start in range(0, n, batch_size):
-        end = min(start + batch_size, n)
-        batch_scores = dual_encoder.score(inputs[start:end]).numpy().flatten()
-        scores.append(batch_scores)
-    return np.concatenate(scores) if scores else np.array([])
+    batches = [
+        dual_encoder.score(inputs[start : start + batch_size]).numpy().flatten()
+        for start in range(0, len(inputs), batch_size)
+    ]
+    return np.concatenate(batches) if batches else np.array([])
 
 
 def make_df6(n=1000, p1=0.5, p2=0.5, p3=0.5):
-    # n is the number of data points.
-    # 0 <= p <= 1 is the sampling probability of Male (sex=1).
-    keys = ["gender", "income", "pred"]
-    data = {key: [] for key in keys}
-    for i in range(n):
-        rand1 = np.random.random()
-        rand2 = np.random.random()
-        rand3 = np.random.random()
-        gender = 1 if rand1 < p1 else 0
-        income = 1 if rand2 < p2 else 0
-        pred = 1 if rand3 < p3 else 0
-        data["gender"].append(gender)
-        data["income"].append(income)
-        data["pred"].append(pred)
-    df = pd.DataFrame(data, columns=keys)
+    df = pd.DataFrame(
+        {
+            "gender": (np.random.random(n) < p1).astype(int),
+            "income": (np.random.random(n) < p2).astype(int),
+            "pred": (np.random.random(n) < p3).astype(int),
+        }
+    )
     return df, "df6"
 
 
@@ -712,14 +692,18 @@ def _compute_pair_weights(pair_meta_df):
     return weights
 
 
+def _validation_size(length, val_fraction, min_val_size=1):
+    if length < 2 or val_fraction <= 0:
+        return 0
+    return min(length - 1, max(min_val_size, int(np.ceil(length * val_fraction))))
+
+
 def _split_validation_frame(df, val_fraction=0.1, stratify_col=None, min_val_size=1):
-    if df is None or len(df) < 2 or val_fraction <= 0:
+    if df is None:
         return df, None
 
-    val_size = max(min_val_size, int(np.ceil(len(df) * val_fraction)))
-    if val_size >= len(df):
-        val_size = len(df) - 1
-    if val_size <= 0:
+    val_size = _validation_size(len(df), val_fraction, min_val_size)
+    if val_size == 0:
         return df, None
 
     stratify = None
@@ -737,13 +721,8 @@ def _split_validation_frame(df, val_fraction=0.1, stratify_col=None, min_val_siz
 
 
 def _split_validation_array(features, targets, val_fraction=0.1, min_val_size=1):
-    if len(features) < 2 or val_fraction <= 0:
-        return features, None, targets, None
-
-    val_size = max(min_val_size, int(np.ceil(len(features) * val_fraction)))
-    if val_size >= len(features):
-        val_size = len(features) - 1
-    if val_size <= 0:
+    val_size = _validation_size(len(features), val_fraction, min_val_size)
+    if val_size == 0:
         return features, None, targets, None
 
     train_x, val_x, train_y, val_y = train_test_split(
@@ -770,6 +749,284 @@ def _load_dataset(dataset_name, sa=None):
     return dataset_loaders[dataset_name](sa=sa)
 
 
+def _prepare_encoder_splits(
+    train, is_scut, use_all_pairs, num_comp_train, validation_fraction
+):
+    train_vals = train.values
+    train_cols = list(train.columns)
+    col_idx, sa_idx = train_cols.index(col), train_cols.index("sa")
+    pixels_idx = train_cols.index("pixels") if is_scut else None
+
+    train_pairs, pair_meta = _build_train_pairs(
+        train_vals=train_vals,
+        col_idx=col_idx,
+        sa_idx=sa_idx,
+        pixels_idx=pixels_idx,
+        is_scut=is_scut,
+        use_all_pairs=use_all_pairs,
+        num_comp_train=num_comp_train,
+    )
+    if not train_pairs:
+        raise ValueError("No comparable training pairs were generated.")
+
+    total_pairs = len(train_pairs)
+    encoder_train = pd.DataFrame(train_pairs)
+    weights = _compute_pair_weights(pd.DataFrame(pair_meta))
+    encoder_train, encoder_val = _split_validation_frame(
+        encoder_train,
+        val_fraction=validation_fraction,
+        stratify_col="Label",
+    )
+    train_weights = weights[encoder_train.index.to_numpy()]
+    encoder_train = encoder_train.reset_index(drop=True)
+
+    if encoder_val is None:
+        return encoder_train, None, train_weights, None, total_pairs
+
+    val_weights = weights[encoder_val.index.to_numpy()]
+    encoder_val = encoder_val.reset_index(drop=True)
+    return encoder_train, encoder_val, train_weights, val_weights, total_pairs
+
+
+def _train_shared_models(
+    run_idx,
+    num_runs,
+    train_df,
+    val_df,
+    train_weights,
+    val_weights,
+    df_name,
+    epochs,
+    train_fairreg,
+):
+    base_kwargs = {
+        "train": train_df,
+        "val": val_df,
+        "y_true": train_df["Label"].tolist(),
+        "shared": True,
+        "epochs": epochs,
+        "df_name": df_name,
+    }
+    model_specs = {
+        "unweight": ("unweighted", {}),
+        "weighted": (
+            "weighted",
+            {"train_weights": train_weights, "val_weights": val_weights},
+        ),
+    }
+    if train_fairreg:
+        model_specs["fairreg"] = (
+            "fairreg",
+            {"fairness_lambda": FAIRNESS_LAMBDA},
+        )
+
+    models = {}
+    for name, (label, extra_kwargs) in model_specs.items():
+        print(f"[Run {run_idx + 1}/{num_runs}] Training shared encoder ({label})...")
+        models[name] = Classification.train_model(**base_kwargs, **extra_kwargs)
+    return models
+
+
+def _train_optional_baselines(
+    run_idx,
+    num_runs,
+    train,
+    is_scut,
+    is_binary,
+    train_single_encoder,
+    validation_fraction,
+    epochs,
+):
+    baselines = {}
+
+    if is_scut:
+        print(f"[Run {run_idx + 1}/{num_runs}] Training SCUT VGG-Face baseline...")
+        train_pixels = np.stack(train["pixels"].values).astype(np.float32)
+        train_targets = train[col].values.astype(np.float32)
+        train_pixels, val_pixels, train_targets, val_targets = _split_validation_array(
+            train_pixels,
+            train_targets,
+            val_fraction=validation_fraction,
+        )
+        baselines["vgg_baseline"] = Classification.train_scut_vggface_baseline(
+            train_pixels=train_pixels,
+            y_train=train_targets,
+            val_pixels=val_pixels,
+            y_val=val_targets,
+            epochs=epochs,
+            batch_size=2,
+        )
+        return baselines
+
+    if train_single_encoder:
+        activation = "sigmoid" if is_binary else "linear"
+        print(
+            f"[Run {run_idx + 1}/{num_runs}] Training single encoder baseline "
+            f"({activation} head)..."
+        )
+        train_features = train.drop(columns=[col]).values.astype(np.float32)
+        train_targets = train[col].values.astype(np.float32)
+        (
+            train_features,
+            val_features,
+            train_targets,
+            val_targets,
+        ) = _split_validation_array(
+            train_features,
+            train_targets,
+            val_fraction=validation_fraction,
+        )
+        baselines["single_encoder"] = Classification.train_single_encoder_baseline(
+            train_features=train_features,
+            y_train=train_targets,
+            is_binary=is_binary,
+            output_activation=activation,
+            val_features=val_features,
+            y_val=val_targets,
+            epochs=epochs,
+        )
+
+    return baselines
+
+
+def _shared_model_inputs(test_features, is_scut):
+    if is_scut:
+        return np.stack(test_features["pixels"].values).astype(np.float32)
+    return test_features.values
+
+
+def _score_shared_model(model, test_inputs, is_scut):
+    if is_scut:
+        return batched_score(model, test_inputs, batch_size=4)
+    return model.score(test_inputs).numpy().flatten()
+
+
+def _plot_binary_histograms(shared_predictions, df_name, sa_name, run_idx, pair_strategy):
+    hist_prefix = f"{df_name}_{sa_name}_run{run_idx + 1}_{pair_strategy}"
+    hist_specs = {
+        "unweight": ("unweighted", f"{df_name} raw predictions before k-means"),
+        "weighted": ("weighted", f"{df_name} weighted raw predictions before k-means"),
+        "fairreg": ("fairreg", f"{df_name} fairreg raw predictions before k-means"),
+    }
+    for name, predictions in shared_predictions.items():
+        suffix, title = hist_specs[name]
+        plot_prediction_histogram(
+            predictions,
+            HISTOGRAM_DIR / f"{hist_prefix}_{suffix}.png",
+            title=f"{title} (run {run_idx + 1})",
+        )
+
+
+def _sample_comparable_pairs(y_values, num_pairs):
+    i1 = np.empty(num_pairs, dtype=np.int64)
+    i2 = np.empty(num_pairs, dtype=np.int64)
+    filled = 0
+
+    while filled < num_pairs:
+        remaining = num_pairs - filled
+        batch_size = max(remaining * 2, 256)
+        idx1 = np.random.randint(0, len(y_values), size=batch_size)
+        idx2 = np.random.randint(0, len(y_values), size=batch_size)
+        valid = y_values[idx1] != y_values[idx2]
+        if not np.any(valid):
+            continue
+
+        take = min(remaining, int(valid.sum()))
+        i1[filled : filled + take] = idx1[valid][:take]
+        i2[filled : filled + take] = idx2[valid][:take]
+        filled += take
+
+    return i1, i2
+
+
+def _compute_violation_rates(eval_arrays, is_binary, num_comp_pairs_ratio):
+    first_array = next(iter(eval_arrays.values()))
+    n_rows = len(first_array)
+    y_values = first_array[:, 1]
+    num_comp_pairs_eval = max(1, int(np.ceil(float(num_comp_pairs_ratio) * n_rows)))
+
+    separation_rates = {name: np.nan for name in eval_arrays}
+    if is_binary:
+        separation_counts = {name: 0 for name in eval_arrays}
+        sample_size = max(1, n_rows // 2)
+        for _ in range(r):
+            selected = np.random.choice(n_rows, size=sample_size, replace=False)
+            for name, data in eval_arrays.items():
+                separation_counts[name] += (
+                    min(separation(data[selected, 1], data[selected, 0], data[selected, 2]))
+                    < alpha
+                )
+        separation_rates = {
+            name: count / r for name, count in separation_counts.items()
+        }
+
+    comparative_counts = {name: 0 for name in eval_arrays}
+    if np.unique(y_values).size > 1:
+        for _ in range(r):
+            i1, i2 = _sample_comparable_pairs(y_values, num_comp_pairs_eval)
+            for name, data in eval_arrays.items():
+                comparative_counts[name] += (
+                    min(comparative_separation(count_violation_fast(data, i1, i2))[0])
+                    < alpha
+                )
+
+    comparative_rates = {name: count / r for name, count in comparative_counts.items()}
+    return separation_rates, comparative_rates, num_comp_pairs_eval
+
+
+def _reference_results(y_true, predictions, sa_values, is_binary):
+    if predictions is None:
+        if is_binary:
+            return {
+                "Acc_lr": np.nan,
+                "F1_lr": np.nan,
+                "AOD_lr": np.nan,
+                "EOD_lr": np.nan,
+                "I_sep_lr": np.nan,
+            }
+        return {
+            "MSE_lr": np.nan,
+            "spearman_lr": np.nan,
+            "pearson_lr": np.nan,
+            "I_sep_lr": np.nan,
+        }
+
+    metrics = Metrics(y_true, predictions)
+    result = {"I_sep_lr": metrics.MI_con_info(sa_values)}
+    if is_binary:
+        result.update(
+            {
+                "Acc_lr": accuracy_score(y_true, predictions),
+                "F1_lr": f1_score(y_true, predictions),
+                "AOD_lr": metrics.AOD(sa_values),
+                "EOD_lr": metrics.EOD(sa_values),
+            }
+        )
+    else:
+        result.update(
+            {
+                "MSE_lr": metrics.mse(),
+                "spearman_lr": metrics.spearmanr_coefficient(),
+                "pearson_lr": metrics.pearsonr_coefficient(),
+            }
+        )
+    return result
+
+
+def _prediction_value(predictions_by_name, name, scorer, y_true):
+    predictions = predictions_by_name.get(name)
+    return scorer(y_true, predictions) if predictions is not None else np.nan
+
+
+def _metric_value(metrics_by_name, name, method_name, *args):
+    metrics = metrics_by_name.get(name)
+    return getattr(metrics, method_name)(*args) if metrics is not None else np.nan
+
+
+def _rate_value(values_by_name, name):
+    return values_by_name.get(name, np.nan)
+
+
 def _run_experiments_impl(
     num_runs=10,
     dataset="scut",
@@ -783,590 +1040,302 @@ def _run_experiments_impl(
     model_epochs=100,
     validation_fraction=0.1,
 ):
-    sa_by_dataset = {
-        "scut": "gender",
-        "adult": "gender",
-        "german": "sex",
-        "heart": "age",
-        "compas": "race",
-        "comm": "race",
-        "lsac": "race",
-    }
     results = []
     output_df_name = None
     output_sa_name = (
-        sa_by_dataset.get(dataset, "sa") if sa is None else str(sa).strip().lower()
+        DATASET_DEFAULT_SA.get(dataset, "sa") if sa is None else str(sa).strip().lower()
     )
-    output_nc = 0
     effective_use_all_pairs = use_all_pairs or dataset in {"german", "heart"}
+    pair_strategy = "all" if effective_use_all_pairs else str(num_comp_train)
+    output_nc = 0
 
     for run_idx in range(num_runs):
-        _, df_name, train, test = _load_dataset(dataset, sa=output_sa_name)
+        _, df_name, train, test, is_binary = _load_dataset(dataset, sa=output_sa_name)
         output_df_name = df_name
         train = train.reset_index(drop=True)
         test = test.reset_index(drop=True)
 
+        is_scut = "scut" in df_name
+        y_train = train[col].values
         y_test = test[col].values
         test_features = test.drop(columns=[col])
-        is_scut = "scut" in df_name
+        sa_values = test_features["sa"].values
+        train_features = train.drop(columns=[col])
+        test_inputs = _shared_model_inputs(test_features, is_scut)
 
-        train_vals = train.values
-        train_cols = list(train.columns)
-        col_idx, sa_idx = train_cols.index(col), train_cols.index("sa")
-        pixels_idx = train_cols.index("pixels") if is_scut else None
-
-        train_pairs, pair_meta = _build_train_pairs(
-            train_vals=train_vals,
-            col_idx=col_idx,
-            sa_idx=sa_idx,
-            pixels_idx=pixels_idx,
+        (
+            data_tr_encoder,
+            data_val_encoder,
+            train_weights,
+            val_weights,
+            output_nc,
+        ) = _prepare_encoder_splits(
+            train,
             is_scut=is_scut,
             use_all_pairs=effective_use_all_pairs,
             num_comp_train=num_comp_train,
+            validation_fraction=validation_fraction,
         )
-        # Guard against degenerate splits where sampled pairs are all ties.
-        # Fall back once to all-pairs before failing loudly.
-        if not train_pairs and not effective_use_all_pairs:
-            train_pairs, pair_meta = _build_train_pairs(
-                train_vals=train_vals,
-                col_idx=col_idx,
-                sa_idx=sa_idx,
-                pixels_idx=pixels_idx,
-                is_scut=is_scut,
-                use_all_pairs=True,
-                num_comp_train=num_comp_train,
-            )
-        if not train_pairs:
-            raise ValueError(
-                "No non-tied comparable training pairs were generated. "
-                "Try use_all_pairs=True or adjust the train/test split."
-            )
 
-        data_tr_encoder = pd.DataFrame(train_pairs)
-        output_nc = len(data_tr_encoder)
-        pair_meta_df = pd.DataFrame(pair_meta)
-        weights = _compute_pair_weights(pair_meta_df)
-        data_tr_encoder, data_val_encoder = _split_validation_frame(
-            data_tr_encoder,
-            val_fraction=validation_fraction,
-            stratify_col="Label",
-        )
-        if data_val_encoder is not None:
-            train_pair_indices = data_tr_encoder.index.to_numpy()
-            val_pair_indices = data_val_encoder.index.to_numpy()
-            train_weights = weights[train_pair_indices]
-            val_weights = weights[val_pair_indices]
-            data_tr_encoder = data_tr_encoder.reset_index(drop=True)
-            data_val_encoder = data_val_encoder.reset_index(drop=True)
-        else:
-            data_tr_encoder = data_tr_encoder.reset_index(drop=True)
-            train_weights = weights
-            val_weights = None
-
-        print(f"[Run {run_idx + 1}/{num_runs}] Training shared encoder (unweighted)...")
-        dual_encoder = Classification.train_model(
-            train=data_tr_encoder,
-            val=data_val_encoder,
-            y_true=data_tr_encoder["Label"].tolist(),
-            shared=True,
-            epochs=model_epochs,
-            df_name=df_name,
-        )
-        print(f"[Run {run_idx + 1}/{num_runs}] Training shared encoder (weighted)...")
-        dual_encoder_weighted = Classification.train_model(
-            train=data_tr_encoder,
-            val=data_val_encoder,
-            y_true=data_tr_encoder["Label"].tolist(),
-            shared=True,
-            epochs=model_epochs,
+        shared_models = _train_shared_models(
+            run_idx=run_idx,
+            num_runs=num_runs,
+            train_df=data_tr_encoder,
+            val_df=data_val_encoder,
             train_weights=train_weights,
             val_weights=val_weights,
             df_name=df_name,
+            epochs=model_epochs,
+            train_fairreg=train_fairreg,
         )
-        dual_encoder_fair = None
-        if train_fairreg:
-            print(f"[Run {run_idx + 1}/{num_runs}] Training shared encoder (fairreg)...")
-            dual_encoder_fair = Classification.train_model(
-                train=data_tr_encoder,
-                val=data_val_encoder,
-                y_true=data_tr_encoder["Label"].tolist(),
-                shared=True,
-                epochs=model_epochs,
+        optional_baselines = _train_optional_baselines(
+            run_idx=run_idx,
+            num_runs=num_runs,
+            train=train,
+            is_scut=is_scut,
+            is_binary=is_binary,
+            train_single_encoder=train_single_encoder,
+            validation_fraction=validation_fraction,
+            epochs=model_epochs,
+        )
+
+        if is_scut:
+            reference_predictions = None
+        elif is_binary:
+            reference_predictions = make_pipeline(
+                StandardScaler(),
+                LogisticRegression(max_iter=2000),
+            ).fit(train_features, y_train).predict(test_features)
+        else:
+            reference_predictions = LinearRegression().fit(
+                train_features, y_train
+            ).predict(test_features)
+
+        shared_predictions = {
+            name: _score_shared_model(model, test_inputs, is_scut)
+            for name, model in shared_models.items()
+        }
+        if is_binary and plot_histograms:
+            _plot_binary_histograms(
+                shared_predictions,
                 df_name=df_name,
-                fairness_lambda=FAIRNESS_LAMBDA,
-            )
-        scut_vgg_baseline = None
-        if is_scut:
-            print(f"[Run {run_idx + 1}/{num_runs}] Training SCUT VGG-Face baseline...")
-            scut_train_pixels = np.stack(train["pixels"].values).astype(np.float32)
-            scut_train_targets = train[col].values.astype(np.float32)
-            (
-                scut_train_pixels,
-                scut_val_pixels,
-                scut_train_targets,
-                scut_val_targets,
-            ) = _split_validation_array(
-                scut_train_pixels,
-                scut_train_targets,
-                val_fraction=validation_fraction,
-            )
-            scut_vgg_baseline = Classification.train_scut_vggface_baseline(
-                train_pixels=scut_train_pixels,
-                y_train=scut_train_targets,
-                val_pixels=scut_val_pixels,
-                y_val=scut_val_targets,
-                epochs=model_epochs,
-                batch_size=2,
+                sa_name=output_sa_name,
+                run_idx=run_idx,
+                pair_strategy=pair_strategy,
             )
 
-        y_train = train[col]
-        single_encoder_baseline = None
-        if not is_scut and train_single_encoder:
-            single_encoder_activation = "sigmoid" if isBinary else "linear"
-            print(
-                f"[Run {run_idx + 1}/{num_runs}] Training single encoder baseline "
-                f"({single_encoder_activation} head)..."
-            )
-            train_single_features = train.drop(columns=[col]).values.astype(np.float32)
-            (
-                train_single_features,
-                val_single_features,
-                train_single_targets,
-                val_single_targets,
-            ) = _split_validation_array(
-                train_single_features,
-                y_train.values.astype(np.float32),
-                val_fraction=validation_fraction,
-            )
-            single_encoder_baseline = Classification.train_single_encoder_baseline(
-                train_features=train_single_features,
-                y_train=train_single_targets,
-                is_binary=isBinary,
-                output_activation=single_encoder_activation,
-                val_features=val_single_features,
-                y_val=val_single_targets,
-                epochs=model_epochs,
-            )
-        train = train.drop(columns=[col])
-        test = test.drop(columns=[col])
-
-        if is_scut:
-            accuracy_lr = f1_score_lr = AOD_lr = EOD_lr = np.nan
-            mse_lr = spearman_lr = pearson_lr = I_sep_lr = np.nan
-        else:
-            if isBinary:
-                clf = make_pipeline(
-                    StandardScaler(), LogisticRegression(max_iter=2000)
-                ).fit(train, y_train)
-            else:
-                clf = LinearRegression().fit(train, y_train)
-            predictions_lr = clf.predict(test)
-            if train_single_encoder:
-                predictions_single_encoder = Classification.predict_single_encoder_baseline(
-                    single_encoder_baseline,
-                    test.values.astype(np.float32),
-                )
-                if isBinary:
-                    predictions_single_encoder = (
-                        predictions_single_encoder >= 0.5
-                    ).astype(int)
-            else:
-                predictions_single_encoder = np.full(
-                    len(test), np.nan, dtype=np.float64
-                )
-            m_lr = Metrics(y_test, predictions_lr)
-            m_single_encoder = (
-                Metrics(y_test, predictions_single_encoder)
-                if train_single_encoder
-                else None
-            )
-
-            if isBinary:
-                accuracy_lr = accuracy_score(y_test, predictions_lr)
-                f1_score_lr = f1_score(y_test, predictions_lr)
-                AOD_lr = m_lr.AOD(test["sa"])
-                EOD_lr = m_lr.EOD(test["sa"])
-            else:
-                mse_lr = m_lr.mse()
-                spearman_lr = m_lr.spearmanr_coefficient()
-                pearson_lr = m_lr.pearsonr_coefficient()
-            I_sep_lr = m_lr.MI_con_info(test["sa"])
-
-        if is_scut:
-            test_vals = np.stack(test_features["pixels"].values).astype(np.float32)
-            predictions = batched_score(dual_encoder, test_vals, batch_size=4)
-            predictions_weighted = batched_score(
-                dual_encoder_weighted, test_vals, batch_size=4
-            )
-            predictions_vgg = Classification.predict_scut_vggface_baseline(
-                scut_vgg_baseline, test_vals, batch_size=4
-            )
-            if train_fairreg:
-                predictions_fair = batched_score(
-                    dual_encoder_fair, test_vals, batch_size=4
-                )
-            else:
-                predictions_fair = np.full_like(predictions, np.nan, dtype=np.float64)
-        else:
-            test_vals = test_features.values
-            predictions = dual_encoder.score(test_vals).numpy().flatten()
-            predictions_weighted = (
-                dual_encoder_weighted.score(test_vals).numpy().flatten()
-            )
-            predictions_vgg = np.full_like(predictions, np.nan, dtype=np.float64)
-            if train_fairreg:
-                predictions_fair = dual_encoder_fair.score(test_vals).numpy().flatten()
-            else:
-                predictions_fair = np.full_like(predictions, np.nan, dtype=np.float64)
-
-        if isBinary:
-            pair_strategy = "all" if effective_use_all_pairs else str(num_comp_train)
-            if plot_histograms:
-                hist_prefix = (
-                    f"{df_name}_{output_sa_name}_run{run_idx + 1}_{pair_strategy}"
-                )
-                plot_prediction_histogram(
-                    predictions,
-                    HISTOGRAM_DIR / f"{hist_prefix}_unweighted.png",
-                    title=f"{df_name} raw predictions before k-means (run {run_idx + 1})",
-                )
-                plot_prediction_histogram(
-                    predictions_weighted,
-                    HISTOGRAM_DIR / f"{hist_prefix}_weighted.png",
-                    title=(
-                        f"{df_name} weighted raw predictions before k-means "
-                        f"(run {run_idx + 1})"
-                    ),
-                )
-                if train_fairreg:
-                    plot_prediction_histogram(
-                        predictions_fair,
-                        HISTOGRAM_DIR / f"{hist_prefix}_fairreg.png",
-                        title=(
-                            f"{df_name} fairreg raw predictions before k-means "
-                            f"(run {run_idx + 1})"
-                        ),
-                    )
-            predictions_kmeans = kmeans_binarize_1d(predictions)
-            predictions_kmeans_weighted = kmeans_binarize_1d(predictions_weighted)
-            predictions_kmeans_vgg = np.full_like(
-                predictions_kmeans, np.nan, dtype=np.float64
-            )
-
-            if train_fairreg:
-                predictions_kmeans_fair = kmeans_binarize_1d(predictions_fair)
-            else:
-                predictions_kmeans_fair = np.full_like(
-                    predictions_kmeans, np.nan, dtype=np.float64
-                )
-        else:
-            predictions_kmeans = predictions
-            predictions_kmeans_weighted = predictions_weighted
-            predictions_kmeans_vgg = predictions_vgg
-            predictions_kmeans_fair = (
-                predictions_fair
-                if train_fairreg
-                else np.full_like(predictions, np.nan, dtype=np.float64)
-            )
-
-        data_raw = np.column_stack([predictions_kmeans, y_test, test["sa"].values])
-        data_w_raw = np.column_stack(
-            [predictions_kmeans_weighted, y_test, test["sa"].values]
-        )
-        data_vgg_raw = (
-            np.column_stack([predictions_kmeans_vgg, y_test, test["sa"].values])
-            if is_scut
-            else None
-        )
-        data_single_encoder_raw = (
-            np.column_stack([predictions_single_encoder, y_test, test["sa"].values])
-            if (not is_scut and train_single_encoder)
-            else None
-        )
-        data_fair_raw = (
-            np.column_stack([predictions_kmeans_fair, y_test, test["sa"].values])
-            if train_fairreg
-            else None
+        final_predictions = (
+            {
+                name: kmeans_binarize_1d(predictions)
+                for name, predictions in shared_predictions.items()
+            }
+            if is_binary
+            else dict(shared_predictions)
         )
 
-        violate_comp = violate_comp_w = violate_comp_fair = 0
-        violate = violate_w = violate_fair = np.nan
-        violate_single_encoder = np.nan
-        violate_vgg = np.nan
-        if is_scut:
-            violate_comp_vgg = 0
-        else:
-            violate_comp_vgg = np.nan
-            violate_comp_single_encoder = 0 if train_single_encoder else np.nan
-        n_rows = len(data_raw)
-        num_comp_pairs_eval = max(1, int(np.ceil(float(num_comp_pairs_ratio) * n_rows)))
-        y_vals = data_raw[:, 1]
-        has_comparable_pairs = np.unique(y_vals).size > 1
-        half_size = n_rows // 2
-
-        # `separation` is a binary fairness test; report it only for binary tasks.
-        if isBinary:
-            violate = violate_w = violate_fair = 0
-            if not is_scut and train_single_encoder:
-                violate_single_encoder = 0
-            if is_scut:
-                violate_vgg = 0
-            for _ in range(r):
-                selectedr = np.random.choice(n_rows, size=half_size, replace=False)
-                ps = separation(
-                    data_raw[selectedr, 1], data_raw[selectedr, 0], data_raw[selectedr, 2]
-                )
-                ps_w = separation(
-                    data_w_raw[selectedr, 1],
-                    data_w_raw[selectedr, 0],
-                    data_w_raw[selectedr, 2],
-                )
-                if not is_scut and train_single_encoder:
-                    ps_single_encoder = separation(
-                        data_single_encoder_raw[selectedr, 1],
-                        data_single_encoder_raw[selectedr, 0],
-                        data_single_encoder_raw[selectedr, 2],
-                    )
-                if is_scut:
-                    ps_vgg = separation(
-                        data_vgg_raw[selectedr, 1],
-                        data_vgg_raw[selectedr, 0],
-                        data_vgg_raw[selectedr, 2],
-                    )
-                if train_fairreg:
-                    ps_fair = separation(
-                        data_fair_raw[selectedr, 1],
-                        data_fair_raw[selectedr, 0],
-                        data_fair_raw[selectedr, 2],
-                    )
-                violate += min(ps) < alpha
-                violate_w += min(ps_w) < alpha
-                if not is_scut and train_single_encoder:
-                    violate_single_encoder += min(ps_single_encoder) < alpha
-                if is_scut:
-                    violate_vgg += min(ps_vgg) < alpha
-                if train_fairreg:
-                    violate_fair += min(ps_fair) < alpha
-
-        for _ in range(r):
-            if not has_comparable_pairs:
-                continue
-
-            i1 = np.empty(num_comp_pairs_eval, dtype=np.int64)
-            i2 = np.empty(num_comp_pairs_eval, dtype=np.int64)
-            filled = 0
-            while filled < num_comp_pairs_eval:
-                remaining = num_comp_pairs_eval - filled
-                batch_size = max(remaining * 2, 256)
-                idx1 = np.random.randint(0, n_rows, size=batch_size)
-                idx2 = np.random.randint(0, n_rows, size=batch_size)
-                valid = y_vals[idx1] != y_vals[idx2]
-                if not np.any(valid):
-                    continue
-                take = min(remaining, int(valid.sum()))
-                i1[filled : filled + take] = idx1[valid][:take]
-                i2[filled : filled + take] = idx2[valid][:take]
-                filled += take
-
-            violate_comp += (
-                min(comparative_separation(count_violation_fast(data_raw, i1, i2))[0])
-                < alpha
+        if "single_encoder" in optional_baselines:
+            single_encoder_predictions = Classification.predict_single_encoder_baseline(
+                optional_baselines["single_encoder"],
+                test_features.values.astype(np.float32),
             )
-            violate_comp_w += (
-                min(comparative_separation(count_violation_fast(data_w_raw, i1, i2))[0])
-                < alpha
+            final_predictions["single_encoder"] = (
+                (single_encoder_predictions >= 0.5).astype(int)
+                if is_binary
+                else single_encoder_predictions
             )
-            if not is_scut and train_single_encoder:
-                violate_comp_single_encoder += (
-                    min(
-                        comparative_separation(
-                            count_violation_fast(data_single_encoder_raw, i1, i2)
-                        )[0]
-                    )
-                    < alpha
+        if "vgg_baseline" in optional_baselines:
+            final_predictions["vgg_baseline"] = (
+                Classification.predict_scut_vggface_baseline(
+                    optional_baselines["vgg_baseline"],
+                    test_inputs,
+                    batch_size=4,
                 )
-            if is_scut:
-                violate_comp_vgg += (
-                    min(
-                        comparative_separation(
-                            count_violation_fast(data_vgg_raw, i1, i2)
-                        )[0]
-                    )
-                    < alpha
-                )
-            if train_fairreg:
-                violate_comp_fair += (
-                    min(
-                        comparative_separation(
-                            count_violation_fast(data_fair_raw, i1, i2)
-                        )[0]
-                    )
-                    < alpha
-                )
+            )
 
-        m_bi = Metrics(y_test, predictions_kmeans)
-        m_weighted_bi = Metrics(y_test, predictions_kmeans_weighted)
-        m_vgg_bi = Metrics(y_test, predictions_kmeans_vgg) if is_scut else None
-        m_single_encoder_bi = (
-            Metrics(y_test, predictions_single_encoder)
-            if (not is_scut and train_single_encoder)
-            else None
+        eval_arrays = {
+            name: np.column_stack([predictions, y_test, sa_values])
+            for name, predictions in final_predictions.items()
+        }
+        violation_rates, comparative_rates, num_comp_pairs_eval = (
+            _compute_violation_rates(
+                eval_arrays,
+                is_binary=is_binary,
+                num_comp_pairs_ratio=num_comp_pairs_ratio,
+            )
         )
-        m_fair_bi = Metrics(y_test, predictions_kmeans_fair) if train_fairreg else None
-        I_sep_bi = m_bi.MI_con_info(test["sa"])
-        I_sep_weighted_bi = m_weighted_bi.MI_con_info(test["sa"])
-        I_sep_vgg_bi = m_vgg_bi.MI_con_info(test["sa"]) if is_scut else np.nan
-        I_sep_single_encoder_bi = (
-            m_single_encoder_bi.MI_con_info(test["sa"])
-            if (not is_scut and train_single_encoder)
-            else np.nan
+        method_metrics = {
+            name: Metrics(y_test, predictions)
+            for name, predictions in final_predictions.items()
+        }
+        reference_results = _reference_results(
+            y_test,
+            reference_predictions,
+            sa_values,
+            is_binary=is_binary,
         )
-        I_sep_fair_bi = m_fair_bi.MI_con_info(test["sa"]) if train_fairreg else np.nan
 
-        if isBinary:
+        if is_binary:
             result = {
                 "fairness_lambda": FAIRNESS_LAMBDA,
                 "num_comp_pairs_eval": num_comp_pairs_eval,
-                "Acc_lr": accuracy_lr,
-                "Acc_single_encoder": (
-                    accuracy_score(y_test, predictions_single_encoder)
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                **reference_results,
+                "Acc_single_encoder": _prediction_value(
+                    final_predictions, "single_encoder", accuracy_score, y_test
                 ),
-                "Acc_unweight": accuracy_score(y_test, predictions_kmeans),
-                "Acc_weighted": accuracy_score(y_test, predictions_kmeans_weighted),
-                "Acc_fairreg": (
-                    accuracy_score(y_test, predictions_kmeans_fair)
-                    if train_fairreg
-                    else np.nan
+                "Acc_unweight": _prediction_value(
+                    final_predictions, "unweight", accuracy_score, y_test
                 ),
-                "F1_lr": f1_score_lr,
-                "F1_single_encoder": (
-                    f1_score(y_test, predictions_single_encoder)
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "Acc_weighted": _prediction_value(
+                    final_predictions, "weighted", accuracy_score, y_test
                 ),
-                "F1_unweight": f1_score(y_test, predictions_kmeans),
-                "F1_weighted": f1_score(y_test, predictions_kmeans_weighted),
-                "F1_fairreg": (
-                    f1_score(y_test, predictions_kmeans_fair)
-                    if train_fairreg
-                    else np.nan
+                "Acc_fairreg": _prediction_value(
+                    final_predictions, "fairreg", accuracy_score, y_test
                 ),
-                "AOD_lr": AOD_lr,
-                "AOD_single_encoder": (
-                    m_single_encoder_bi.AOD(test["sa"])
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "F1_single_encoder": _prediction_value(
+                    final_predictions, "single_encoder", f1_score, y_test
                 ),
-                "AOD_unweight": m_bi.AOD(test["sa"]),
-                "AOD_weighted": m_weighted_bi.AOD(test["sa"]),
-                "AOD_fairreg": m_fair_bi.AOD(test["sa"]) if train_fairreg else np.nan,
-                "EOD_lr": EOD_lr,
-                "EOD_single_encoder": (
-                    m_single_encoder_bi.EOD(test["sa"])
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "F1_unweight": _prediction_value(
+                    final_predictions, "unweight", f1_score, y_test
                 ),
-                "EOD_unweight": m_bi.EOD(test["sa"]),
-                "EOD_weighted": m_weighted_bi.EOD(test["sa"]),
-                "EOD_fairreg": m_fair_bi.EOD(test["sa"]) if train_fairreg else np.nan,
-                "I_sep_lr": I_sep_lr,
-                "I_sep_single_encoder_bi": I_sep_single_encoder_bi,
-                "I_sep_bi": I_sep_bi,
-                "I_sep_weighted_bi": I_sep_weighted_bi,
-                "I_sep_fairreg_bi": I_sep_fair_bi,
-                "violate_r": violate / r,
-                "violate_r_single_encoder": (
-                    violate_single_encoder / r
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "F1_weighted": _prediction_value(
+                    final_predictions, "weighted", f1_score, y_test
                 ),
-                "violate_r_weighted": violate_w / r,
-                "violate_r_fairreg": violate_fair / r if train_fairreg else np.nan,
-                "violate_comp_r": violate_comp / r,
-                "violate_comp_r_single_encoder": (
-                    violate_comp_single_encoder / r
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "F1_fairreg": _prediction_value(
+                    final_predictions, "fairreg", f1_score, y_test
                 ),
-                "violate_comp_r_w": violate_comp_w / r,
-                "violate_comp_r_fairreg": (
-                    violate_comp_fair / r if train_fairreg else np.nan
+                "AOD_single_encoder": _metric_value(
+                    method_metrics, "single_encoder", "AOD", sa_values
+                ),
+                "AOD_unweight": _metric_value(
+                    method_metrics, "unweight", "AOD", sa_values
+                ),
+                "AOD_weighted": _metric_value(
+                    method_metrics, "weighted", "AOD", sa_values
+                ),
+                "AOD_fairreg": _metric_value(
+                    method_metrics, "fairreg", "AOD", sa_values
+                ),
+                "EOD_single_encoder": _metric_value(
+                    method_metrics, "single_encoder", "EOD", sa_values
+                ),
+                "EOD_unweight": _metric_value(
+                    method_metrics, "unweight", "EOD", sa_values
+                ),
+                "EOD_weighted": _metric_value(
+                    method_metrics, "weighted", "EOD", sa_values
+                ),
+                "EOD_fairreg": _metric_value(
+                    method_metrics, "fairreg", "EOD", sa_values
+                ),
+                "I_sep_single_encoder_bi": _metric_value(
+                    method_metrics, "single_encoder", "MI_con_info", sa_values
+                ),
+                "I_sep_bi": _metric_value(
+                    method_metrics, "unweight", "MI_con_info", sa_values
+                ),
+                "I_sep_weighted_bi": _metric_value(
+                    method_metrics, "weighted", "MI_con_info", sa_values
+                ),
+                "I_sep_fairreg_bi": _metric_value(
+                    method_metrics, "fairreg", "MI_con_info", sa_values
+                ),
+                "violate_r": _rate_value(violation_rates, "unweight"),
+                "violate_r_single_encoder": _rate_value(
+                    violation_rates, "single_encoder"
+                ),
+                "violate_r_weighted": _rate_value(violation_rates, "weighted"),
+                "violate_r_fairreg": _rate_value(violation_rates, "fairreg"),
+                "violate_comp_r": _rate_value(comparative_rates, "unweight"),
+                "violate_comp_r_single_encoder": _rate_value(
+                    comparative_rates, "single_encoder"
+                ),
+                "violate_comp_r_w": _rate_value(comparative_rates, "weighted"),
+                "violate_comp_r_fairreg": _rate_value(
+                    comparative_rates, "fairreg"
                 ),
             }
         else:
             result = {
                 "fairness_lambda": FAIRNESS_LAMBDA,
                 "num_comp_pairs_eval": num_comp_pairs_eval,
-                "MSE_lr": mse_lr,
-                "MSE_single_encoder": (
-                    m_single_encoder_bi.mse()
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                **reference_results,
+                "MSE_single_encoder": _metric_value(
+                    method_metrics, "single_encoder", "mse"
                 ),
-                "MSE_unweight": m_bi.mse(),
-                "MSE_weight": m_weighted_bi.mse(),
-                "MSE_vgg_baseline": m_vgg_bi.mse() if is_scut else np.nan,
-                "MSE_fairreg": m_fair_bi.mse() if train_fairreg else np.nan,
-                "spearman_lr": spearman_lr,
-                "spearman_single_encoder": (
-                    m_single_encoder_bi.spearmanr_coefficient()
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "MSE_unweight": _metric_value(method_metrics, "unweight", "mse"),
+                "MSE_weight": _metric_value(method_metrics, "weighted", "mse"),
+                "MSE_vgg_baseline": _metric_value(
+                    method_metrics, "vgg_baseline", "mse"
                 ),
-                "spearman_unweighted": m_bi.spearmanr_coefficient(),
-                "spearman_weighted": m_weighted_bi.spearmanr_coefficient(),
-                "spearman_vgg_baseline": (
-                    m_vgg_bi.spearmanr_coefficient() if is_scut else np.nan
+                "MSE_fairreg": _metric_value(method_metrics, "fairreg", "mse"),
+                "spearman_single_encoder": _metric_value(
+                    method_metrics, "single_encoder", "spearmanr_coefficient"
                 ),
-                "spearman_fairreg": (
-                    m_fair_bi.spearmanr_coefficient() if train_fairreg else np.nan
+                "spearman_unweighted": _metric_value(
+                    method_metrics, "unweight", "spearmanr_coefficient"
                 ),
-                "pearson_lr": pearson_lr,
-                "pearson_single_encoder": (
-                    m_single_encoder_bi.pearsonr_coefficient()
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "spearman_weighted": _metric_value(
+                    method_metrics, "weighted", "spearmanr_coefficient"
                 ),
-                "pearson_unweighted": m_bi.pearsonr_coefficient(),
-                "pearson_weighted": m_weighted_bi.pearsonr_coefficient(),
-                "pearson_vgg_baseline": (
-                    m_vgg_bi.pearsonr_coefficient() if is_scut else np.nan
+                "spearman_vgg_baseline": _metric_value(
+                    method_metrics, "vgg_baseline", "spearmanr_coefficient"
                 ),
-                "pearson_fairreg": (
-                    m_fair_bi.pearsonr_coefficient() if train_fairreg else np.nan
+                "spearman_fairreg": _metric_value(
+                    method_metrics, "fairreg", "spearmanr_coefficient"
                 ),
-                "I_sep_lr": I_sep_lr,
-                "I_sep_single_encoder_bi": I_sep_single_encoder_bi,
-                "I_sep_bi": I_sep_bi,
-                "I_sep_weighted_bi": I_sep_weighted_bi,
-                "I_sep_vgg_baseline_bi": I_sep_vgg_bi,
-                "I_sep_fairreg_bi": I_sep_fair_bi,
-                "violate_r": violate / r,
-                "violate_r_single_encoder": (
-                    violate_single_encoder / r
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "pearson_single_encoder": _metric_value(
+                    method_metrics, "single_encoder", "pearsonr_coefficient"
                 ),
-                "violate_r_weighted": violate_w / r,
-                "violate_r_vgg_baseline": violate_vgg / r,
-                "violate_r_fairreg": violate_fair / r if train_fairreg else np.nan,
-                "violate_comp_r": violate_comp / r,
-                "violate_comp_r_single_encoder": (
-                    violate_comp_single_encoder / r
-                    if (not is_scut and train_single_encoder)
-                    else np.nan
+                "pearson_unweighted": _metric_value(
+                    method_metrics, "unweight", "pearsonr_coefficient"
                 ),
-                "violate_comp_r_w": violate_comp_w / r,
-                "violate_comp_r_vgg_baseline": violate_comp_vgg / r,
-                "violate_comp_r_fairreg": (
-                    violate_comp_fair / r if train_fairreg else np.nan
+                "pearson_weighted": _metric_value(
+                    method_metrics, "weighted", "pearsonr_coefficient"
+                ),
+                "pearson_vgg_baseline": _metric_value(
+                    method_metrics, "vgg_baseline", "pearsonr_coefficient"
+                ),
+                "pearson_fairreg": _metric_value(
+                    method_metrics, "fairreg", "pearsonr_coefficient"
+                ),
+                "I_sep_single_encoder_bi": _metric_value(
+                    method_metrics, "single_encoder", "MI_con_info", sa_values
+                ),
+                "I_sep_bi": _metric_value(
+                    method_metrics, "unweight", "MI_con_info", sa_values
+                ),
+                "I_sep_weighted_bi": _metric_value(
+                    method_metrics, "weighted", "MI_con_info", sa_values
+                ),
+                "I_sep_vgg_baseline_bi": _metric_value(
+                    method_metrics, "vgg_baseline", "MI_con_info", sa_values
+                ),
+                "I_sep_fairreg_bi": _metric_value(
+                    method_metrics, "fairreg", "MI_con_info", sa_values
+                ),
+                "violate_r": _rate_value(violation_rates, "unweight"),
+                "violate_r_single_encoder": _rate_value(
+                    violation_rates, "single_encoder"
+                ),
+                "violate_r_weighted": _rate_value(violation_rates, "weighted"),
+                "violate_r_vgg_baseline": _rate_value(
+                    violation_rates, "vgg_baseline"
+                ),
+                "violate_r_fairreg": _rate_value(violation_rates, "fairreg"),
+                "violate_comp_r": _rate_value(comparative_rates, "unweight"),
+                "violate_comp_r_single_encoder": _rate_value(
+                    comparative_rates, "single_encoder"
+                ),
+                "violate_comp_r_w": _rate_value(comparative_rates, "weighted"),
+                "violate_comp_r_vgg_baseline": _rate_value(
+                    comparative_rates, "vgg_baseline"
+                ),
+                "violate_comp_r_fairreg": _rate_value(
+                    comparative_rates, "fairreg"
                 ),
             }
         results.append(result)
 
-    pair_strategy = "all" if effective_use_all_pairs else str(num_comp_train)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(results).to_csv(
         RESULTS_DIR
@@ -1395,25 +1364,19 @@ def run_experiments(
                 "Starting experiments "
                 f"(dataset={dataset}, sensitive_attribute={sa or 'default'})."
             )
-        try:
-            _run_experiments_impl(
-                num_runs=num_runs,
-                dataset=dataset,
-                sa=sa,
-                use_all_pairs=use_all_pairs,
-                num_comp_train=num_comp_train,
-                train_fairreg=train_fairreg,
-                train_single_encoder=train_single_encoder,
-                plot_histograms=plot_histograms,
-                num_comp_pairs_ratio=num_comp_pairs_ratio,
-                model_epochs=model_epochs,
-                validation_fraction=validation_fraction,
-            )
-        except Exception:
-            if resolved_log_path is not None:
-                print("\nExperiment failed. Traceback:", file=sys.stderr)
-                traceback.print_exc()
-            raise
+        _run_experiments_impl(
+            num_runs=num_runs,
+            dataset=dataset,
+            sa=sa,
+            use_all_pairs=use_all_pairs,
+            num_comp_train=num_comp_train,
+            train_fairreg=train_fairreg,
+            train_single_encoder=train_single_encoder,
+            plot_histograms=plot_histograms,
+            num_comp_pairs_ratio=num_comp_pairs_ratio,
+            model_epochs=model_epochs,
+            validation_fraction=validation_fraction,
+        )
 
 
 if __name__ == "__main__":

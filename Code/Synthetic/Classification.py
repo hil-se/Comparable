@@ -10,18 +10,122 @@ PAIRWISE_DECISION_THRESHOLD = 0.0
 
 
 def _predict_labels_batch(test, dual_encoder, batch_size=2048):
-    """Batch inference to avoid per-row Python/TensorFlow overhead."""
     dataA = np.asarray(test["A"].tolist())
     dataB = np.asarray(test["B"].tolist())
     if dataA.ndim > 2:
         batch_size = min(batch_size, 4)
-    scores = []
-    for start in range(0, len(dataA), batch_size):
-        end = min(start + batch_size, len(dataA))
-        batch_scores = dual_encoder.predict(dataA[start:end], dataB[start:end])
-        scores.append(np.asarray(batch_scores).reshape(-1))
+    scores = [
+        np.asarray(
+            dual_encoder.predict(
+                dataA[start : start + batch_size],
+                dataB[start : start + batch_size],
+            )
+        ).reshape(-1)
+        for start in range(0, len(dataA), batch_size)
+    ]
     raw_scores = np.concatenate(scores) if scores else np.array([], dtype=np.float32)
     return np.where(raw_scores < PAIRWISE_DECISION_THRESHOLD, -1, 1).tolist()
+
+
+def _pair_row(row):
+    item = {
+        "A": np.asarray(row["A"], dtype=np.float32),
+        "B": np.asarray(row["B"], dtype=np.float32),
+        "Label": np.float32(row["Label"]),
+    }
+    if "SA_A" in row.index:
+        item["SA_A"] = np.float32(row["SA_A"])
+        item["SA_B"] = np.float32(row["SA_B"])
+    if "Weights" in row.index:
+        item["Weights"] = np.float32(row["Weights"])
+    return item
+
+
+def _pair_signature(df):
+    first_row = df.iloc[0]
+    signature = {
+        "A": tf.TensorSpec(
+            shape=np.asarray(first_row["A"], dtype=np.float32).shape,
+            dtype=tf.float32,
+        ),
+        "B": tf.TensorSpec(
+            shape=np.asarray(first_row["B"], dtype=np.float32).shape,
+            dtype=tf.float32,
+        ),
+        "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
+    }
+    if {"SA_A", "SA_B"}.issubset(df.columns):
+        signature["SA_A"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+        signature["SA_B"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+    if "Weights" in df.columns:
+        signature["Weights"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+    return signature
+
+
+def _make_pair_dataset(df, batch_size, repeat=True):
+    def generator():
+        for _, row in df.iterrows():
+            yield _pair_row(row)
+
+    dataset = tf.data.Dataset.from_generator(
+        generator,
+        output_signature=_pair_signature(df),
+    )
+    dataset = dataset.batch(batch_size)
+    if repeat:
+        dataset = dataset.repeat()
+    return dataset.prefetch(tf.data.AUTOTUNE)
+
+
+def _fit_array_model(
+    model,
+    train_x,
+    train_y,
+    *,
+    val_x=None,
+    val_y=None,
+    epochs=100,
+    batch_size=512,
+    patience=10,
+):
+    monitor_metric = "val_loss" if val_x is not None else "loss"
+    callbacks = [
+        tf.keras.callbacks.EarlyStopping(
+            monitor=monitor_metric,
+            patience=patience,
+            min_delta=1e-4,
+            restore_best_weights=True,
+        )
+    ]
+    fit_kwargs = {
+        "x": train_x,
+        "y": train_y,
+        "epochs": epochs,
+        "batch_size": min(batch_size, len(train_x)),
+        "verbose": 0,
+        "callbacks": callbacks,
+    }
+    if val_x is not None:
+        fit_kwargs["validation_data"] = (val_x, val_y)
+    model.fit(**fit_kwargs)
+    return model
+
+
+def _shuffle_frame(df, weights=None):
+    order = np.random.permutation(len(df))
+    shuffled = df.iloc[order].reset_index(drop=True)
+    if weights is None:
+        return shuffled, None
+    return shuffled, np.asarray(weights, dtype=np.float32)[order]
+
+
+def _batched_scores(inputs, dual_encoder, batch_size=2048):
+    inputs = np.asarray(inputs, dtype=np.float32)
+    scores = [
+        dual_encoder.score(inputs[start : start + batch_size]).numpy().reshape(-1)
+        for start in range(0, len(inputs), batch_size)
+    ]
+    return np.concatenate(scores) if scores else np.array([], dtype=np.float32)
 
 
 def learn(
@@ -33,80 +137,40 @@ def learn(
     batch_size=512,
     shared=False,
     train_weights=None,
-    val_weights=None,
     df_name=None,
     fairness_lambda=0.0,
 ):
-    # SCUT image pairs are large; use a tiny batch and stream samples to avoid OOM.
     is_scut = df_name is not None and "scut" in df_name.lower()
     if is_scut:
         batch_size = min(batch_size, 2)
 
-    first_a = np.asarray(train_data["A"].iloc[0], dtype=np.float32)
-    first_b = np.asarray(train_data["B"].iloc[0], dtype=np.float32)
-
-    def _row_generator():
-        if train_weights is None:
-            for _, row in train_data.iterrows():
-                item = {
-                    "A": np.asarray(row["A"], dtype=np.float32),
-                    "B": np.asarray(row["B"], dtype=np.float32),
-                    "Label": np.float32(row["Label"]),
-                }
-                if "SA_A" in row and "SA_B" in row:
-                    item["SA_A"] = np.float32(row["SA_A"])
-                    item["SA_B"] = np.float32(row["SA_B"])
-                yield item
-        else:
-            for idx, row in train_data.iterrows():
-                item = {
-                    "A": np.asarray(row["A"], dtype=np.float32),
-                    "B": np.asarray(row["B"], dtype=np.float32),
-                    "Label": np.float32(row["Label"]),
-                    "Weights": np.float32(train_weights[idx]),
-                }
-                if "SA_A" in row and "SA_B" in row:
-                    item["SA_A"] = np.float32(row["SA_A"])
-                    item["SA_B"] = np.float32(row["SA_B"])
-                yield item
-
-    output_signature = {
-        "A": tf.TensorSpec(shape=first_a.shape, dtype=tf.float32),
-        "B": tf.TensorSpec(shape=first_b.shape, dtype=tf.float32),
-        "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
-    }
+    train_frame = train_data.copy()
     if train_weights is not None:
-        output_signature["Weights"] = tf.TensorSpec(shape=(), dtype=tf.float32)
-    if "SA_A" in train_data.columns and "SA_B" in train_data.columns:
-        output_signature["SA_A"] = tf.TensorSpec(shape=(), dtype=tf.float32)
-        output_signature["SA_B"] = tf.TensorSpec(shape=(), dtype=tf.float32)
+        train_frame["Weights"] = np.asarray(train_weights, dtype=np.float32)
 
-    train_dataset = tf.data.Dataset.from_generator(
-        _row_generator, output_signature=output_signature
-    )
+    train_dataset = _make_pair_dataset(train_frame, batch_size)
     steps_per_epoch = int(np.ceil(len(train_data) / batch_size))
-    train_dataset = train_dataset.batch(batch_size).repeat().prefetch(tf.data.AUTOTUNE)
-    if y_true is None:
-        y_true = []
+    y_true = np.array([] if y_true is None else y_true)
+    input_size = train_dataset.element_spec["A"].shape[1]
 
     if shared:
         encoder = SharedDualEncoder.create_encoder(
-            input_size=train_dataset.element_spec["A"].shape[1], df_name=df_name
+            input_size=input_size,
+            df_name=df_name,
         )
         dual_encoder = SharedDualEncoder.DualEncoderAll(
-            encoder, y_true=np.array(y_true), fairness_lambda=fairness_lambda
+            encoder,
+            y_true=y_true,
+            fairness_lambda=fairness_lambda,
         )
     else:
-        encoder_A = DualEncoder.create_encoder(
-            input_size=train_dataset.element_spec["A"].shape[1]
-        )
-        encoder_B = DualEncoder.create_encoder(
-            input_size=train_dataset.element_spec["A"].shape[1]
-        )
+        encoder_A = DualEncoder.create_encoder(input_size=input_size)
+        encoder_B = DualEncoder.create_encoder(input_size=input_size)
         dual_encoder = DualEncoder.DualEncoderAll(
-            encoder_A, encoder_B, y_true=np.array(y_true)
+            encoder_A,
+            encoder_B,
+            y_true=y_true,
         )
-    # Full fine-tuning on pretrained SCUT backbone is more stable with a smaller LR.
     learning_rate = 1e-4 if is_scut else 1e-3
     optimizer = (
         tf.keras.optimizers.SGD(learning_rate=learning_rate)
@@ -133,44 +197,7 @@ def learn(
     }
     if validation_data is not None:
         if isinstance(validation_data, pd.DataFrame):
-            val_first_a = np.asarray(validation_data["A"].iloc[0], dtype=np.float32)
-            val_first_b = np.asarray(validation_data["B"].iloc[0], dtype=np.float32)
-
-            def _val_row_generator():
-                for _, row in validation_data.iterrows():
-                    item = {
-                        "A": np.asarray(row["A"], dtype=np.float32),
-                        "B": np.asarray(row["B"], dtype=np.float32),
-                        "Label": np.float32(row["Label"]),
-                    }
-                    if "SA_A" in validation_data.columns and "SA_B" in validation_data.columns:
-                        item["SA_A"] = np.float32(row["SA_A"])
-                        item["SA_B"] = np.float32(row["SA_B"])
-                    if "Weights" in validation_data.columns:
-                        item["Weights"] = np.float32(row["Weights"])
-                    yield item
-
-            val_signature = {
-                "A": tf.TensorSpec(shape=val_first_a.shape, dtype=tf.float32),
-                "B": tf.TensorSpec(shape=val_first_b.shape, dtype=tf.float32),
-                "Label": tf.TensorSpec(shape=(), dtype=tf.float32),
-            }
-            if "SA_A" in validation_data.columns and "SA_B" in validation_data.columns:
-                val_signature["SA_A"] = tf.TensorSpec(shape=(), dtype=tf.float32)
-                val_signature["SA_B"] = tf.TensorSpec(shape=(), dtype=tf.float32)
-            if "Weights" in validation_data.columns:
-                val_signature["Weights"] = tf.TensorSpec(shape=(), dtype=tf.float32)
-
-            val_dataset = tf.data.Dataset.from_generator(
-                _val_row_generator, output_signature=val_signature
-            )
-            # Keep validation available across epochs when Keras consumes a fixed
-            # number of validation steps from the same dataset iterator.
-            val_dataset = (
-                val_dataset.batch(batch_size)
-                .repeat()
-                .prefetch(tf.data.AUTOTUNE)
-            )
+            val_dataset = _make_pair_dataset(validation_data, batch_size)
             fit_kwargs["validation_data"] = val_dataset
             fit_kwargs["validation_steps"] = int(
                 np.ceil(len(validation_data) / batch_size)
@@ -192,47 +219,27 @@ def train_scut_vggface_baseline(
     batch_size=2,
     patience=10,
 ):
-    """
-    Train a non-comparative SCUT baseline: VGG-Face regressor on single images.
-    """
     train_pixels = np.asarray(train_pixels, dtype=np.float32)
     y_train = np.asarray(y_train, dtype=np.float32)
-    if train_pixels.ndim != 4:
-        raise ValueError("train_pixels must have shape [N, H, W, C].")
-    if len(train_pixels) != len(y_train):
-        raise ValueError("train_pixels and y_train must have the same length.")
-    if val_pixels is not None or y_val is not None:
-        if val_pixels is None or y_val is None:
-            raise ValueError("val_pixels and y_val must be provided together.")
+    if val_pixels is not None:
         val_pixels = np.asarray(val_pixels, dtype=np.float32)
         y_val = np.asarray(y_val, dtype=np.float32)
-        if len(val_pixels) != len(y_val):
-            raise ValueError("val_pixels and y_val must have the same length.")
 
     model = SharedDualEncoder.create_encoder(input_size=None, df_name="scut_baseline")
     model.compile(
         optimizer=tf.keras.optimizers.SGD(learning_rate=1e-4),
         loss="mse",
     )
-    monitor_metric = "val_loss" if val_pixels is not None else "loss"
-    early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor=monitor_metric,
+    return _fit_array_model(
+        model,
+        train_pixels,
+        y_train,
+        val_x=val_pixels,
+        val_y=y_val,
+        epochs=epochs,
+        batch_size=batch_size,
         patience=patience,
-        min_delta=1e-4,
-        restore_best_weights=True,
     )
-    fit_kwargs = {
-        "x": train_pixels,
-        "y": y_train,
-        "epochs": epochs,
-        "batch_size": min(batch_size, len(train_pixels)),
-        "verbose": 0,
-        "callbacks": [early_stopping],
-    }
-    if val_pixels is not None:
-        fit_kwargs["validation_data"] = (val_pixels, y_val)
-    model.fit(**fit_kwargs)
-    return model
 
 
 def predict_scut_vggface_baseline(model, pixels, batch_size=4):
@@ -251,22 +258,11 @@ def train_single_encoder_baseline(
     batch_size=512,
     patience=10,
 ):
-    """
-    Train a non-comparative tabular baseline with a single encoder.
-    """
     train_features = np.asarray(train_features, dtype=np.float32)
     y_train = np.asarray(y_train, dtype=np.float32)
-    if train_features.ndim != 2:
-        raise ValueError("train_features must have shape [N, D].")
-    if len(train_features) != len(y_train):
-        raise ValueError("train_features and y_train must have the same length.")
-    if val_features is not None or y_val is not None:
-        if val_features is None or y_val is None:
-            raise ValueError("val_features and y_val must be provided together.")
+    if val_features is not None:
         val_features = np.asarray(val_features, dtype=np.float32)
         y_val = np.asarray(y_val, dtype=np.float32)
-        if len(val_features) != len(y_val):
-            raise ValueError("val_features and y_val must have the same length.")
 
     if output_activation is None:
         output_activation = "sigmoid" if is_binary else "linear"
@@ -279,25 +275,16 @@ def train_single_encoder_baseline(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
         loss="binary_crossentropy" if is_binary else "mse",
     )
-    monitor_metric = "val_loss" if val_features is not None else "loss"
-    early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor=monitor_metric,
+    return _fit_array_model(
+        model,
+        train_features,
+        y_train,
+        val_x=val_features,
+        val_y=y_val,
+        epochs=epochs,
+        batch_size=batch_size,
         patience=patience,
-        min_delta=1e-4,
-        restore_best_weights=True,
     )
-    fit_kwargs = {
-        "x": train_features,
-        "y": y_train,
-        "epochs": epochs,
-        "batch_size": min(batch_size, len(train_features)),
-        "verbose": 0,
-        "callbacks": [early_stopping],
-    }
-    if val_features is not None:
-        fit_kwargs["validation_data"] = (val_features, y_val)
-    model.fit(**fit_kwargs)
-    return model
 
 
 def predict_single_encoder_baseline(model, features, batch_size=2048):
@@ -316,34 +303,21 @@ def train_model(
     df_name=None,
     fairness_lambda=0.0,
 ):
-    if train_weights is not None:
-        train_weights = np.asarray(train_weights, dtype=np.float32)
-        if len(train_weights) != len(train):
-            raise ValueError("train_weights length must match training data length.")
-        perm = np.random.permutation(len(train))
-        train = train.iloc[perm].reset_index(drop=True)
-        train_weights = train_weights[perm]
-    else:
-        train = train.sample(frac=1).reset_index(drop=True)
+    train, train_weights = _shuffle_frame(train, train_weights)
     if val is not None:
         val = val.reset_index(drop=True).copy()
         if val_weights is not None:
-            val_weights = np.asarray(val_weights, dtype=np.float32)
-            if len(val_weights) != len(val):
-                raise ValueError("val_weights length must match validation data length.")
-            val["Weights"] = val_weights
-    dual_encoder = learn(
+            val["Weights"] = np.asarray(val_weights, dtype=np.float32)
+    return learn(
         train,
         epochs=epochs,
         validation_data=val,
         y_true=y_true,
         shared=shared,
         train_weights=train_weights,
-        val_weights=val_weights,
         df_name=df_name,
         fairness_lambda=fairness_lambda,
     )
-    return dual_encoder
 
 
 def predict(test, dual_encoder):
@@ -357,73 +331,47 @@ def test_model(test, dual_encoder):
 
 
 def evaluate(y_true, y_pred):
-    TP = 0
-    FP = 0
-    TN = 0
-    FN = 0
-    recall = 0
-    precision = 0
-    F1 = 0
-    accuracy = 0
-    ln = len(y_true)
-    for i in range(ln):
-        label = y_true[i]
-        prediction = y_pred[i]
-        if label == 1:
-            if prediction == 1:
-                TP += 1
-            else:
-                FN += 1
-        else:
-            if prediction == 1:
-                FP += 1
-            else:
-                TN += 1
-    if (TP + FP) != 0:
-        precision = TP / (TP + FP)
-    if (TP + FN) != 0:
-        recall = TP / (TP + FN)
-    if (recall + precision) != 0:
-        F1 = (2 * recall * precision) / (recall + precision)
-    if (TP + FP + TN + FN) != 0:
-        accuracy = (TP + TN) / (TP + FP + TN + FN)
-    return recall, precision, F1, accuracy
+    labels = np.asarray(y_true)
+    predictions = np.asarray(y_pred)
+    tp = np.sum((labels == 1) & (predictions == 1))
+    fp = np.sum((labels != 1) & (predictions == 1))
+    tn = np.sum((labels != 1) & (predictions != 1))
+    fn = np.sum((labels == 1) & (predictions != 1))
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    f1 = (
+        (2 * recall * precision) / (recall + precision)
+        if recall + precision
+        else 0.0
+    )
+    accuracy = (tp + tn) / len(labels) if len(labels) else 0.0
+    return recall, precision, f1, accuracy
 
 
 def generateLists(test_dataset, dual_encoder):
-    realList = []
-    predList = []
-    for _, row in test_dataset.iterrows():
-        idName = row["indexA"]
-        datapoint = np.array(row["A"])
-        real_score = row["Score"]
-        datapoint = np.expand_dims(datapoint, axis=0)
-        pred_score = dual_encoder.score(datapoint)
-        pred_score = pred_score.numpy()[0][0].item()
-        realList.append({"id": idName, "Score": real_score})
-        predList.append({"id": idName, "Score": pred_score})
-    realList = pd.DataFrame(realList)
-    predList = pd.DataFrame(predList)
-
-    [spearmanr, sp_pvalue] = stats.spearmanr(realList["Score"], predList["Score"])
-    [pearsonr, p_pvalue] = stats.pearsonr(realList["Score"], predList["Score"])
+    real_list = pd.DataFrame(
+        {"id": test_dataset["indexA"].values, "Score": test_dataset["Score"].values}
+    )
+    pred_list = pd.DataFrame(
+        {
+            "id": test_dataset["indexA"].values,
+            "Score": _batched_scores(np.stack(test_dataset["A"].values), dual_encoder),
+        }
+    )
+    spearmanr, sp_pvalue = stats.spearmanr(real_list["Score"], pred_list["Score"])
+    pearsonr, p_pvalue = stats.pearsonr(real_list["Score"], pred_list["Score"])
     return spearmanr, sp_pvalue, pearsonr, p_pvalue
 
 
 def evaluateLists(realList, predList):
-    realList = realList["id"].tolist()
-    predList = predList["id"].tolist()
-    ln = len(realList)
-    diff = 0
-    sum_d = 0
-    for i in range(ln):
-        id = realList[i]
-        j = predList.index(id)
-        diff += abs(i - j)
-        sum_d += (i - j) * (i - j)
-    spearman_corr = 1 - ((6 * sum_d) / (ln * ((ln * ln) - 1)))
-    spearman_corr = round(spearman_corr, 3)
-    avg_diff = round(diff / ln, 3)
+    real_ids = realList["id"].tolist()
+    pred_positions = {value: idx for idx, value in enumerate(predList["id"].tolist())}
+    diffs = np.array(
+        [idx - pred_positions[value] for idx, value in enumerate(real_ids)]
+    )
+    ln = len(real_ids)
+    spearman_corr = round(1 - ((6 * np.sum(diffs**2)) / (ln * ((ln * ln) - 1))), 3)
+    avg_diff = round(np.mean(np.abs(diffs)), 3)
     return avg_diff, spearman_corr
 
 

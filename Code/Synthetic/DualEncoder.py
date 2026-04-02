@@ -1,19 +1,16 @@
 import tensorflow as tf
 
-K = tf.keras.backend
-
 
 def create_encoder(input_size):
-    input = tf.keras.layers.Input(shape=(input_size,))
-    x = tf.keras.layers.Dense(32, activation="relu")(input)
+    inputs = tf.keras.layers.Input(shape=(input_size,))
+    x = tf.keras.layers.Dense(32, activation="relu")(inputs)
     output = tf.keras.layers.Dense(1, activation="linear")(x)
-    # output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
-    return tf.keras.models.Model(inputs=input, outputs=output)
+    return tf.keras.models.Model(inputs=inputs, outputs=output)
 
 
 class DualEncoderAll(tf.keras.Model):
     def __init__(self, source_encoder, target_encoder, y_true, **kwargs):
-        super(DualEncoderAll, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.encoder_A = source_encoder
         self.encoder_B = target_encoder
         self.y_true = y_true
@@ -35,32 +32,9 @@ class DualEncoderAll(tf.keras.Model):
     def compute_loss(self, encodings_A, encodings_B, y):
         encodings_A = tf.squeeze(encodings_A)
         encodings_B = tf.squeeze(encodings_B)
-        # pred = (encodings_A + encodings_B)/2
         pred = encodings_A - encodings_B
         y = tf.cast(y, tf.float32)
-
-        loss = tf.math.abs(y - pred)
-
-        # Hinge loss
-        # loss = tf.math.maximum(0.0, 1.0 - (y*pred))
-
-        # Absolute hinge-like loss
-        # loss = tf.math.abs(1 - (y * pred))
-
-        # Averaged hinge loss
-        # loss_A = tf.math.maximum(0.0, 1 - (y*encodings_A))
-        # loss_B = tf.math.maximum(0.0, 1 - (y*encodings_B))
-        # loss = (loss_A+loss_B)/2
-
-        # Binary cross-entropy loss
-        # bce = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-        # loss = tf.math.abs(bce(y, pred))
-
-        # Mean-squared error loss
-        # mse = tf.keras.losses.MeanSquaredError()
-        # loss = tf.math.abs(mse(y, pred))
-
-        return loss
+        return tf.math.abs(y - pred)
 
     def train_step(self, feature, train_A=True, train_B=True):
         with tf.GradientTape() as tape:

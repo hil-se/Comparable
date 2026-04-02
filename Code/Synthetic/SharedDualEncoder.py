@@ -1,102 +1,103 @@
-import tensorflow as tf
-import keras
 from pathlib import Path
-from tensorflow.keras.layers import *
 
-K = tf.keras.backend
+import keras
+import tensorflow as tf
+from tensorflow.keras.layers import (
+    Activation,
+    Conv1D,
+    Convolution2D,
+    Dense,
+    Dropout,
+    Flatten,
+    GlobalMaxPooling1D,
+    MaxPooling2D,
+    Reshape,
+    ZeroPadding2D,
+)
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
 
 
+def _is_scut_model(df_name):
+    return bool(df_name and "scut" in df_name.lower())
+
+
+def _build_scut_encoder(output_activation):
+    base_model = tf.keras.Sequential(
+        [
+            ZeroPadding2D((1, 1), input_shape=(224, 224, 3)),
+            Convolution2D(64, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(64, (3, 3), activation="relu"),
+            MaxPooling2D((2, 2), strides=(2, 2)),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(128, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(128, (3, 3), activation="relu"),
+            MaxPooling2D((2, 2), strides=(2, 2)),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(256, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(256, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(256, (3, 3), activation="relu"),
+            MaxPooling2D((2, 2), strides=(2, 2)),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(512, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(512, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(512, (3, 3), activation="relu"),
+            MaxPooling2D((2, 2), strides=(2, 2)),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(512, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(512, (3, 3), activation="relu"),
+            ZeroPadding2D((1, 1)),
+            Convolution2D(512, (3, 3), activation="relu"),
+            MaxPooling2D((2, 2), strides=(2, 2)),
+            Convolution2D(4096, (7, 7), activation="relu"),
+            Dropout(0.5),
+            Convolution2D(4096, (1, 1), activation="relu"),
+            Dropout(0.5),
+            Convolution2D(2622, (1, 1)),
+            Flatten(),
+            Activation("softmax"),
+        ]
+    )
+    base_model.load_weights(str(DATA_DIR / "vgg_face_weights.h5"))
+    for layer in base_model.layers:
+        layer.trainable = True
+
+    _ = base_model(tf.keras.Input(shape=(224, 224, 3)))
+    x = Flatten()(base_model.layers[-4].output)
+    output = Dense(1, activation=output_activation)(x)
+    return tf.keras.Model(inputs=base_model.inputs, outputs=output)
+
+
+def _build_tabular_encoder(input_size, output_activation):
+    return keras.Sequential(
+        [
+            keras.layers.Input(shape=(input_size,)),
+            Reshape((input_size, 1)),
+            Conv1D(filters=16, kernel_size=3, padding="same", activation="relu"),
+            Conv1D(filters=32, kernel_size=3, padding="same", activation="relu"),
+            GlobalMaxPooling1D(),
+            Dense(16, activation="relu"),
+            Dense(1, activation=output_activation),
+        ]
+    )
+
+
 def create_encoder(input_size, df_name, output_activation="linear"):
-
-    if df_name is not None and "scut" in df_name:
-        base_model = tf.keras.Sequential()
-        base_model.add(ZeroPadding2D((1, 1), input_shape=(224, 224, 3)))
-        base_model.add(Convolution2D(64, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(64, (3, 3), activation="relu"))
-        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
-
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(128, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(128, (3, 3), activation="relu"))
-        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
-
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(256, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(256, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(256, (3, 3), activation="relu"))
-        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
-
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
-        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
-
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
-        base_model.add(ZeroPadding2D((1, 1)))
-        base_model.add(Convolution2D(512, (3, 3), activation="relu"))
-        base_model.add(MaxPooling2D((2, 2), strides=(2, 2)))
-
-        base_model.add(Convolution2D(4096, (7, 7), activation="relu"))
-        base_model.add(Dropout(0.5))
-        base_model.add(Convolution2D(4096, (1, 1), activation="relu"))
-        base_model.add(Dropout(0.5))
-        base_model.add(Convolution2D(2622, (1, 1)))
-        base_model.add(Flatten())
-        base_model.add(Activation("softmax"))
-
-        # Pre-trained weights of VGG-Face model.
-        base_model.load_weights(str(DATA_DIR / "vgg_face_weights.h5"))
-
-        # Full fine-tuning: train all backbone layers.
-        for layer in base_model.layers:
-            layer.trainable = True
-
-        # Keras 3 may not populate `base_model.input` until the model is called once.
-        _ = base_model(tf.keras.Input(shape=(224, 224, 3)))
-
-        # Use the penultimate feature map (layer -4), then add a regression head.
-        x = base_model.layers[-4].output
-        x = Flatten()(x)
-        output = Dense(1, activation=output_activation)(x)
-        model = tf.keras.Model(inputs=base_model.inputs, outputs=output)
-
-    else:
-        # Tabular (non-SCUT) encoder: basic 1D CNN over the feature vector.
-        model = keras.Sequential(
-            [
-                keras.layers.Input(shape=(input_size,)),
-                keras.layers.Reshape((input_size, 1)),
-                keras.layers.Conv1D(
-                    filters=16, kernel_size=3, padding="same", activation="relu"
-                ),
-                keras.layers.Conv1D(
-                    filters=32, kernel_size=3, padding="same", activation="relu"
-                ),
-                keras.layers.GlobalMaxPooling1D(),
-                keras.layers.Dense(16, activation="relu"),
-                keras.layers.Dense(1, activation=output_activation),
-            ]
-        )
-
-    # return tf.keras.models.Model(inputs=input, outputs=output)
-    return model
+    if _is_scut_model(df_name):
+        return _build_scut_encoder(output_activation)
+    return _build_tabular_encoder(input_size, output_activation)
 
 
 class DualEncoderAll(tf.keras.Model):
     def __init__(self, encoder, y_true, fairness_lambda=0.0, **kwargs):
-        super(DualEncoderAll, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.encoder = encoder
         self.y_true = y_true
         self.fairness_lambda = fairness_lambda
@@ -118,13 +119,17 @@ class DualEncoderAll(tf.keras.Model):
 
     @staticmethod
     def _to_scalar(encoding):
-        """
-        Convert encoder output to one scalar per sample.
-        Handles both shape [batch, 1] and higher-dimensional outputs (e.g. [batch, 2622]).
-        """
         encoding = keras.ops.cast(encoding, "float32")
         encoding = keras.ops.reshape(encoding, (keras.ops.shape(encoding)[0], -1))
         return keras.ops.mean(encoding, axis=1)
+
+    @staticmethod
+    def _flat_float(value):
+        return tf.cast(tf.reshape(value, (-1,)), tf.float32)
+
+    @staticmethod
+    def _unpack_inputs(data):
+        return data[0] if isinstance(data, tuple) else data
 
     def _compute_pairwise_loss(
         self, encodings_A, encodings_B, y, sample_weight=None, sa_a=None, sa_b=None
@@ -132,35 +137,11 @@ class DualEncoderAll(tf.keras.Model):
         encodings_A = self._to_scalar(encodings_A)
         encodings_B = self._to_scalar(encodings_B)
         pred = encodings_A - encodings_B
-        y = tf.cast(tf.squeeze(y, axis=-1) if len(y.shape) > 1 else y, tf.float32)
+        y = self._flat_float(y)
 
         per_example = tf.abs(y - pred)
-
-        # Hinge loss
-        # loss = tf.math.maximum(0.0, 1.0 - (y * pred))
-
-        # Absolute hinge-like loss
-        # loss = tf.math.abs(1 - (y * pred))
-
-        # Averaged hinge loss
-        # loss_A = tf.math.maximum(0.0, 1 - (y*encodings_A))
-        # loss_B = tf.math.maximum(0.0, 1 - (y*encodings_B))
-        # loss = (loss_A+loss_B)/2
-
-        # Binary cross-entropy loss
-        # bce = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-        # loss = tf.math.abs(bce(y, pred))
-
-        # Mean-squared error loss
-        # mse = tf.keras.losses.MeanSquaredError()
-        # loss = tf.math.abs(mse(y, pred))
         if sample_weight is not None:
-            sw = tf.cast(
-                tf.squeeze(sample_weight, axis=-1)
-                if len(sample_weight.shape) > 1
-                else sample_weight,
-                tf.float32,
-            )
+            sw = self._flat_float(sample_weight)
             per_example = per_example * sw
             loss = tf.reduce_sum(per_example) / (
                 tf.reduce_sum(sw) + tf.keras.backend.epsilon()
@@ -169,12 +150,8 @@ class DualEncoderAll(tf.keras.Model):
             loss = tf.reduce_mean(per_example)
 
         if self.fairness_lambda > 0 and sa_a is not None and sa_b is not None:
-            sa_a = tf.cast(
-                tf.squeeze(sa_a, axis=-1) if len(sa_a.shape) > 1 else sa_a, tf.float32
-            )
-            sa_b = tf.cast(
-                tf.squeeze(sa_b, axis=-1) if len(sa_b.shape) > 1 else sa_b, tf.float32
-            )
+            sa_a = self._flat_float(sa_a)
+            sa_b = self._flat_float(sa_b)
             cross_group = tf.not_equal(sa_a, sa_b)
             within_group = tf.equal(sa_a, sa_b)
 
@@ -197,14 +174,10 @@ class DualEncoderAll(tf.keras.Model):
         return loss
 
     def train_step(self, data):
-        if isinstance(data, tuple):
-            x = data[0]
-        else:
-            x = data
-
-        sample_weight = x.get("Weights", None) if isinstance(x, dict) else None
-        sa_a = x.get("SA_A", None) if isinstance(x, dict) else None
-        sa_b = x.get("SA_B", None) if isinstance(x, dict) else None
+        x = self._unpack_inputs(data)
+        sample_weight = x.get("Weights") if isinstance(x, dict) else None
+        sa_a = x.get("SA_A") if isinstance(x, dict) else None
+        sa_b = x.get("SA_B") if isinstance(x, dict) else None
 
         with tf.GradientTape() as tape:
             encodings_A, encodings_B, y, sa_a_out, sa_b_out = self(x, trainable=True)
@@ -222,19 +195,14 @@ class DualEncoderAll(tf.keras.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-        # loss is now a scalar, so the Mean metric is happy.
         self.loss_tracker.update_state(loss)
         return {"loss": self.loss_tracker.result()}
 
     def test_step(self, data):
-        if isinstance(data, tuple):
-            x = data[0]
-        else:
-            x = data
-
-        sample_weight = x.get("Weights", None) if isinstance(x, dict) else None
-        sa_a = x.get("SA_A", None) if isinstance(x, dict) else None
-        sa_b = x.get("SA_B", None) if isinstance(x, dict) else None
+        x = self._unpack_inputs(data)
+        sample_weight = x.get("Weights") if isinstance(x, dict) else None
+        sa_a = x.get("SA_A") if isinstance(x, dict) else None
+        sa_b = x.get("SA_B") if isinstance(x, dict) else None
 
         encodings_A, encodings_B, y, sa_a_out, sa_b_out = self(x, trainable=False)
         sa_a = sa_a if sa_a is not None else sa_a_out

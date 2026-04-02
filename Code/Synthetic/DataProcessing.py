@@ -2,6 +2,7 @@ import random
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 
@@ -9,8 +10,8 @@ pd.set_option("display.max_columns", None)
 
 height = 250
 width = 250
+MAX_IMAGE_WORKERS = 8
 
-# Global cache for loaded images
 _image_cache = {}
 _image_cache_vggface = {}
 BASE_DIR = Path(__file__).resolve().parent
@@ -32,25 +33,27 @@ def loadData(col="Average", num_img=5500):
     return data
 
 
-def retrievePixels(path):
-    # Check cache first
-    if path in _image_cache:
-        return _image_cache[path]
+def _load_cached_image(path, target_size, cache, *, cache_key=None, preprocess=None):
+    cache_key = path if cache_key is None else cache_key
+    if cache_key in cache:
+        return cache[cache_key]
 
     folder_path = DATA_DIR / "Images"
-    img = tf.keras.utils.load_img(str(folder_path / path), target_size=(height, width))
-    x = tf.keras.utils.img_to_array(img)
+    image = tf.keras.utils.load_img(str(folder_path / path), target_size=target_size)
+    pixels = tf.keras.utils.img_to_array(image)
+    if preprocess is not None:
+        pixels = preprocess(pixels)
+    cache[cache_key] = pixels
+    return pixels
 
-    # Cache the result
-    _image_cache[path] = x
-    return x
+
+def retrievePixels(path):
+    return _load_cached_image(path, (height, width), _image_cache)
 
 
 def retrievePixels_batch(paths):
-    """Load multiple images in parallel"""
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        results = list(executor.map(retrievePixels, paths))
-    return results
+    with ThreadPoolExecutor(max_workers=MAX_IMAGE_WORKERS) as executor:
+        return list(executor.map(retrievePixels, paths))
 
 
 def _preprocess_vggface(x):
@@ -59,25 +62,18 @@ def _preprocess_vggface(x):
 
 
 def retrievePixels_vggface(path):
-    # Cache key must include target size / preprocessing variant.
-    key = ("vggface_224", path)
-    if key in _image_cache_vggface:
-        return _image_cache_vggface[key]
-
-    folder_path = DATA_DIR / "Images"
-    img = tf.keras.utils.load_img(str(folder_path / path), target_size=(224, 224))
-    x = tf.keras.utils.img_to_array(img)
-    x = _preprocess_vggface(x)
-
-    _image_cache_vggface[key] = x
-    return x
+    return _load_cached_image(
+        path,
+        (224, 224),
+        _image_cache_vggface,
+        cache_key=("vggface_224", path),
+        preprocess=_preprocess_vggface,
+    )
 
 
 def retrievePixels_batch_vggface(paths):
-    """Load multiple images in parallel with tutorial-compatible preprocessing."""
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        results = list(executor.map(retrievePixels_vggface, paths))
-    return results
+    with ThreadPoolExecutor(max_workers=MAX_IMAGE_WORKERS) as executor:
+        return list(executor.map(retrievePixels_vggface, paths))
 
 
 def _encode_from_filenames(files, idx, value):
@@ -90,13 +86,75 @@ def _load_pixels_cached(series):
     return [retrievePixels(path) / 255.0 for path in arr]
 
 
+def _pair_label(score_a, score_b):
+    return int(np.sign(score_a - score_b))
+
+
+def _build_pair_frames(frame, score_col, num_comp):
+    rows = frame[["Filename", score_col]].to_dict("records")
+    pair_rows = []
+    single_rows = []
+
+    for idx_a, row_a in enumerate(rows):
+        partners = set()
+        while len(partners) < num_comp:
+            idx_b = random.randrange(len(rows))
+            if idx_b == idx_a or idx_b in partners:
+                continue
+
+            row_b = rows[idx_b]
+            label = _pair_label(row_a[score_col], row_b[score_col])
+            if label == 0:
+                continue
+
+            pair = {"A": row_a["Filename"], "B": row_b["Filename"], "Label": label}
+            pair_rows.extend([pair, {"A": pair["B"], "B": pair["A"], "Label": -label}])
+            single_rows.append(pair)
+            partners.add(idx_b)
+
+    return pd.DataFrame(pair_rows), pd.DataFrame(single_rows)
+
+
+def _protected_pair_frame(df):
+    return {
+        "race": pd.DataFrame(
+            {
+                "A": _encode_from_filenames(df["A"], 0, "C"),
+                "B": _encode_from_filenames(df["B"], 0, "C"),
+            }
+        ),
+        "sex": pd.DataFrame(
+            {
+                "A": _encode_from_filenames(df["A"], 1, "M"),
+                "B": _encode_from_filenames(df["B"], 1, "M"),
+            }
+        ),
+    }
+
+
+def _attach_pair_pixels(df):
+    df["A"] = _load_pixels_cached(df["A"])
+    df["B"] = _load_pixels_cached(df["B"])
+    return df
+
+
+def _score_frame(df, score_col):
+    scored = pd.DataFrame(
+        {
+            "indexA": np.arange(len(df)),
+            "A": df["Filename"].values,
+            "Score": df[score_col].values,
+        }
+    )
+    scored["A"] = scored["A"].apply(retrievePixels)
+    return scored
+
+
 def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     global height, width
     height = h
     width = w
     data = loadData(col=col, num_img=num_img)
-    # threshold = data["Average"].describe()["std"]
-    # threshold = round(threshold.item(), 3)
 
     train = data.sample(frac=0.8)
     test = data.drop(train.index)
@@ -106,145 +164,26 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
     protected_ts_sex = _encode_from_filenames(test["Filename"], 1, "M")
     protected_ts_race = _encode_from_filenames(test["Filename"], 0, "C")
 
-    res_tr = []
-    res_ts = []
-
-    res_tr_single = []
-    res_ts_single = []
     print("\nGenerating training data...")
+    data_tr, data_tr_single = _build_pair_frames(train, col, num_comp)
+    data_tr = _attach_pair_pixels(data_tr)
+    data_tr_single = _attach_pair_pixels(data_tr_single)
 
-    for indexA, rowA in train.iterrows():
-        comp = []
-        while len(comp) < num_comp:
-            indexB = random.randint(0, len(train) - 1)
-            rowB = train.iloc[indexB]
-            if (indexA == indexB) or (indexB in comp):
-                continue
-            ratingA = rowA[col]
-            ratingB = rowB[col]
-            label = 0
-            if ratingA > ratingB:
-                label = 1
-            elif ratingA < ratingB:
-                label = -1
-            if label != 0:
-                res_tr.append(
-                    {"A": rowA["Filename"], "B": rowB["Filename"], "Label": label}
-                )
-
-                res_tr_single.append(
-                    {"A": rowA["Filename"], "B": rowB["Filename"], "Label": label}
-                )
-
-                res_tr.append(
-                    {"A": rowB["Filename"], "B": rowA["Filename"], "Label": -label}
-                )
-                comp.append(indexB)
-    data_tr = pd.DataFrame(res_tr)
-    data_tr_single = pd.DataFrame(res_tr_single)
-
-    data_tr["A"] = _load_pixels_cached(data_tr["A"])
-    data_tr["B"] = _load_pixels_cached(data_tr["B"])
-
-    data_tr_single["A"] = _load_pixels_cached(data_tr_single["A"])
-    data_tr_single["B"] = _load_pixels_cached(data_tr_single["B"])
-    # print("Saving training data...")
-    # data_tr = data_tr.sample(frac=1)
-    # data_tr.to_csv("../../Data/ImageExp/image_train.csv", index=False)
     print("Generating testing data...")
-    for indexA, rowA in test.iterrows():
-        comp = []
-        # for indexB, rowB in test.iterrows():
-        #     if (indexA == indexB) or (protected_ts[indexA] == protected_ts[indexB]):
-        #         continue
-        while len(comp) < num_comp:
-            indexB = random.randint(0, len(test) - 1)
-            rowB = test.iloc[indexB]
-            if (indexA == indexB) or (indexB in comp):
-                continue
-            ratingA = rowA[col]
-            ratingB = rowB[col]
-            label = 0
-            if ratingA > ratingB:
-                label = 1
-            elif ratingA < ratingB:
-                label = -1
-            if label != 0:
-                res_ts.append(
-                    {"A": rowA["Filename"], "B": rowB["Filename"], "Label": label}
-                )
-                res_ts_single.append(
-                    {"A": rowA["Filename"], "B": rowB["Filename"], "Label": label}
-                )
-                res_ts.append(
-                    {"A": rowB["Filename"], "B": rowA["Filename"], "Label": -label}
-                )
-                comp.append(indexB)
-    data_ts = pd.DataFrame(res_ts)
-    data_ts_single = pd.DataFrame(res_ts_single)
+    data_ts, data_ts_single = _build_pair_frames(test, col, num_comp)
+    protected_ts = _protected_pair_frame(data_ts)
+    protected_ts_single = _protected_pair_frame(data_ts_single)
+    data_ts = _attach_pair_pixels(data_ts)
+    data_ts_single = _attach_pair_pixels(data_ts_single)
 
-    protected_ts_A_sex = _encode_from_filenames(data_ts["A"], 1, "M")
-
-    protected_ts_B_sex = _encode_from_filenames(data_ts["B"], 1, "M")
-
-    protected_ts_A_race = _encode_from_filenames(data_ts["A"], 0, "C")
-
-    protected_ts_B_race = _encode_from_filenames(data_ts["B"], 0, "C")
-
-    protected_ts_AB_race = pd.DataFrame(
-        {"A": protected_ts_A_race, "B": protected_ts_B_race}
-    )
-
-    protected_ts_AB_sex = pd.DataFrame(
-        {"A": protected_ts_A_sex, "B": protected_ts_B_sex}
-    )
-
-    protected_ts_A_sex_single = _encode_from_filenames(data_ts_single["A"], 1, "M")
-
-    protected_ts_B_sex_single = _encode_from_filenames(data_ts_single["B"], 1, "M")
-
-    protected_ts_A_race_single = _encode_from_filenames(data_ts_single["A"], 0, "C")
-
-    protected_ts_B_race_single = _encode_from_filenames(data_ts_single["B"], 0, "C")
-
-    protected_ts_AB_race_single = pd.DataFrame(
-        {"A": protected_ts_A_race_single, "B": protected_ts_B_race_single}
-    )
-
-    protected_ts_AB_sex_single = pd.DataFrame(
-        {"A": protected_ts_A_sex_single, "B": protected_ts_B_sex_single}
-    )
-
-    data_ts["A"] = _load_pixels_cached(data_ts["A"])
-    data_ts["B"] = _load_pixels_cached(data_ts["B"])
-
-    data_ts_single["A"] = _load_pixels_cached(data_ts_single["A"])
-    data_ts_single["B"] = _load_pixels_cached(data_ts_single["B"])
-
-    # print("Saving testing data...")
-    # data_ts = data_ts.sample(frac=1)
-    # data_ts.to_csv("../../Data/ImageExp/image_test.csv", index=False)
     print("Done.")
     print("Training data size:", len(data_tr.index))
     print("Testing data size:", len(data_ts.index))
     print("Training data size:", len(data_tr_single.index))
     print("Testing data size:", len(data_ts_single.index))
 
-    test_list = pd.DataFrame(
-        [
-            {"indexA": indexA, "A": rowA["Filename"], "Score": rowA[col]}
-            for indexA, rowA in test.iterrows()
-        ]
-    )
-    test_list["A"] = test_list["A"].apply(retrievePixels)
-
-    data_list = pd.DataFrame(
-        [
-            {"indexA": indexA, "A": rowA["Filename"], "Score": rowA[col]}
-            for indexA, rowA in data.iterrows()
-        ]
-    )
-    data_list["A"] = data_list["A"].apply(retrievePixels)
+    test_list = _score_frame(test, col)
+    data_list = _score_frame(data, col)
 
     return (
         data_tr,
@@ -261,8 +200,8 @@ def processData(h=250, w=250, col="Average", num_comp=1, num_img=5500):
         test,
         protected_ts_race,
         protected_ts_sex,
-        protected_ts_AB_race,
-        protected_ts_AB_sex,
-        protected_ts_AB_race_single,
-        protected_ts_AB_sex_single,
+        protected_ts["race"],
+        protected_ts["sex"],
+        protected_ts_single["race"],
+        protected_ts_single["sex"],
     )

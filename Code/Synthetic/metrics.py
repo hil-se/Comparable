@@ -10,9 +10,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 class Metrics:
     def __init__(self, y, y_pred):
-        # y and y_pred are 1-d arrays of true values and predicted values
-        self.y = np.array(y)
-        self.y_pred = np.array(y_pred)
+        self.y = np.asarray(y)
+        self.y_pred = np.asarray(y_pred)
 
     def mse(self):
         return sklearn.metrics.mean_squared_error(self.y, self.y_pred)
@@ -48,110 +47,107 @@ class Metrics:
         return spearmanr(self.y, self.y_pred)[1]
 
     def confusion(self, y, y_pred):
-        tp = 0
-        fp = 0
-        tn = 0
-        fn = 0
-        for i in range(len(y)):
-            if y[i] > 0:
-                if y_pred[i] > 0:
-                    tp += 1
-                else:
-                    fn += 1
-            else:
-                if y_pred[i] > 0:
-                    fp += 1
-                else:
-                    tn += 1
+        y = np.asarray(y) > 0
+        y_pred = np.asarray(y_pred) > 0
+        tp = np.sum(y & y_pred)
+        fp = np.sum(~y & y_pred)
+        tn = np.sum(~y & ~y_pred)
+        fn = np.sum(y & ~y_pred)
         return tp, fp, tn, fn
 
     @staticmethod
     def _safe_div(num, den):
         return float(num) / den if den != 0 else 0.0
 
-    def EOD(self, s):
-        # True positive rate (TPR)
-        y0 = self.y[s == 0]
-        y0_pred = self.y_pred[s == 0]
-        y1 = self.y[s == 1]
-        y1_pred = self.y_pred[s == 1]
+    def _group_confusion(self, s, value):
+        mask = np.asarray(s) == value
+        return self.confusion(self.y[mask], self.y_pred[mask])
 
-        tp, fp, tn, fn = self.confusion(y0, y0_pred)
+    def _ordered_pair_error_diff(self, s):
+        s = np.asarray(s)
+        total = 0.0
+        count = 0
+        for i in range(len(s)):
+            for j in range(len(s)):
+                if s[i] > s[j]:
+                    total += (self.y_pred[i] - self.y_pred[j]) - (
+                        self.y[i] - self.y[j]
+                    )
+                    count += 1
+        return total, count
+
+    def _linear_predictions(self, s):
+        joint = pd.DataFrame({"y": self.y, "y_pred": self.y_pred})
+        margin = self.y.reshape(-1, 1)
+        pred_joint = LinearRegression().fit(joint, s).predict(joint)
+        pred_margin = LinearRegression().fit(margin, s).predict(margin)
+        return pred_joint, pred_margin
+
+    @staticmethod
+    def _comparative_counts(y, y_pred, groups):
+        groups = np.asarray(groups, dtype=int)
+        y_pos = np.asarray(y) == 1
+        pred_pos = np.asarray(y_pred) == 1
+        return {
+            "tp": np.bincount(groups, weights=(y_pos & pred_pos), minlength=4),
+            "fn": np.bincount(groups, weights=(y_pos & ~pred_pos), minlength=4),
+            "fp": np.bincount(groups, weights=(~y_pos & pred_pos), minlength=4),
+            "tn": np.bincount(groups, weights=(~y_pos & ~pred_pos), minlength=4),
+        }
+
+    @staticmethod
+    def _mi_term(count, left_total, right_total, global_total, normalizer):
+        if not count or not left_total or not right_total or not global_total:
+            return 0.0
+        return np.log((count / left_total) / (right_total / global_total)) * count / normalizer
+
+    def EOD(self, s):
+        tp, fp, tn, fn = self._group_confusion(s, 0)
         op0 = self._safe_div(tp, tp + fn)
-        tp, fp, tn, fn = self.confusion(y1, y1_pred)
+        tp, fp, tn, fn = self._group_confusion(s, 1)
         op1 = self._safe_div(tp, tp + fn)
         return op1 - op0
 
     def AOD(self, s):
-        # equal TPR and equal FPR
-        y0 = self.y[s == 0]
-        y0_pred = self.y_pred[s == 0]
-        y1 = self.y[s == 1]
-        y1_pred = self.y_pred[s == 1]
-
-        tp, fp, tn, fn = self.confusion(y0, y0_pred)
+        tp, fp, tn, fn = self._group_confusion(s, 0)
         od0 = self._safe_div(tp, tp + fn) + self._safe_div(fp, fp + tn)
-        tp, fp, tn, fn = self.confusion(y1, y1_pred)
+        tp, fp, tn, fn = self._group_confusion(s, 1)
         od1 = self._safe_div(tp, tp + fn) + self._safe_div(fp, fp + tn)
         return (od1 - od0) / 2
 
     def RBD(self, s):
-        # s is an array of numerical values of a sensitive attribute
         if len(np.unique(s)) == 2:
-            error = np.array(self.y_pred) - np.array(self.y)
-            bias = {}
-            bias[1] = error[np.where(np.array(s) == 1)[0]]
-            bias[0] = error[np.where(np.array(s) == 0)[0]]
-            bias_diff = np.mean(bias[1]) - np.mean(bias[0])
+            errors = self.y_pred - self.y
+            s = np.asarray(s)
+            bias_diff = np.mean(errors[s == 1]) - np.mean(errors[s == 0])
         else:
-            bias_diff = 0.0
-            n = 0
-            for i in range(len(self.y)):
-                for j in range(len(self.y)):
-                    if np.array(s)[i] - np.array(s)[j] > 0:
-                        diff_pred = self.y_pred[i] - self.y_pred[j]
-                        diff_true = self.y[i] - self.y[j]
-                        n += 1
-                        bias_diff += diff_pred - diff_true
-            bias_diff = bias_diff / n
+            total, count = self._ordered_pair_error_diff(s)
+            bias_diff = self._safe_div(total, count)
         sigma = np.std(self.y_pred - self.y, ddof=1)
-        if sigma:
-            bias_diff = bias_diff / sigma
-        else:
-            bias_diff = 0.0
-        return bias_diff
+        return bias_diff / sigma if sigma else 0.0
 
     def RBT(self, s):
-        # s is an array of numerical values of a sensitive attribute
         if len(np.unique(s)) == 2:
-            error = np.array(self.y_pred) - np.array(self.y)
-            bias = {}
-            bias[1] = error[np.where(np.array(s) == 1)[0]]
-            bias[0] = error[np.where(np.array(s) == 0)[0]]
-            bias_diff = np.mean(bias[1]) - np.mean(bias[0])
-            var1 = np.var(bias[1], ddof=1)
-            var0 = np.var(bias[0], ddof=1)
-            var = var1 / len(bias[1]) + var0 / len(bias[0])
+            errors = self.y_pred - self.y
+            s = np.asarray(s)
+            group1 = errors[s == 1]
+            group0 = errors[s == 0]
+            bias_diff = np.mean(group1) - np.mean(group0)
+            var1 = np.var(group1, ddof=1)
+            var0 = np.var(group0, ddof=1)
+            var = var1 / len(group1) + var0 / len(group0)
             if var > 0:
                 bias_diff = bias_diff / np.sqrt(var)
                 dof = var**2 / (
-                    (var1 / len(bias[1])) ** 2 / (len(bias[1]) - 1)
-                    + (var0 / len(bias[0])) ** 2 / (len(bias[0]) - 1)
+                    (var1 / len(group1)) ** 2 / (len(group1) - 1)
+                    + (var0 / len(group0)) ** 2 / (len(group0) - 1)
                 )
             else:
                 bias_diff = 0.0
                 dof = 1
         else:
-            bias_diff = 0.0
-            n = 0
-            for i in range(len(self.y)):
-                for j in range(len(self.y)):
-                    if np.array(s)[i] - np.array(s)[j] > 0:
-                        diff_pred = self.y_pred[i] - self.y_pred[j]
-                        diff_true = self.y[i] - self.y[j]
-                        n += 1
-                        bias_diff += diff_pred - diff_true
-            bias_diff = bias_diff / n
+            total, count = self._ordered_pair_error_diff(s)
+            bias_diff = self._safe_div(total, count)
             sigma = np.std(self.y_pred - self.y, ddof=1)
             if sigma:
                 bias_diff = bias_diff * np.sqrt(len(s)) / sigma
@@ -226,98 +222,26 @@ class Metrics:
         return MI / len(s)
 
     def MI_con(self, s):
-        joint = pd.DataFrame(
-            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
-        )
-        margin = self.y.reshape(-1, 1)
-
-        model_joint = LinearRegression().fit(joint, s)
-        model_margin = LinearRegression().fit(margin, s)
-
-        pred_joint = model_joint.predict(joint)
-        pred_margin = model_margin.predict(margin)
-
-        # plt.scatter(joint['y_pred'], s)
-        # plt.xlabel('y_pred')
-        # plt.ylabel('s')
-        # plt.show()
-
-        # plt.scatter(joint['y'], s)
-        # plt.xlabel('y')
-        # plt.ylabel('s')
-        # plt.show()
-
-        # plt.scatter(margin, s)
-        # plt.plot(margin, pred_margin, color='red')
-        # plt.xlabel('y')
-        # plt.ylabel('s')
-        # plt.show()
-
-        # score = model_joint.score(joint, s)
-
-        # resid = pred_joint - s
-        # mu, std = norm.fit(resid)
-        # plt.scatter(pred_joint, resid)
-        # plt.xlabel('pred_joint')
-        # plt.ylabel('Residual Error of Regression')
-        # plt.show()
-
-        # name = ['Jarque-Bera test', 'Chi-squared(2) p-value', 'Skewness', 'Kurtosis']
-        # test = sms.jarque_bera(resid)
-        # print(lzip(name, test))
-
-        # plt.hist(resid, bins=50)
-        # plt.show()
-
-        # fig = plt.figure()
-        # ax = fig.add_subplot(projection='3d')
-        # ax.scatter3D(joint['y'], joint['y_pred'], s, color="green")
-        # ax.scatter3D(joint['y'], joint['y_pred'], pred_joint, color="red")
-        # ax.set_xlabel('y')
-        # ax.set_ylabel('y_pred')
-        # ax.set_zlabel('s')
-        # plt.show()
-
-        # N = len(joint)
-        # p = len(joint.columns) + 1  # plus one because LinearRegression adds an intercept term
-        #
-        # X_with_intercept = np.empty(shape=(N, p), dtype=float)
-        # X_with_intercept[:, 0] = 1
-        # X_with_intercept[:, 1:p] = joint.values
-        #
-        # keys = ['Lagrange Multiplier statistic:', 'LM test\'s p-value:', 'F-statistic:', 'F-test\'s p-value:']
-        # Results = het_white(resid, X_with_intercept)
-        # print(lzip(keys, Results))
+        pred_joint, pred_margin = self._linear_predictions(s)
+        eps = np.finfo(float).eps
         rse_joint = np.std(pred_joint - s)
         rse_margin = np.std(pred_margin - s)
+        rse_joint = max(rse_joint, eps)
+        rse_margin = max(rse_margin, eps)
 
         pdf_joint = norm.pdf(s, pred_joint, rse_joint)
         pdf_margin = norm.pdf(s, pred_margin, rse_margin)
-
-        Info = 0
-        Entropy = 0
-
-        for i in range(len(s)):
-            Info = Info + math.log(pdf_joint[i] / pdf_margin[i])
-            Entropy = Entropy + math.log(pdf_margin[i])
-
-        MI = Info / (-Entropy)
-        return MI
+        info = np.log(pdf_joint / pdf_margin).sum()
+        entropy = np.log(pdf_margin).sum()
+        return info / (-entropy)
 
     def MI_con_scaled(self, s):
-        joint = pd.DataFrame(
-            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
-        )
-        margin = self.y.reshape(-1, 1)
-
-        model_joint = LinearRegression().fit(joint, s)
-        model_margin = LinearRegression().fit(margin, s)
-
-        pred_joint = model_joint.predict(joint)
-        pred_margin = model_margin.predict(margin)
-
+        pred_joint, pred_margin = self._linear_predictions(s)
+        eps = np.finfo(float).eps
         rse_joint = np.std(pred_joint - s)
         rse_margin = np.std(pred_margin - s)
+        rse_joint = max(rse_joint, eps)
+        rse_margin = max(rse_margin, eps)
 
         pdf_joint = norm.pdf(s, pred_joint, rse_joint)
         pdf_margin = norm.pdf(s, pred_margin, rse_margin)
@@ -330,129 +254,49 @@ class Metrics:
 
         scaled_joint_pdf, scaled_pdf_margin = np.array_split(scaled_concat_pdf, 2)
 
-        Info = 0
-        Entropy = 0
-
-        for i in range(len(s)):
-            Info = Info + math.log(scaled_joint_pdf[i] / scaled_pdf_margin[i])
-            Entropy = Entropy + math.log(scaled_pdf_margin[i])
-
-        MI = Info / (-Entropy)
-        return MI
+        info = np.log(scaled_joint_pdf / scaled_pdf_margin).sum()
+        entropy = np.log(scaled_pdf_margin).sum()
+        return info / (-entropy)
 
     def MI_con_info(self, s):
-        joint = pd.DataFrame(
-            {"y": self.y, "y_pred": self.y_pred}, columns=["y", "y_pred"]
-        )
-        margin = self.y.reshape(-1, 1)
-
-        model_joint = LinearRegression().fit(joint, s)
-        model_margin = LinearRegression().fit(margin, s)
-
-        pred_joint = model_joint.predict(joint)
-        pred_margin = model_margin.predict(margin)
-
+        pred_joint, pred_margin = self._linear_predictions(s)
         eps = np.finfo(float).eps
         rse_joint = max(np.std(pred_joint - s), eps)
         rse_margin = max(np.std(pred_margin - s), eps)
 
         pdf_joint = np.clip(norm.pdf(s, pred_joint, rse_joint), eps, None)
         pdf_margin = np.clip(norm.pdf(s, pred_margin, rse_margin), eps, None)
-
-        Info = 0
-
-        for i in range(len(s)):
-            Info = Info + math.log(pdf_joint[i] / pdf_margin[i])
-
-        MI = Info / len(s)
-        return MI
+        return np.log(pdf_joint / pdf_margin).sum() / len(s)
 
     def AOD_comp(self, s):
-        t = n = tp = fp = tn = fn = 0
-
-        for i, row in s.iterrows():
-            if row["A"] > row["B"]:
-                if self.y[i] == 1:
-                    t += 1
-                    if self.y_pred[i] == 1:
-                        tp += 1
-                    if self.y_pred[i] == -1:
-                        fn += 1
-                elif self.y[i] == -1:
-                    n += 1
-                    if self.y_pred[i] == 1:
-                        fp += 1
-                    if self.y_pred[i] == -1:
-                        tn += 1
-
-            elif row["A"] < row["B"]:
-                if self.y[i] == -1:
-                    t += 1
-                    if self.y_pred[i] == -1:
-                        tp += 1
-                    if self.y_pred[i] == 1:
-                        fn += 1
-                elif self.y[i] == 1:
-                    n += 1
-                    if self.y_pred[i] == -1:
-                        fp += 1
-                    if self.y_pred[i] == 1:
-                        tn += 1
-
-        tpr = tp / t
-        tnr = tn / n
-        fpr = fp / n
-        fnr = fn / t
-        aod = (tpr + fpr - tnr - fnr) / 2
-
-        return aod
+        direction = np.sign(s["A"].to_numpy() - s["B"].to_numpy())
+        mask = direction != 0
+        y = self.y[mask] * direction[mask]
+        y_pred = self.y_pred[mask] * direction[mask]
+        tp, fp, tn, fn = self.confusion(y, y_pred)
+        t = tp + fn
+        n = fp + tn
+        tpr = self._safe_div(tp, t)
+        tnr = self._safe_div(tn, n)
+        fpr = self._safe_div(fp, n)
+        fnr = self._safe_div(fn, t)
+        return (tpr + fpr - tnr - fnr) / 2
 
     def Within_comp(self, s):
-        t1 = n1 = tp1 = fp1 = tn1 = fn1 = 0
-        t0 = n0 = tp0 = fp0 = tn0 = fn0 = 0
-
-        for i, row in s.iterrows():
-            if row["A"] == row["B"] == 1:
-                if self.y[i] == 1:
-                    t1 += 1
-                    if self.y_pred[i] == 1:
-                        tp1 += 1
-                    if self.y_pred[i] == -1:
-                        fn1 += 1
-                elif self.y[i] == -1:
-                    n1 += 1
-                    if self.y_pred[i] == 1:
-                        fp1 += 1
-                    if self.y_pred[i] == -1:
-                        tn1 += 1
-
-            elif row["A"] == row["B"] == 0:
-                if self.y[i] == 1:
-                    t0 += 1
-                    if self.y_pred[i] == 1:
-                        tp0 += 1
-                    if self.y_pred[i] == -1:
-                        fn0 += 1
-                elif self.y[i] == -1:
-                    n0 += 1
-                    if self.y_pred[i] == 1:
-                        fp0 += 1
-                    if self.y_pred[i] == -1:
-                        tn0 += 1
-
-        tpr1 = (tp1 + tn1) / (t1 + n1)
-        fpr1 = (fp1 + fn1) / (t1 + n1)
-        tpr0 = (tp0 + tn0) / (t0 + n0)
-        fpr0 = (fp0 + fn0) / (t0 + n0)
-        within = (tpr1 - fpr1 - tpr0 + fpr0) / 2
-
-        return within
+        same_one = (s["A"].to_numpy() == 1) & (s["B"].to_numpy() == 1)
+        same_zero = (s["A"].to_numpy() == 0) & (s["B"].to_numpy() == 0)
+        acc_one = np.mean(self.y[same_one] == self.y_pred[same_one]) if np.any(same_one) else 0.0
+        acc_zero = (
+            np.mean(self.y[same_zero] == self.y_pred[same_zero])
+            if np.any(same_zero)
+            else 0.0
+        )
+        return acc_one - acc_zero
 
     def Sep_comp(self, s):
         return np.sqrt(self.Within_comp(s) ** 2 + self.AOD_comp(s) ** 2)
 
     def gAOD(self, s):
-        # s is an array of numerical values of a sensitive attribute
         t = n = tp = fp = tn = fn = 0
         for i in range(len(self.y)):
             for j in range(len(self.y)):
@@ -470,247 +314,68 @@ class Metrics:
                         elif self.y_pred[i] < self.y_pred[j]:
                             tn += 1
 
-        tpr = tp / t
-        tnr = tn / n
-        fpr = fp / n
-        fnr = fn / t
-        aod = (tpr + fpr - tnr - fnr) / 2
-        return aod
+        tpr = self._safe_div(tp, t)
+        tnr = self._safe_div(tn, n)
+        fpr = self._safe_div(fp, n)
+        fnr = self._safe_div(fn, t)
+        return (tpr + fpr - tnr - fnr) / 2
 
     def gWithin(self, s):
-        # s is an array of numerical values of a sensitive attribute
-        t1 = n1 = tp1 = fp1 = tn1 = fn1 = 0
-        t0 = n0 = tp0 = fp0 = tn0 = fn0 = 0
+        correct1 = total1 = correct0 = total0 = 0
         for i in range(len(self.y)):
             for j in range(len(self.y)):
                 if s[i] == s[j] == 1:
-                    if self.y[i] - self.y[j] > 0:
-                        t1 += 1
-                        if self.y_pred[i] > self.y_pred[j]:
-                            tp1 += 1
-                        if self.y_pred[i] < self.y_pred[j]:
-                            fn1 += 1
-                    elif self.y[j] - self.y[i] > 0:
-                        n1 += 1
-                        if self.y_pred[i] > self.y_pred[j]:
-                            fp1 += 1
-                        elif self.y_pred[i] < self.y_pred[j]:
-                            tn1 += 1
+                    true_sign = np.sign(self.y[i] - self.y[j])
+                    pred_sign = np.sign(self.y_pred[i] - self.y_pred[j])
+                    if true_sign != 0:
+                        total1 += 1
+                        correct1 += pred_sign == true_sign
                 elif s[i] == s[j] == 0:
-                    if self.y[i] - self.y[j] > 0:
-                        t0 += 1
-                        if self.y_pred[i] > self.y_pred[j]:
-                            tp0 += 1
-                        if self.y_pred[i] < self.y_pred[j]:
-                            fn0 += 1
-                    elif self.y[j] - self.y[i] > 0:
-                        n0 += 1
-                        if self.y_pred[i] > self.y_pred[j]:
-                            fp0 += 1
-                        elif self.y_pred[i] < self.y_pred[j]:
-                            tn0 += 1
+                    true_sign = np.sign(self.y[i] - self.y[j])
+                    pred_sign = np.sign(self.y_pred[i] - self.y_pred[j])
+                    if true_sign != 0:
+                        total0 += 1
+                        correct0 += pred_sign == true_sign
 
-        tpr1 = (tp1 + tn1) / (t1 + n1)
-        fpr1 = (fp1 + fn1) / (t1 + n1)
-        tpr0 = (tp0 + tn0) / (t0 + n0)
-        fpr0 = (fp0 + fn0) / (t0 + n0)
-        within = (tpr1 - fpr1 - tpr0 + fpr0) / 2
-
-        return within
+        return self._safe_div(correct1, total1) - self._safe_div(correct0, total0)
 
     def gSep(self, s):
         return np.sqrt(self.gWithin(s) ** 2 + self.gAOD(s) ** 2)
 
     def MI_comp(self, s):
-        t = n = tp = fp = tn = fn = 0
-        t11 = n11 = tp11 = fp11 = tn11 = fn11 = 0
-        t10 = n10 = tp10 = fp10 = tn10 = fn10 = 0
-        t01 = n01 = tp01 = fp01 = tn01 = fn01 = 0
-        t00 = n00 = tp00 = fp00 = tn00 = fn00 = 0
+        groups = (s["A"].to_numpy(dtype=int) << 1) + s["B"].to_numpy(dtype=int)
+        counts = self._comparative_counts(self.y, self.y_pred, groups)
+        t = counts["tp"] + counts["fn"]
+        n = counts["fp"] + counts["tn"]
+        tp = counts["tp"].sum()
+        fn = counts["fn"].sum()
+        fp = counts["fp"].sum()
+        tn = counts["tn"].sum()
+        normalizer = len(s)
 
-        for i, row in s.iterrows():
-            if self.y[i] == 1:
-                t += 1
-                if row["A"] == row["B"] == 1:
-                    t11 += 1
-                if row["A"] == row["B"] == 0:
-                    t00 += 1
-                if row["A"] == 1 and row["B"] == 0:
-                    t10 += 1
-                if row["A"] == 0 and row["B"] == 1:
-                    t01 += 1
-                if self.y_pred[i] == 1:
-                    tp += 1
-                    if row["A"] == row["B"] == 1:
-                        tp11 += 1
-                    if row["A"] == row["B"] == 0:
-                        tp00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        tp10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        tp01 += 1
-                if self.y_pred[i] == -1:
-                    fn += 1
-                    if row["A"] == row["B"] == 1:
-                        fn11 += 1
-                    if row["A"] == row["B"] == 0:
-                        fn00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        fn10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        fn01 += 1
-            elif self.y[i] == -1:
-                n += 1
-                if row["A"] == row["B"] == 1:
-                    n11 += 1
-                if row["A"] == row["B"] == 0:
-                    n00 += 1
-                if row["A"] == 1 and row["B"] == 0:
-                    n10 += 1
-                if row["A"] == 0 and row["B"] == 1:
-                    n01 += 1
-                if self.y_pred[i] == 1:
-                    fp += 1
-                    if row["A"] == row["B"] == 1:
-                        fp11 += 1
-                    if row["A"] == row["B"] == 0:
-                        fp00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        fp10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        fp01 += 1
-                if self.y_pred[i] == -1:
-                    tn += 1
-                    if row["A"] == row["B"] == 1:
-                        tn11 += 1
-                    if row["A"] == row["B"] == 0:
-                        tn00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        tn10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        tn01 += 1
-        tp = tp00 + tp01 + tp10 + tp11
-        fn = fn00 + fn01 + fn10 + fn11
-        fp = fp00 + fp01 + fp10 + fp11
-        tn = tn00 + tn01 + tn10 + tn11
-
-        mitp00 = np.log(tp00 / tp / (t00 / t)) * tp00 / len(s)
-        mifn00 = np.log(fn00 / fn / (t00 / t)) * fn00 / len(s)
-        mifp00 = np.log(fp00 / fp / (n00 / n)) * fp00 / len(s)
-        mitn00 = np.log(tn00 / tn / (n00 / n)) * tn00 / len(s)
-        mi00 = mitp00 + mifn00 + mifp00 + mitn00
-
-        mitp01 = np.log(tp01 / tp / (t01 / t)) * tp01 / len(s)
-        mifn01 = np.log(fn01 / fn / (t01 / t)) * fn01 / len(s)
-        mifp01 = np.log(fp01 / fp / (n01 / n)) * fp01 / len(s)
-        mitn01 = np.log(tn01 / tn / (n01 / n)) * tn01 / len(s)
-        mi01 = mitp01 + mifn01 + mifp01 + mitn01
-
-        mitp10 = np.log(tp10 / tp / (t10 / t)) * tp10 / len(s)
-        mifn10 = np.log(fn10 / fn / (t10 / t)) * fn10 / len(s)
-        mifp10 = np.log(fp10 / fp / (n10 / n)) * fp10 / len(s)
-        mitn10 = np.log(tn10 / tn / (n10 / n)) * tn10 / len(s)
-        mi10 = mitp10 + mifn10 + mifp10 + mitn10
-
-        mitp11 = np.log(tp11 / tp / (t11 / t)) * tp11 / len(s)
-        mifn11 = np.log(fn11 / fn / (t11 / t)) * fn11 / len(s)
-        mifp11 = np.log(fp11 / fp / (n11 / n)) * fp11 / len(s)
-        mitn11 = np.log(tn11 / tn / (n11 / n)) * tn11 / len(s)
-        mi11 = mitp11 + mifn11 + mifp11 + mitn11
-        mi = mi00 + mi01 + mi10 + mi11
-        return mi
+        return sum(
+            self._mi_term(counts["tp"][group], tp, t[group], t.sum(), normalizer)
+            + self._mi_term(counts["fn"][group], fn, t[group], t.sum(), normalizer)
+            + self._mi_term(counts["fp"][group], fp, n[group], n.sum(), normalizer)
+            + self._mi_term(counts["tn"][group], tn, n[group], n.sum(), normalizer)
+            for group in range(4)
+        )
 
     def MI_comp2(self, s):
-        t = n = tp = fp = tn = fn = 0
-        t11 = n11 = tp11 = fp11 = tn11 = fn11 = 0
-        t10 = n10 = tp10 = fp10 = tn10 = fn10 = 0
-        t01 = n01 = tp01 = fp01 = tn01 = fn01 = 0
-        t00 = n00 = tp00 = fp00 = tn00 = fn00 = 0
+        groups = (s["A"].to_numpy(dtype=int) << 1) + s["B"].to_numpy(dtype=int)
+        counts = self._comparative_counts(self.y, self.y_pred, groups)
+        t = counts["tp"] + counts["fn"]
+        n = counts["fp"] + counts["tn"]
+        tp = counts["tp"].sum()
+        fn = counts["fn"].sum()
+        fp = counts["fp"].sum()
+        tn = counts["tn"].sum()
+        normalizer = len(s)
 
-        for i, row in s.iterrows():
-            if self.y[i] == 1:
-                t += 1
-                if row["A"] == row["B"] == 1:
-                    t11 += 1
-                if row["A"] == row["B"] == 0:
-                    t00 += 1
-                if row["A"] == 1 and row["B"] == 0:
-                    t10 += 1
-                if row["A"] == 0 and row["B"] == 1:
-                    t01 += 1
-                if self.y_pred[i] == 1:
-                    tp += 1
-                    if row["A"] == row["B"] == 1:
-                        tp11 += 1
-                    if row["A"] == row["B"] == 0:
-                        tp00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        tp10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        tp01 += 1
-                if self.y_pred[i] == -1:
-                    fn += 1
-                    if row["A"] == row["B"] == 1:
-                        fn11 += 1
-                    if row["A"] == row["B"] == 0:
-                        fn00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        fn10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        fn01 += 1
-            elif self.y[i] == -1:
-                n += 1
-                if row["A"] == row["B"] == 1:
-                    n11 += 1
-                if row["A"] == row["B"] == 0:
-                    n00 += 1
-                if row["A"] == 1 and row["B"] == 0:
-                    n10 += 1
-                if row["A"] == 0 and row["B"] == 1:
-                    n01 += 1
-                if self.y_pred[i] == 1:
-                    fp += 1
-                    if row["A"] == row["B"] == 1:
-                        fp11 += 1
-                    if row["A"] == row["B"] == 0:
-                        fp00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        fp10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        fp01 += 1
-                if self.y_pred[i] == -1:
-                    tn += 1
-                    if row["A"] == row["B"] == 1:
-                        tn11 += 1
-                    if row["A"] == row["B"] == 0:
-                        tn00 += 1
-                    if row["A"] == 1 and row["B"] == 0:
-                        tn10 += 1
-                    if row["A"] == 0 and row["B"] == 1:
-                        tn01 += 1
-
-        mitp00 = np.log(tp00 / t00 / (tp / t)) * tp00 / len(s)
-        mifn00 = np.log(fn00 / t00 / (fn / t)) * fn00 / len(s)
-        mifp00 = np.log(fp00 / n00 / (fp / n)) * fp00 / len(s)
-        mitn00 = np.log(tn00 / n00 / (tn / n)) * tn00 / len(s)
-        mi00 = mitp00 + mifn00 + mifp00 + mitn00
-
-        mitp01 = np.log(tp01 / t01 / (tp / t)) * tp01 / len(s)
-        mifn01 = np.log(fn01 / t01 / (fn / t)) * fn01 / len(s)
-        mifp01 = np.log(fp01 / n01 / (fp / n)) * fp01 / len(s)
-        mitn01 = np.log(tn01 / n01 / (tn / n)) * tn01 / len(s)
-        mi01 = mitp01 + mifn01 + mifp01 + mitn01
-
-        mitp10 = np.log(tp10 / t10 / (tp / t)) * tp10 / len(s)
-        mifn10 = np.log(fn10 / t10 / (fn / t)) * fn10 / len(s)
-        mifp10 = np.log(fp10 / n10 / (fp / n)) * fp10 / len(s)
-        mitn10 = np.log(tn10 / n10 / (tn / n)) * tn10 / len(s)
-        mi10 = mitp10 + mifn10 + mifp10 + mitn10
-
-        mitp11 = np.log(tp11 / t11 / (tp / t)) * tp11 / len(s)
-        mifn11 = np.log(fn11 / t11 / (fn / t)) * fn11 / len(s)
-        mifp11 = np.log(fp11 / n11 / (fp / n)) * fp11 / len(s)
-        mitn11 = np.log(tn11 / n11 / (tn / n)) * tn11 / len(s)
-        mi11 = mitp11 + mifn11 + mifp11 + mitn11
-        mi = mi00 + mi01 + mi10 + mi11
-        return mi
+        return sum(
+            self._mi_term(counts["tp"][group], t[group], tp, t.sum(), normalizer)
+            + self._mi_term(counts["fn"][group], t[group], fn, t.sum(), normalizer)
+            + self._mi_term(counts["fp"][group], n[group], fp, n.sum(), normalizer)
+            + self._mi_term(counts["tn"][group], n[group], tn, n.sum(), normalizer)
+            for group in range(4)
+        )
