@@ -33,3 +33,4 @@ I0000 00:00:1775082312.029924  833232 device_compiler.h:188] Compiled cluster us
 /.autofs/tools/spack/var/spack/environments/default-ml-x86_64-25052701/.spack-env/view/lib/python3.11/site-packages/keras/src/layers/reshaping/zero_padding2d.py:72: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
   super().__init__(**kwargs)
 2026-04-02 12:07:43.465278: E tensorflow/core/grappler/optimizers/meta_optimizer.cc:961] layout failed: INVALID_ARGUMENT: Size of values 0 does not match size of permutation 4 @ fanin shape inStatefulPartitionedCall/dual_encoder_all_8_1/functional_519_1/dropout_24_1/stateless_dropout/SelectV2-2-TransposeNHWCToNCHW-LayoutOptimizer
+[2026-04-02T14:27:33.512] error: *** JOB 21152426 ON skl-a-41 CANCELLED AT 2026-04-02T14:27:33 DUE to SIGNAL Terminated ***

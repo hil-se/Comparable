@@ -1484,3 +1484,5 @@ if __name__ == "__main__":
     # TODO: Try sigmoid with single encoder
     # TODO: Try SGD with non-scut datasets as well, to see if it improves fairness metrics
     # TODO: Run on local and see acuuracy change
+
+    # TODO: Try linear single encoder with regression dataset, and sigmoid single encoder with classification datasets
