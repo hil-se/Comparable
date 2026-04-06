@@ -798,6 +798,7 @@ def _train_shared_models(
     df_name,
     epochs,
     train_fairreg,
+    tabular_encoder_type,
 ):
     base_kwargs = {
         "train": train_df,
@@ -806,6 +807,7 @@ def _train_shared_models(
         "shared": True,
         "epochs": epochs,
         "df_name": df_name,
+        "tabular_encoder_type": tabular_encoder_type,
     }
     model_specs = {
         "unweight": ("unweighted", {}),
@@ -836,6 +838,7 @@ def _train_optional_baselines(
     train_single_encoder,
     validation_fraction,
     epochs,
+    tabular_encoder_type,
 ):
     baselines = {}
 
@@ -884,6 +887,7 @@ def _train_optional_baselines(
             val_features=val_features,
             y_val=val_targets,
             epochs=epochs,
+            tabular_encoder_type=tabular_encoder_type,
         )
 
     return baselines
@@ -1039,13 +1043,14 @@ def _run_experiments_impl(
     num_comp_pairs_ratio=0.1,
     model_epochs=100,
     validation_fraction=0.1,
+    tabular_encoder_type="cnn",
 ):
     results = []
     output_df_name = None
     output_sa_name = (
         DATASET_DEFAULT_SA.get(dataset, "sa") if sa is None else str(sa).strip().lower()
     )
-    effective_use_all_pairs = use_all_pairs or dataset in {"german", "heart"}
+    effective_use_all_pairs = use_all_pairs or dataset == "heart"
     pair_strategy = "all" if effective_use_all_pairs else str(num_comp_train)
     output_nc = 0
 
@@ -1087,6 +1092,7 @@ def _run_experiments_impl(
             df_name=df_name,
             epochs=model_epochs,
             train_fairreg=train_fairreg,
+            tabular_encoder_type=tabular_encoder_type,
         )
         optional_baselines = _train_optional_baselines(
             run_idx=run_idx,
@@ -1097,6 +1103,7 @@ def _run_experiments_impl(
             train_single_encoder=train_single_encoder,
             validation_fraction=validation_fraction,
             epochs=model_epochs,
+            tabular_encoder_type=tabular_encoder_type,
         )
 
         if is_scut:
@@ -1356,6 +1363,7 @@ def run_experiments(
     num_comp_pairs_ratio=0.1,
     model_epochs=100,
     validation_fraction=0.1,
+    tabular_encoder_type="cnn",
     training_log_path=None,
 ):
     with _tee_training_output(training_log_path) as resolved_log_path:
@@ -1376,20 +1384,22 @@ def run_experiments(
             num_comp_pairs_ratio=num_comp_pairs_ratio,
             model_epochs=model_epochs,
             validation_fraction=validation_fraction,
+            tabular_encoder_type=tabular_encoder_type,
         )
 
 
 if __name__ == "__main__":
-    DATASET = "compas"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
-    NUM_COMP_TRAIN = 5
+    NUM_COMP_TRAIN = 30
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
     PLOT_HISTOGRAMS = False  # Set False to skip writing prediction histogram images.
     NUM_COMP_PAIRS_RATIO = 0.1
     MODEL_EPOCHS = 500
+    TABULAR_ENCODER_TYPE = "linear"  # Options for tabular datasets: "cnn", "linear"
     TRAINING_LOG_PATH = _default_training_log_path(DATASET, SA)
 
     run_experiments(
@@ -1403,6 +1413,7 @@ if __name__ == "__main__":
         plot_histograms=PLOT_HISTOGRAMS,
         num_comp_pairs_ratio=NUM_COMP_PAIRS_RATIO,
         model_epochs=MODEL_EPOCHS,
+        tabular_encoder_type=TABULAR_ENCODER_TYPE,
         training_log_path=TRAINING_LOG_PATH,
     )
 
@@ -1421,3 +1432,5 @@ if __name__ == "__main__":
     # TODO: Run on local and see acuuracy change
 
     # TODO: Try linear single encoder with regression dataset, and sigmoid single encoder with classification datasets
+
+    # TODO: Try simpler encoder architectures for tabular datasets, to see if it improves fairness metrics. Maybe start with 1-2 hidden layers and smaller hidden sizes.

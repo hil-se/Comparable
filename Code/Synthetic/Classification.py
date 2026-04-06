@@ -139,6 +139,7 @@ def learn(
     train_weights=None,
     df_name=None,
     fairness_lambda=0.0,
+    tabular_encoder_type="cnn",
 ):
     is_scut = df_name is not None and "scut" in df_name.lower()
     if is_scut:
@@ -157,6 +158,7 @@ def learn(
         encoder = SharedDualEncoder.create_encoder(
             input_size=input_size,
             df_name=df_name,
+            tabular_encoder_type=tabular_encoder_type,
         )
         dual_encoder = SharedDualEncoder.DualEncoderAll(
             encoder,
@@ -257,6 +259,7 @@ def train_single_encoder_baseline(
     epochs=100,
     batch_size=512,
     patience=10,
+    tabular_encoder_type="cnn",
 ):
     train_features = np.asarray(train_features, dtype=np.float32)
     y_train = np.asarray(y_train, dtype=np.float32)
@@ -270,6 +273,7 @@ def train_single_encoder_baseline(
         input_size=train_features.shape[1],
         df_name="tabular_baseline",
         output_activation=output_activation,
+        tabular_encoder_type=tabular_encoder_type,
     )
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
@@ -302,6 +306,7 @@ def train_model(
     val_weights=None,
     df_name=None,
     fairness_lambda=0.0,
+    tabular_encoder_type="cnn",
 ):
     train, train_weights = _shuffle_frame(train, train_weights)
     if val is not None:
@@ -317,6 +322,7 @@ def train_model(
         train_weights=train_weights,
         df_name=df_name,
         fairness_lambda=fairness_lambda,
+        tabular_encoder_type=tabular_encoder_type,
     )
 
 

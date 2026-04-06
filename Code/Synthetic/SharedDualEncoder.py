@@ -16,6 +16,7 @@ from tensorflow.keras.layers import (
 )
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
+TABULAR_ENCODER_TYPES = {"cnn", "linear"}
 
 
 def _is_scut_model(df_name):
@@ -89,9 +90,37 @@ def _build_tabular_encoder(input_size, output_activation):
     )
 
 
-def create_encoder(input_size, df_name, output_activation="linear"):
+def _build_linear_tabular_encoder(input_size, output_activation):
+    return keras.Sequential(
+        [
+            keras.layers.Input(shape=(input_size,)),
+            Dense(1, activation=output_activation),
+        ]
+    )
+
+
+def _normalize_tabular_encoder_type(encoder_type):
+    normalized = str(encoder_type).strip().lower()
+    if normalized not in TABULAR_ENCODER_TYPES:
+        valid = ", ".join(sorted(TABULAR_ENCODER_TYPES))
+        raise ValueError(
+            f"Unknown tabular encoder type '{encoder_type}'. Valid options: {valid}"
+        )
+    return normalized
+
+
+def create_encoder(
+    input_size,
+    df_name,
+    output_activation="linear",
+    tabular_encoder_type="cnn",
+):
     if _is_scut_model(df_name):
         return _build_scut_encoder(output_activation)
+
+    tabular_encoder_type = _normalize_tabular_encoder_type(tabular_encoder_type)
+    if tabular_encoder_type == "linear":
+        return _build_linear_tabular_encoder(input_size, output_activation)
     return _build_tabular_encoder(input_size, output_activation)
 
 

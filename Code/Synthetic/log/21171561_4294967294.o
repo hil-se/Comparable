@@ -1,0 +1,375 @@
+Training log file: /home/xx4455/Comparable/Code/Synthetic/Results/TrainingLogs/german_default_20260405_205441.log
+Starting experiments (dataset=german, sensitive_attribute=default).
+[Run 1/5] Training shared encoder (unweighted)...
+Epoch 1/500
+36/36 - 26s - 716ms/step - loss: 176.3972 - val_loss: 1.0752
+Epoch 2/500
+36/36 - 5s - 137ms/step - loss: 1.0283 - val_loss: 1.0018
+Epoch 3/500
+36/36 - 5s - 136ms/step - loss: 1.0019 - val_loss: 1.0005
+Epoch 4/500
+36/36 - 5s - 143ms/step - loss: 1.0002 - val_loss: 1.0000
+Epoch 5/500
+36/36 - 5s - 143ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 6/500
+36/36 - 5s - 143ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 7/500
+36/36 - 5s - 142ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 8/500
+36/36 - 5s - 142ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 9/500
+36/36 - 5s - 142ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 10/500
+36/36 - 5s - 142ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 11/500
+36/36 - 5s - 142ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 12/500
+36/36 - 5s - 142ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 13/500
+36/36 - 5s - 143ms/step - loss: 1.0000 - val_loss: 1.0000
+Epoch 14/500
+36/36 - 5s - 142ms/step - loss: 1.0000 - val_loss: 1.0000
+[Run 1/5] Training shared encoder (weighted)...
+Epoch 1/500
+36/36 - 9s - 261ms/step - loss: 70.1258 - val_loss: 29.2720
+Epoch 2/500
+36/36 - 5s - 143ms/step - loss: 20.8719 - val_loss: 2.1283
+Epoch 3/500
+36/36 - 5s - 140ms/step - loss: 15.5060 - val_loss: 2.6782
+Epoch 4/500
+36/36 - 5s - 148ms/step - loss: 9.9059 - val_loss: 5.2946
+Epoch 5/500
+36/36 - 5s - 149ms/step - loss: 5.0454 - val_loss: 7.1946
+Epoch 6/500
+36/36 - 5s - 149ms/step - loss: 6.9336 - val_loss: 14.3611
+Epoch 7/500
+36/36 - 5s - 149ms/step - loss: 13.4055 - val_loss: 22.8907
+Epoch 8/500
+36/36 - 5s - 148ms/step - loss: 16.8394 - val_loss: 21.4557
+Epoch 9/500
+36/36 - 5s - 148ms/step - loss: 8.0444 - val_loss: 8.5434
+Epoch 10/500
+36/36 - 5s - 148ms/step - loss: 18.5651 - val_loss: 25.4773
+Epoch 11/500
+36/36 - 5s - 148ms/step - loss: 16.6795 - val_loss: 23.3648
+Epoch 12/500
+36/36 - 5s - 149ms/step - loss: 14.5901 - val_loss: 10.2667
+[Run 1/5] Training single encoder baseline (sigmoid head)...
+[Run 2/5] Training shared encoder (unweighted)...
+Epoch 1/500
+36/36 - 9s - 259ms/step - loss: 28.6242 - val_loss: 2.0628
+Epoch 2/500
+36/36 - 5s - 138ms/step - loss: 8.9334 - val_loss: 10.5034
+Epoch 3/500
+36/36 - 5s - 138ms/step - loss: 5.8602 - val_loss: 2.0580
+Epoch 4/500
+36/36 - 5s - 144ms/step - loss: 3.8701 - val_loss: 3.5935
+Epoch 5/500
+36/36 - 5s - 144ms/step - loss: 6.2431 - val_loss: 7.7994
+Epoch 6/500
+36/36 - 5s - 145ms/step - loss: 6.3386 - val_loss: 8.0310
+Epoch 7/500
+36/36 - 5s - 146ms/step - loss: 6.2844 - val_loss: 6.9248
+Epoch 8/500
+36/36 - 5s - 144ms/step - loss: 6.1432 - val_loss: 7.4049
+Epoch 9/500
+36/36 - 5s - 146ms/step - loss: 6.0679 - val_loss: 7.6522
+Epoch 10/500
+36/36 - 5s - 147ms/step - loss: 6.0358 - val_loss: 6.7767
+Epoch 11/500
+36/36 - 5s - 146ms/step - loss: 5.8363 - val_loss: 7.1348
+Epoch 12/500
+36/36 - 5s - 145ms/step - loss: 5.6663 - val_loss: 7.2794
+Epoch 13/500
+36/36 - 5s - 145ms/step - loss: 5.6312 - val_loss: 6.8520
+[Run 2/5] Training shared encoder (weighted)...
+Epoch 1/500
+36/36 - 9s - 249ms/step - loss: 72.7636 - val_loss: 12.7571
+Epoch 2/500
+36/36 - 5s - 147ms/step - loss: 4.4596 - val_loss: 2.5594
+Epoch 3/500
+36/36 - 5s - 144ms/step - loss: 1.3619 - val_loss: 0.9898
+Epoch 4/500
+36/36 - 5s - 151ms/step - loss: 0.9271 - val_loss: 0.8540
+Epoch 5/500
+36/36 - 5s - 152ms/step - loss: 0.8836 - val_loss: 0.8993
+Epoch 6/500
+36/36 - 5s - 152ms/step - loss: 1.1238 - val_loss: 0.8542
+Epoch 7/500
+36/36 - 5s - 152ms/step - loss: 0.9085 - val_loss: 0.8507
+Epoch 8/500
+36/36 - 5s - 150ms/step - loss: 1.1914 - val_loss: 1.3626
+Epoch 9/500
+36/36 - 5s - 150ms/step - loss: 1.1286 - val_loss: 1.2486
+Epoch 10/500
+36/36 - 5s - 151ms/step - loss: 0.9506 - val_loss: 0.8219
+Epoch 11/500
+36/36 - 5s - 151ms/step - loss: 0.9475 - val_loss: 0.8247
+Epoch 12/500
+36/36 - 5s - 151ms/step - loss: 0.9802 - val_loss: 0.8239
+Epoch 13/500
+36/36 - 5s - 151ms/step - loss: 0.9636 - val_loss: 1.1616
+Epoch 14/500
+36/36 - 5s - 150ms/step - loss: 0.9823 - val_loss: 1.2890
+Epoch 15/500
+36/36 - 5s - 149ms/step - loss: 1.0047 - val_loss: 0.8663
+Epoch 16/500
+36/36 - 5s - 146ms/step - loss: 1.0000 - val_loss: 1.2637
+Epoch 17/500
+36/36 - 5s - 152ms/step - loss: 1.3765 - val_loss: 0.8786
+Epoch 18/500
+36/36 - 5s - 152ms/step - loss: 0.9770 - val_loss: 0.8102
+Epoch 19/500
+36/36 - 5s - 152ms/step - loss: 1.4202 - val_loss: 0.9397
+Epoch 20/500
+36/36 - 5s - 151ms/step - loss: 1.2289 - val_loss: 1.1462
+Epoch 21/500
+36/36 - 5s - 152ms/step - loss: 1.3152 - val_loss: 1.1107
+Epoch 22/500
+36/36 - 5s - 152ms/step - loss: 1.2056 - val_loss: 0.8281
+Epoch 23/500
+36/36 - 5s - 152ms/step - loss: 1.2349 - val_loss: 1.4395
+Epoch 24/500
+36/36 - 5s - 152ms/step - loss: 1.0046 - val_loss: 0.8000
+Epoch 25/500
+36/36 - 5s - 150ms/step - loss: 0.9278 - val_loss: 1.6164
+Epoch 26/500
+36/36 - 5s - 152ms/step - loss: 1.3403 - val_loss: 1.6823
+Epoch 27/500
+36/36 - 5s - 152ms/step - loss: 1.3470 - val_loss: 1.2322
+Epoch 28/500
+36/36 - 5s - 152ms/step - loss: 1.1147 - val_loss: 1.0067
+Epoch 29/500
+36/36 - 5s - 152ms/step - loss: 1.1080 - val_loss: 0.7919
+Epoch 30/500
+36/36 - 5s - 152ms/step - loss: 0.9226 - val_loss: 0.8323
+Epoch 31/500
+36/36 - 5s - 152ms/step - loss: 1.2146 - val_loss: 1.3146
+Epoch 32/500
+36/36 - 5s - 152ms/step - loss: 1.0667 - val_loss: 0.8477
+Epoch 33/500
+36/36 - 5s - 152ms/step - loss: 1.1717 - val_loss: 1.2677
+Epoch 34/500
+36/36 - 5s - 152ms/step - loss: 1.2333 - val_loss: 1.2790
+Epoch 35/500
+36/36 - 5s - 152ms/step - loss: 1.2651 - val_loss: 1.2529
+Epoch 36/500
+36/36 - 5s - 152ms/step - loss: 0.9504 - val_loss: 0.8372
+Epoch 37/500
+36/36 - 5s - 152ms/step - loss: 1.2107 - val_loss: 1.3734
+Epoch 38/500
+36/36 - 5s - 152ms/step - loss: 1.2123 - val_loss: 1.2846
+Epoch 39/500
+36/36 - 5s - 152ms/step - loss: 0.9368 - val_loss: 0.8517
+[Run 2/5] Training single encoder baseline (sigmoid head)...
+[Run 3/5] Training shared encoder (unweighted)...
+Epoch 1/500
+37/37 - 10s - 258ms/step - loss: 37.1584 - val_loss: 3.4146
+Epoch 2/500
+37/37 - 5s - 139ms/step - loss: 4.3637 - val_loss: 1.7743
+Epoch 3/500
+37/37 - 5s - 138ms/step - loss: 3.7485 - val_loss: 1.8852
+Epoch 4/500
+37/37 - 5s - 145ms/step - loss: 2.3542 - val_loss: 3.9600
+Epoch 5/500
+37/37 - 5s - 146ms/step - loss: 4.5909 - val_loss: 1.2180
+Epoch 6/500
+37/37 - 5s - 145ms/step - loss: 3.2771 - val_loss: 4.2245
+Epoch 7/500
+37/37 - 6s - 157ms/step - loss: 4.8891 - val_loss: 3.0108
+Epoch 8/500
+37/37 - 5s - 145ms/step - loss: 4.1710 - val_loss: 2.1236
+Epoch 9/500
+37/37 - 5s - 146ms/step - loss: 3.0534 - val_loss: 4.2443
+Epoch 10/500
+37/37 - 5s - 146ms/step - loss: 3.5520 - val_loss: 2.0936
+Epoch 11/500
+37/37 - 5s - 145ms/step - loss: 2.2465 - val_loss: 4.6711
+Epoch 12/500
+37/37 - 5s - 145ms/step - loss: 2.2920 - val_loss: 4.6395
+Epoch 13/500
+37/37 - 5s - 145ms/step - loss: 4.2630 - val_loss: 5.1796
+Epoch 14/500
+37/37 - 5s - 146ms/step - loss: 4.0328 - val_loss: 5.5585
+Epoch 15/500
+37/37 - 5s - 146ms/step - loss: 3.8134 - val_loss: 5.0488
+[Run 3/5] Training shared encoder (weighted)...
+Epoch 1/500
+37/37 - 9s - 247ms/step - loss: 83.3012 - val_loss: 22.0192
+Epoch 2/500
+37/37 - 5s - 146ms/step - loss: 12.6023 - val_loss: 22.0902
+Epoch 3/500
+37/37 - 5s - 143ms/step - loss: 15.5915 - val_loss: 7.4966
+Epoch 4/500
+37/37 - 6s - 162ms/step - loss: 5.5571 - val_loss: 13.9535
+Epoch 5/500
+37/37 - 6s - 152ms/step - loss: 17.5585 - val_loss: 30.8972
+Epoch 6/500
+37/37 - 6s - 152ms/step - loss: 14.2776 - val_loss: 14.5671
+Epoch 7/500
+37/37 - 6s - 151ms/step - loss: 9.5996 - val_loss: 8.8776
+Epoch 8/500
+37/37 - 6s - 151ms/step - loss: 7.1627 - val_loss: 3.9929
+Epoch 9/500
+37/37 - 6s - 150ms/step - loss: 10.5705 - val_loss: 17.4905
+Epoch 10/500
+37/37 - 6s - 151ms/step - loss: 9.7285 - val_loss: 10.4089
+Epoch 11/500
+37/37 - 6s - 151ms/step - loss: 8.1509 - val_loss: 1.3638
+Epoch 12/500
+37/37 - 6s - 150ms/step - loss: 5.7505 - val_loss: 13.0736
+Epoch 13/500
+37/37 - 6s - 151ms/step - loss: 9.3981 - val_loss: 9.3353
+Epoch 14/500
+37/37 - 6s - 150ms/step - loss: 8.0567 - val_loss: 2.6531
+Epoch 15/500
+37/37 - 6s - 151ms/step - loss: 9.3522 - val_loss: 14.6558
+Epoch 16/500
+37/37 - 6s - 151ms/step - loss: 12.3229 - val_loss: 3.8773
+Epoch 17/500
+37/37 - 6s - 150ms/step - loss: 6.0086 - val_loss: 5.4951
+Epoch 18/500
+37/37 - 6s - 150ms/step - loss: 7.3968 - val_loss: 1.0634
+Epoch 19/500
+37/37 - 6s - 150ms/step - loss: 3.9130 - val_loss: 6.0938
+Epoch 20/500
+37/37 - 6s - 151ms/step - loss: 4.7660 - val_loss: 7.7901
+Epoch 21/500
+37/37 - 6s - 151ms/step - loss: 7.1696 - val_loss: 17.8151
+Epoch 22/500
+37/37 - 6s - 150ms/step - loss: 8.7367 - val_loss: 8.1695
+Epoch 23/500
+37/37 - 6s - 150ms/step - loss: 6.2350 - val_loss: 1.9540
+Epoch 24/500
+37/37 - 6s - 150ms/step - loss: 13.0860 - val_loss: 3.2768
+Epoch 25/500
+37/37 - 6s - 151ms/step - loss: 7.9281 - val_loss: 20.7989
+Epoch 26/500
+37/37 - 6s - 151ms/step - loss: 6.2423 - val_loss: 6.3747
+Epoch 27/500
+37/37 - 6s - 150ms/step - loss: 8.6135 - val_loss: 20.7632
+Epoch 28/500
+37/37 - 6s - 150ms/step - loss: 9.9600 - val_loss: 19.5751
+[Run 3/5] Training single encoder baseline (sigmoid head)...
+[Run 4/5] Training shared encoder (unweighted)...
+Epoch 1/500
+36/36 - 9s - 253ms/step - loss: 31.4998 - val_loss: 1.4591
+Epoch 2/500
+36/36 - 5s - 142ms/step - loss: 1.7898 - val_loss: 0.9574
+Epoch 3/500
+36/36 - 5s - 140ms/step - loss: 2.7523 - val_loss: 1.4419
+Epoch 4/500
+36/36 - 5s - 147ms/step - loss: 6.4694 - val_loss: 7.4990
+Epoch 5/500
+36/36 - 5s - 147ms/step - loss: 3.4451 - val_loss: 1.5918
+Epoch 6/500
+36/36 - 5s - 147ms/step - loss: 3.4493 - val_loss: 2.9269
+Epoch 7/500
+36/36 - 5s - 147ms/step - loss: 3.2719 - val_loss: 2.7580
+Epoch 8/500
+36/36 - 5s - 147ms/step - loss: 3.0558 - val_loss: 3.2068
+Epoch 9/500
+36/36 - 5s - 147ms/step - loss: 4.8258 - val_loss: 2.4592
+Epoch 10/500
+36/36 - 5s - 147ms/step - loss: 6.1792 - val_loss: 5.0538
+Epoch 11/500
+36/36 - 5s - 147ms/step - loss: 5.5313 - val_loss: 3.1056
+Epoch 12/500
+36/36 - 5s - 148ms/step - loss: 2.8079 - val_loss: 5.0315
+[Run 4/5] Training shared encoder (weighted)...
+Epoch 1/500
+36/36 - 9s - 261ms/step - loss: 44.0882 - val_loss: 16.1167
+Epoch 2/500
+36/36 - 5s - 149ms/step - loss: 6.6891 - val_loss: 1.2418
+Epoch 3/500
+36/36 - 5s - 146ms/step - loss: 3.9345 - val_loss: 2.3611
+Epoch 4/500
+36/36 - 6s - 153ms/step - loss: 3.4197 - val_loss: 5.6296
+Epoch 5/500
+36/36 - 5s - 153ms/step - loss: 4.5360 - val_loss: 5.3957
+Epoch 6/500
+36/36 - 6s - 154ms/step - loss: 4.9113 - val_loss: 1.1482
+Epoch 7/500
+36/36 - 6s - 154ms/step - loss: 3.4846 - val_loss: 7.2467
+Epoch 8/500
+36/36 - 6s - 154ms/step - loss: 3.0247 - val_loss: 0.8611
+Epoch 9/500
+36/36 - 6s - 154ms/step - loss: 2.2301 - val_loss: 0.8084
+Epoch 10/500
+36/36 - 6s - 153ms/step - loss: 4.6205 - val_loss: 5.4199
+Epoch 11/500
+36/36 - 6s - 154ms/step - loss: 3.4844 - val_loss: 0.9389
+Epoch 12/500
+36/36 - 6s - 154ms/step - loss: 4.0864 - val_loss: 4.1366
+Epoch 13/500
+36/36 - 6s - 153ms/step - loss: 3.3211 - val_loss: 5.2736
+Epoch 14/500
+36/36 - 6s - 153ms/step - loss: 4.3058 - val_loss: 5.9541
+Epoch 15/500
+36/36 - 5s - 153ms/step - loss: 5.6272 - val_loss: 8.5774
+Epoch 16/500
+36/36 - 6s - 154ms/step - loss: 6.8179 - val_loss: 5.7380
+Epoch 17/500
+36/36 - 6s - 154ms/step - loss: 2.0791 - val_loss: 4.1349
+Epoch 18/500
+36/36 - 6s - 154ms/step - loss: 1.5930 - val_loss: 0.9309
+Epoch 19/500
+36/36 - 6s - 153ms/step - loss: 2.3974 - val_loss: 2.0727
+[Run 4/5] Training single encoder baseline (sigmoid head)...
+[Run 5/5] Training shared encoder (unweighted)...
+Epoch 1/500
+36/36 - 9s - 261ms/step - loss: 43.3146 - val_loss: 6.9393
+Epoch 2/500
+36/36 - 5s - 143ms/step - loss: 13.5717 - val_loss: 3.7093
+Epoch 3/500
+36/36 - 5s - 142ms/step - loss: 9.0918 - val_loss: 15.6131
+Epoch 4/500
+36/36 - 5s - 149ms/step - loss: 20.4919 - val_loss: 22.6901
+Epoch 5/500
+36/36 - 5s - 149ms/step - loss: 7.9806 - val_loss: 9.2706
+Epoch 6/500
+36/36 - 5s - 149ms/step - loss: 8.2755 - val_loss: 3.8079
+Epoch 7/500
+36/36 - 5s - 148ms/step - loss: 11.3617 - val_loss: 6.9865
+Epoch 8/500
+36/36 - 5s - 148ms/step - loss: 8.1551 - val_loss: 4.6659
+Epoch 9/500
+36/36 - 5s - 149ms/step - loss: 12.7569 - val_loss: 5.1736
+Epoch 10/500
+36/36 - 5s - 148ms/step - loss: 9.1040 - val_loss: 10.7904
+Epoch 11/500
+36/36 - 5s - 147ms/step - loss: 7.9102 - val_loss: 7.3414
+Epoch 12/500
+36/36 - 5s - 147ms/step - loss: 7.8907 - val_loss: 7.3435
+[Run 5/5] Training shared encoder (weighted)...
+Epoch 1/500
+36/36 - 9s - 256ms/step - loss: 55.7966 - val_loss: 8.6436
+Epoch 2/500
+36/36 - 5s - 151ms/step - loss: 5.1508 - val_loss: 3.7646
+Epoch 3/500
+36/36 - 5s - 148ms/step - loss: 4.1815 - val_loss: 4.0844
+Epoch 4/500
+36/36 - 6s - 155ms/step - loss: 3.6448 - val_loss: 1.6313
+Epoch 5/500
+36/36 - 6s - 155ms/step - loss: 3.0643 - val_loss: 0.8213
+Epoch 6/500
+36/36 - 6s - 155ms/step - loss: 2.4193 - val_loss: 1.9432
+Epoch 7/500
+36/36 - 6s - 155ms/step - loss: 2.4873 - val_loss: 3.7962
+Epoch 8/500
+36/36 - 6s - 155ms/step - loss: 2.4283 - val_loss: 3.7697
+Epoch 9/500
+36/36 - 6s - 156ms/step - loss: 2.4068 - val_loss: 2.0858
+Epoch 10/500
+36/36 - 6s - 156ms/step - loss: 2.3800 - val_loss: 3.7413
+Epoch 11/500
+36/36 - 6s - 155ms/step - loss: 2.4133 - val_loss: 4.2830
+Epoch 12/500
+36/36 - 6s - 155ms/step - loss: 2.4413 - val_loss: 3.8474
+Epoch 13/500
+36/36 - 6s - 155ms/step - loss: 2.5103 - val_loss: 2.9066
+Epoch 14/500
+36/36 - 6s - 155ms/step - loss: 2.4201 - val_loss: 6.0437
+Epoch 15/500
+36/36 - 6s - 155ms/step - loss: 4.2137 - val_loss: 4.7928
+[Run 5/5] Training single encoder baseline (sigmoid head)...
