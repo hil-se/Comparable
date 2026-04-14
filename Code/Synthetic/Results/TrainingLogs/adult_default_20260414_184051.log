@@ -1,0 +1,33 @@
+Training log file: /Users/albert/Downloads/Documents/PhD Thesis/Comparable/Code/Synthetic/Results/TrainingLogs/adult_default_20260414_184051.log
+Starting experiments (dataset=adult, sensitive_attribute=default).
+/Users/albert/Downloads/Documents/PhD Thesis/Comparable/Code/Synthetic/synthetic.py:106: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+See https://pandas.pydata.org/docs/user_guide/migration-3-strings.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+  text_cols = df.select_dtypes(include="object").columns
+[Run 1/1] Training shared encoder (unweighted, sigmoid head, baseline preprocessing)...
+/Users/albert/Downloads/Documents/PhD Thesis/Comparable/.venv/lib/python3.12/site-packages/keras/src/trainers/trainer.py:212: UserWarning: Model doesn't support `jit_compile=True`. Proceeding with `jit_compile=False`.
+  warnings.warn(
+Epoch 1/500
+51/51 - 3s - 62ms/step - loss: 0.9782 - val_loss: 0.9210
+Epoch 2/500
+51/51 - 3s - 50ms/step - loss: 0.8834 - val_loss: 0.8311
+Epoch 3/500
+51/51 - 3s - 51ms/step - loss: 0.7980 - val_loss: 0.7530
+Epoch 4/500
+51/51 - 3s - 52ms/step - loss: 0.7259 - val_loss: 0.6897
+Epoch 5/500
+51/51 - 3s - 51ms/step - loss: 0.6688 - val_loss: 0.6408
+Epoch 6/500
+51/51 - 3s - 51ms/step - loss: 0.6252 - val_loss: 0.6034
+Epoch 7/500
+51/51 - 3s - 61ms/step - loss: 0.5919 - val_loss: 0.5748
+Epoch 8/500
+51/51 - 3s - 65ms/step - loss: 0.5661 - val_loss: 0.5524
+Epoch 9/500
+51/51 - 3s - 68ms/step - loss: 0.5458 - val_loss: 0.5345
+Epoch 10/500
+51/51 - 4s - 75ms/step - loss: 0.5294 - val_loss: 0.5199
+Epoch 11/500
+51/51 - 3s - 64ms/step - loss: 0.5159 - val_loss: 0.5077
+Epoch 12/500
+51/51 - 3s - 66ms/step - loss: 0.5046 - val_loss: 0.4973
+Epoch 13/500
