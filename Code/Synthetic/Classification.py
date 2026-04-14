@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from scipy import stats
+from sklearn.preprocessing import StandardScaler
 
 import DualEncoder
 import SharedDualEncoder
@@ -111,6 +112,28 @@ def _fit_array_model(
     return model
 
 
+class SingleEncoderBaseline:
+    def __init__(self, model, preprocessor=None):
+        self.model = model
+        self.preprocessor = preprocessor
+
+
+def _single_encoder_preprocessor(is_binary):
+    return StandardScaler() if is_binary else None
+
+
+def _transform_single_encoder_features(features, preprocessor, fit=False):
+    features = np.asarray(features, dtype=np.float32)
+    if preprocessor is None:
+        return features
+    transformed = (
+        preprocessor.fit_transform(features)
+        if fit
+        else preprocessor.transform(features)
+    )
+    return np.asarray(transformed, dtype=np.float32)
+
+
 def _shuffle_frame(df, weights=None):
     order = np.random.permutation(len(df))
     shuffled = df.iloc[order].reset_index(drop=True)
@@ -140,6 +163,7 @@ def learn(
     df_name=None,
     fairness_lambda=0.0,
     tabular_encoder_type="cnn",
+    output_activation="linear",
 ):
     is_scut = df_name is not None and "scut" in df_name.lower()
     if is_scut:
@@ -158,6 +182,7 @@ def learn(
         encoder = SharedDualEncoder.create_encoder(
             input_size=input_size,
             df_name=df_name,
+            output_activation=output_activation,
             tabular_encoder_type=tabular_encoder_type,
         )
         dual_encoder = SharedDualEncoder.DualEncoderAll(
@@ -261,10 +286,18 @@ def train_single_encoder_baseline(
     patience=10,
     tabular_encoder_type="cnn",
 ):
-    train_features = np.asarray(train_features, dtype=np.float32)
+    preprocessor = _single_encoder_preprocessor(is_binary)
+    train_features = _transform_single_encoder_features(
+        train_features,
+        preprocessor,
+        fit=True,
+    )
     y_train = np.asarray(y_train, dtype=np.float32)
     if val_features is not None:
-        val_features = np.asarray(val_features, dtype=np.float32)
+        val_features = _transform_single_encoder_features(
+            val_features,
+            preprocessor,
+        )
         y_val = np.asarray(y_val, dtype=np.float32)
 
     if output_activation is None:
@@ -279,21 +312,32 @@ def train_single_encoder_baseline(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
         loss="binary_crossentropy" if is_binary else "mse",
     )
-    return _fit_array_model(
-        model,
-        train_features,
-        y_train,
-        val_x=val_features,
-        val_y=y_val,
-        epochs=epochs,
-        batch_size=batch_size,
-        patience=patience,
+    return SingleEncoderBaseline(
+        model=_fit_array_model(
+            model,
+            train_features,
+            y_train,
+            val_x=val_features,
+            val_y=y_val,
+            epochs=epochs,
+            batch_size=batch_size,
+            patience=patience,
+        ),
+        preprocessor=preprocessor,
     )
 
 
 def predict_single_encoder_baseline(model, features, batch_size=2048):
-    features = np.asarray(features, dtype=np.float32)
-    return model.predict(features, batch_size=batch_size, verbose=0).reshape(-1)
+    baseline = (
+        model
+        if isinstance(model, SingleEncoderBaseline)
+        else SingleEncoderBaseline(model=model)
+    )
+    features = _transform_single_encoder_features(
+        features,
+        baseline.preprocessor,
+    )
+    return baseline.model.predict(features, batch_size=batch_size, verbose=0).reshape(-1)
 
 
 def train_model(
@@ -307,6 +351,7 @@ def train_model(
     df_name=None,
     fairness_lambda=0.0,
     tabular_encoder_type="cnn",
+    output_activation="linear",
 ):
     train, train_weights = _shuffle_frame(train, train_weights)
     if val is not None:
@@ -323,6 +368,7 @@ def train_model(
         df_name=df_name,
         fairness_lambda=fairness_lambda,
         tabular_encoder_type=tabular_encoder_type,
+        output_activation=output_activation,
     )
 
 

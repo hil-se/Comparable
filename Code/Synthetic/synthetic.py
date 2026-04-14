@@ -799,7 +799,9 @@ def _train_shared_models(
     epochs,
     train_fairreg,
     tabular_encoder_type,
+    is_binary,
 ):
+    activation = "sigmoid" if is_binary else "linear"
     base_kwargs = {
         "train": train_df,
         "val": val_df,
@@ -808,6 +810,7 @@ def _train_shared_models(
         "epochs": epochs,
         "df_name": df_name,
         "tabular_encoder_type": tabular_encoder_type,
+        "output_activation": activation,
     }
     model_specs = {
         "unweight": ("unweighted", {}),
@@ -824,7 +827,10 @@ def _train_shared_models(
 
     models = {}
     for name, (label, extra_kwargs) in model_specs.items():
-        print(f"[Run {run_idx + 1}/{num_runs}] Training shared encoder ({label})...")
+        print(
+            f"[Run {run_idx + 1}/{num_runs}] Training shared encoder "
+            f"({label}, {activation} head)..."
+        )
         models[name] = Classification.train_model(**base_kwargs, **extra_kwargs)
     return models
 
@@ -865,7 +871,8 @@ def _train_optional_baselines(
         activation = "sigmoid" if is_binary else "linear"
         print(
             f"[Run {run_idx + 1}/{num_runs}] Training single encoder baseline "
-            f"({activation} head)..."
+            f"(baseline preprocessing, {tabular_encoder_type} structure, "
+            f"{activation} head)..."
         )
         train_features = train.drop(columns=[col]).values.astype(np.float32)
         train_targets = train[col].values.astype(np.float32)
@@ -1093,6 +1100,7 @@ def _run_experiments_impl(
             epochs=model_epochs,
             train_fairreg=train_fairreg,
             tabular_encoder_type=tabular_encoder_type,
+            is_binary=is_binary,
         )
         optional_baselines = _train_optional_baselines(
             run_idx=run_idx,
@@ -1396,7 +1404,7 @@ if __name__ == "__main__":
     NUM_COMP_TRAIN = 30
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
-    PLOT_HISTOGRAMS = False  # Set False to skip writing prediction histogram images.
+    PLOT_HISTOGRAMS = True  # Set False to skip writing prediction histogram images.
     NUM_COMP_PAIRS_RATIO = 0.1
     MODEL_EPOCHS = 500
     TABULAR_ENCODER_TYPE = "linear"  # Options for tabular datasets: "cnn", "linear"
@@ -1436,4 +1444,3 @@ if __name__ == "__main__":
     # TODO: Try simpler encoder architectures for tabular datasets, to see if it improves fairness metrics. Maybe start with 1-2 hidden layers and smaller hidden sizes.
 
     # TODO: Adult data is not performing well, and single encoder model is not showing the same result with logistic regression model.
-    # TODO: Use exactly the same actication function as the single encoder and see if the prediciton result are well-seperated, plot the histogram.
