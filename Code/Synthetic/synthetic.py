@@ -10,7 +10,7 @@ import pandas as pd
 from scipy.stats import norm
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -128,6 +128,35 @@ def _split_with_output(df, dependent, test_size=0.2):
     X_train[col] = y_train
     X_test[col] = y_test
     return X_train, X_test
+
+
+def _shared_tabular_preprocessor(is_binary, is_scut):
+    if is_scut or not is_binary:
+        return None
+    return StandardScaler()
+
+
+def _transform_tabular_frame(df, preprocessor, fit=False):
+    if preprocessor is None or df is None:
+        return df
+
+    transformed = df.copy()
+    feature_cols = [column for column in transformed.columns if column != col]
+    transformed_values = (
+        preprocessor.fit_transform(transformed[feature_cols])
+        if fit
+        else preprocessor.transform(transformed[feature_cols])
+    )
+    transformed_features = pd.DataFrame(
+        np.asarray(transformed_values, dtype=np.float32),
+        columns=feature_cols,
+        index=transformed.index,
+    )
+    if col not in transformed.columns:
+        return transformed_features
+    return pd.concat([transformed_features, transformed[[col]]], axis=1)[
+        transformed.columns
+    ]
 
 
 def comp_pred(test, dual_encoder):
@@ -524,26 +553,136 @@ def kmeans_binarize_1d(data):
     return labels
 
 
-def plot_prediction_histogram(predictions, output_path, title, bins=80):
-    predictions = np.asarray(predictions, dtype=np.float64)
-    finite_predictions = predictions[np.isfinite(predictions)]
+def _extract_validation_examples(pair_df, is_scut):
+    if pair_df is None or len(pair_df) == 0:
+        return None, None
+
+    examples = {}
+    for index_col, feature_col, target_col in (
+        ("Index_A", "A", "Y_A"),
+        ("Index_B", "B", "Y_B"),
+    ):
+        if not {index_col, feature_col, target_col}.issubset(pair_df.columns):
+            return None, None
+        for idx, features, target in zip(
+            pair_df[index_col], pair_df[feature_col], pair_df[target_col]
+        ):
+            key = int(idx)
+            if key in examples:
+                continue
+            examples[key] = (
+                np.asarray(features, dtype=np.float32),
+                int(target),
+            )
+
+    if not examples:
+        return None, None
+
+    ordered_examples = [examples[key] for key in sorted(examples)]
+    labels = np.asarray([target for _, target in ordered_examples], dtype=np.int8)
+    features = [feature for feature, _ in ordered_examples]
+    if is_scut:
+        return np.stack(features).astype(np.float32), labels
+    return np.asarray(features, dtype=np.float32), labels
+
+
+def _candidate_thresholds(scores):
+    unique_scores = np.unique(np.asarray(scores, dtype=np.float64))
+    if unique_scores.size == 0:
+        return np.asarray([0.5], dtype=np.float64)
+    if unique_scores.size == 1:
+        return unique_scores.astype(np.float64)
+
+    midpoints = (unique_scores[:-1] + unique_scores[1:]) / 2.0
+    eps = max(np.finfo(np.float64).eps, np.std(unique_scores) * 1e-6)
+    return np.concatenate(
+        (
+            [unique_scores[0] - eps],
+            midpoints,
+            [unique_scores[-1] + eps],
+        )
+    )
+
+
+def _learn_binary_threshold(scores, labels, default_threshold=0.5):
+    scores = np.asarray(scores, dtype=np.float64)
+    labels = (np.asarray(labels) > 0).astype(np.int8)
+    finite_mask = np.isfinite(scores)
+    scores = scores[finite_mask]
+    labels = labels[finite_mask]
+
+    if scores.size == 0 or np.unique(labels).size < 2:
+        return float(default_threshold), np.nan
+
+    best_threshold = float(default_threshold)
+    best_metric = -np.inf
+    for threshold in _candidate_thresholds(scores):
+        predictions = (scores >= threshold).astype(np.int8)
+        metric_value = balanced_accuracy_score(labels, predictions)
+        if metric_value > best_metric + 1e-12 or (
+            np.isclose(metric_value, best_metric)
+            and abs(threshold - default_threshold)
+            < abs(best_threshold - default_threshold)
+        ):
+            best_metric = float(metric_value)
+            best_threshold = float(threshold)
+
+    return best_threshold, best_metric
+
+
+def plot_threshold_comparison_histogram(
+    raw_predictions,
+    thresholded_predictions,
+    threshold,
+    output_path,
+    title,
+    bins=80,
+):
+    raw_predictions = np.asarray(raw_predictions, dtype=np.float64)
+    finite_predictions = raw_predictions[np.isfinite(raw_predictions)]
     if finite_predictions.size == 0:
         return
 
+    thresholded_predictions = np.asarray(thresholded_predictions, dtype=np.int8).reshape(-1)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    ax.hist(
+    fig, (ax_raw, ax_binary) = plt.subplots(1, 2, figsize=(11, 4.5))
+    ax_raw.hist(
         finite_predictions,
         bins=min(bins, max(40, int(np.sqrt(finite_predictions.size) * 2))),
         color="#4C78A8",
         edgecolor="white",
         alpha=0.9,
     )
-    ax.set_title(title)
-    ax.set_xlabel("Raw prediction score")
-    ax.set_ylabel("Count")
-    ax.grid(axis="y", alpha=0.2)
+    if np.isfinite(threshold):
+        ax_raw.axvline(
+            threshold,
+            color="#E45756",
+            linestyle="--",
+            linewidth=2,
+            label=f"threshold={threshold:.4f}",
+        )
+        ax_raw.legend(frameon=False)
+    ax_raw.set_title(f"{title}: before thresholding")
+    ax_raw.set_xlabel("Raw prediction score")
+    ax_raw.set_ylabel("Count")
+    ax_raw.grid(axis="y", alpha=0.2)
+
+    clipped_predictions = np.clip(thresholded_predictions, 0, 1)
+    ax_binary.hist(
+        clipped_predictions,
+        bins=np.array([-0.5, 0.5, 1.5]),
+        color="#72B7B2",
+        edgecolor="white",
+        alpha=0.9,
+        rwidth=0.8,
+    )
+    ax_binary.set_title(f"{title}: after thresholding")
+    ax_binary.set_xlabel("Thresholded prediction")
+    ax_binary.set_ylabel("Count")
+    ax_binary.set_xticks([0, 1])
+    ax_binary.grid(axis="y", alpha=0.2)
+
     fig.tight_layout()
     fig.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
@@ -606,9 +745,11 @@ def _build_train_pairs(
             train_vals[idx_a, col_idx] - train_vals[idx_b, col_idx]
         ).astype(int)
         valid_mask = labels != 0
+        idx_a = idx_a[valid_mask]
+        idx_b = idx_b[valid_mask]
         rows_a, rows_b, labels = (
-            train_vals[idx_a[valid_mask]],
-            train_vals[idx_b[valid_mask]],
+            train_vals[idx_a],
+            train_vals[idx_b],
             labels[valid_mask],
         )
     else:
@@ -639,6 +780,8 @@ def _build_train_pairs(
         rows_b = train_vals[np.array(all_idx_b)]
         diffs = rows_a[:, col_idx] - rows_b[:, col_idx]
         valid_mask = diffs != 0
+        idx_a = np.asarray(all_idx_a, dtype=np.int64)[valid_mask]
+        idx_b = np.asarray(all_idx_b, dtype=np.int64)[valid_mask]
         rows_a = rows_a[valid_mask]
         rows_b = rows_b[valid_mask]
         labels = np.where(diffs[valid_mask] > 0, 1, -1)
@@ -648,26 +791,50 @@ def _build_train_pairs(
         feats_b = np.stack(rows_b[:, pixels_idx]).astype(np.float32)
         train_pairs = [
             {
+                "Index_A": int(ia),
+                "Index_B": int(ib),
                 "A": fa,
                 "B": fb,
                 "Label": int(lbl),
+                "Y_A": float(ra[col_idx]),
+                "Y_B": float(rb[col_idx]),
                 "SA_A": int(ra[sa_idx]),
                 "SA_B": int(rb[sa_idx]),
             }
-            for fa, fb, lbl, ra, rb in zip(feats_a, feats_b, labels, rows_a, rows_b)
+            for ia, ib, fa, fb, lbl, ra, rb in zip(
+                idx_a,
+                idx_b,
+                feats_a,
+                feats_b,
+                labels,
+                rows_a,
+                rows_b,
+            )
         ]
     else:
         feats_a = rows_a[:, keep_cols]
         feats_b = rows_b[:, keep_cols]
         train_pairs = [
             {
+                "Index_A": int(ia),
+                "Index_B": int(ib),
                 "A": fa.tolist(),
                 "B": fb.tolist(),
                 "Label": int(lbl),
+                "Y_A": float(ra[col_idx]),
+                "Y_B": float(rb[col_idx]),
                 "SA_A": int(ra[sa_idx]),
                 "SA_B": int(rb[sa_idx]),
             }
-            for fa, fb, lbl, ra, rb in zip(feats_a, feats_b, labels, rows_a, rows_b)
+            for ia, ib, fa, fb, lbl, ra, rb in zip(
+                idx_a,
+                idx_b,
+                feats_a,
+                feats_b,
+                labels,
+                rows_a,
+                rows_b,
+            )
         ]
 
     pair_meta = [
@@ -802,6 +969,7 @@ def _train_shared_models(
     is_binary,
 ):
     activation = "sigmoid" if is_binary else "linear"
+    preprocessing_note = ", baseline preprocessing" if is_binary and "scut" not in df_name.lower() else ""
     base_kwargs = {
         "train": train_df,
         "val": val_df,
@@ -829,7 +997,7 @@ def _train_shared_models(
     for name, (label, extra_kwargs) in model_specs.items():
         print(
             f"[Run {run_idx + 1}/{num_runs}] Training shared encoder "
-            f"({label}, {activation} head)..."
+            f"({label}, {activation} head{preprocessing_note})..."
         )
         models[name] = Classification.train_model(**base_kwargs, **extra_kwargs)
     return models
@@ -912,18 +1080,28 @@ def _score_shared_model(model, test_inputs, is_scut):
     return model.score(test_inputs).numpy().flatten()
 
 
-def _plot_binary_histograms(shared_predictions, df_name, sa_name, run_idx, pair_strategy):
+def _plot_binary_histograms(
+    shared_predictions,
+    thresholded_predictions,
+    shared_thresholds,
+    df_name,
+    sa_name,
+    run_idx,
+    pair_strategy,
+):
     hist_prefix = f"{df_name}_{sa_name}_run{run_idx + 1}_{pair_strategy}"
     hist_specs = {
-        "unweight": ("unweighted", f"{df_name} raw predictions before k-means"),
-        "weighted": ("weighted", f"{df_name} weighted raw predictions before k-means"),
-        "fairreg": ("fairreg", f"{df_name} fairreg raw predictions before k-means"),
+        "unweight": ("unweighted", f"{df_name} unweighted predictions"),
+        "weighted": ("weighted", f"{df_name} weighted predictions"),
+        "fairreg": ("fairreg", f"{df_name} fairreg predictions"),
     }
     for name, predictions in shared_predictions.items():
         suffix, title = hist_specs[name]
-        plot_prediction_histogram(
-            predictions,
-            HISTOGRAM_DIR / f"{hist_prefix}_{suffix}.png",
+        plot_threshold_comparison_histogram(
+            raw_predictions=predictions,
+            thresholded_predictions=thresholded_predictions[name],
+            threshold=shared_thresholds[name],
+            output_path=HISTOGRAM_DIR / f"{hist_prefix}_{suffix}.png",
             title=f"{title} (run {run_idx + 1})",
         )
 
@@ -1068,12 +1246,26 @@ def _run_experiments_impl(
         test = test.reset_index(drop=True)
 
         is_scut = "scut" in df_name
+        shared_preprocessor = _shared_tabular_preprocessor(
+            is_binary=is_binary,
+            is_scut=is_scut,
+        )
+        shared_train = _transform_tabular_frame(
+            train,
+            shared_preprocessor,
+            fit=True,
+        )
+        shared_test = _transform_tabular_frame(
+            test,
+            shared_preprocessor,
+        )
         y_train = train[col].values
         y_test = test[col].values
         test_features = test.drop(columns=[col])
         sa_values = test_features["sa"].values
         train_features = train.drop(columns=[col])
-        test_inputs = _shared_model_inputs(test_features, is_scut)
+        shared_test_features = shared_test.drop(columns=[col])
+        test_inputs = _shared_model_inputs(shared_test_features, is_scut)
 
         (
             data_tr_encoder,
@@ -1082,7 +1274,7 @@ def _run_experiments_impl(
             val_weights,
             output_nc,
         ) = _prepare_encoder_splits(
-            train,
+            shared_train,
             is_scut=is_scut,
             use_all_pairs=effective_use_all_pairs,
             num_comp_train=num_comp_train,
@@ -1130,23 +1322,49 @@ def _run_experiments_impl(
             name: _score_shared_model(model, test_inputs, is_scut)
             for name, model in shared_models.items()
         }
-        if is_binary and plot_histograms:
-            _plot_binary_histograms(
-                shared_predictions,
-                df_name=df_name,
-                sa_name=output_sa_name,
-                run_idx=run_idx,
-                pair_strategy=pair_strategy,
+        shared_thresholds = {}
+        if is_binary:
+            val_features, val_targets = _extract_validation_examples(
+                data_val_encoder,
+                is_scut=is_scut,
             )
-
+            for name, model in shared_models.items():
+                if val_features is None:
+                    threshold, val_metric = 0.5, np.nan
+                else:
+                    val_scores = _score_shared_model(model, val_features, is_scut)
+                    threshold, val_metric = _learn_binary_threshold(
+                        val_scores,
+                        val_targets,
+                        default_threshold=0.5,
+                    )
+                shared_thresholds[name] = threshold
+                metric_display = (
+                    "n/a" if np.isnan(val_metric) else f"{val_metric:.4f}"
+                )
+                print(
+                    f"[Run {run_idx + 1}/{num_runs}] Shared encoder ({name}) "
+                    f"validation threshold={threshold:.4f} "
+                    f"(balanced_accuracy={metric_display})."
+                )
         final_predictions = (
             {
-                name: kmeans_binarize_1d(predictions)
+                name: (predictions >= shared_thresholds[name]).astype(int)
                 for name, predictions in shared_predictions.items()
             }
             if is_binary
             else dict(shared_predictions)
         )
+        if is_binary and plot_histograms:
+            _plot_binary_histograms(
+                shared_predictions=shared_predictions,
+                thresholded_predictions=final_predictions,
+                shared_thresholds=shared_thresholds,
+                df_name=df_name,
+                sa_name=output_sa_name,
+                run_idx=run_idx,
+                pair_strategy=pair_strategy,
+            )
 
         if "single_encoder" in optional_baselines:
             single_encoder_predictions = Classification.predict_single_encoder_baseline(
@@ -1397,11 +1615,11 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "compas"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
-    NUM_RUNS = 5
+    NUM_RUNS = 1
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
-    NUM_COMP_TRAIN = 30
+    NUM_COMP_TRAIN = 5
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
     PLOT_HISTOGRAMS = True  # Set False to skip writing prediction histogram images.
