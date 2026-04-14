@@ -1428,9 +1428,12 @@ if __name__ == "__main__":
 
     # TODO: Include another baseline with one encoder
     # TODO: Try sigmoid with single encoder
-    # TODO: Try SGD with non-scut datasets as well, to see if it improves fairness metrics
+    # TODO: Try SGD with non-scut datasets as well, to see if it improves faßirness metrics
     # TODO: Run on local and see acuuracy change
 
     # TODO: Try linear single encoder with regression dataset, and sigmoid single encoder with classification datasets
 
     # TODO: Try simpler encoder architectures for tabular datasets, to see if it improves fairness metrics. Maybe start with 1-2 hidden layers and smaller hidden sizes.
+
+    # TODO: Adult data is not performing well, and single encoder model is not showing the same result with logistic regression model.
+    # TODO: Use exactly the same actication function as the single encoder and see if the prediciton result are well-seperated, plot the histogram.
