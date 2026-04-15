@@ -1615,10 +1615,10 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "heart"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
-    NUM_RUNS = 5
-    USE_ALL_PAIRS = True  # Set False to use a fixed number of training pairs per instance.
+    NUM_RUNS = 1
+    USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
