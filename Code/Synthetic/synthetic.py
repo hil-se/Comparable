@@ -1662,3 +1662,9 @@ if __name__ == "__main__":
     # TODO: Try simpler encoder architectures for tabular datasets, to see if it improves fairness metrics. Maybe start with 1-2 hidden layers and smaller hidden sizes.
 
     # TODO: Adult data is not performing well, and single encoder model is not showing the same result with logistic regression model.
+
+    # Single-encoder with consistent preprocessing (StandardScaler)
+    # learning validation thresholds with accuracy instead of relying on k-means 
+    # TODO: Try 0.5 threshold and see how it compares with dynamic thresholding.
+    # TODO: FairReweighing on regression and classification model.
+    # TODO: Saving the test predicition before thresholding.
