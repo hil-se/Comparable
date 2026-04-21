@@ -25,11 +25,13 @@ import DataProcessing
 from metrics import Metrics
 
 PAIRWISE_DECISION_THRESHOLD = 0.0
+FIXED_BINARY_THRESHOLD = 0.5
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
 RESULTS_DIR = BASE_DIR / "Results"
 HISTOGRAM_DIR = RESULTS_DIR / "Histograms"
 TRAINING_LOG_DIR = RESULTS_DIR / "TrainingLogs"
+PREDICTIONS_DIR = RESULTS_DIR / "Predictions"
 
 
 class _TeeStream:
@@ -589,7 +591,7 @@ def _extract_validation_examples(pair_df, is_scut):
 def _candidate_thresholds(scores):
     unique_scores = np.unique(np.asarray(scores, dtype=np.float64))
     if unique_scores.size == 0:
-        return np.asarray([0.5], dtype=np.float64)
+        return np.asarray([FIXED_BINARY_THRESHOLD], dtype=np.float64)
     if unique_scores.size == 1:
         return unique_scores.astype(np.float64)
 
@@ -604,13 +606,27 @@ def _candidate_thresholds(scores):
     )
 
 
-def _learn_binary_threshold(scores, labels, default_threshold=0.5):
+def _clean_binary_threshold_inputs(scores, labels):
     scores = np.asarray(scores, dtype=np.float64)
     labels = (np.asarray(labels) > 0).astype(np.int8)
     finite_mask = np.isfinite(scores)
-    scores = scores[finite_mask]
-    labels = labels[finite_mask]
+    return scores[finite_mask], labels[finite_mask]
 
+
+def _balanced_accuracy_at_threshold(scores, labels, threshold):
+    scores, labels = _clean_binary_threshold_inputs(scores, labels)
+    if scores.size == 0 or np.unique(labels).size < 2:
+        return np.nan
+    predictions = (scores >= threshold).astype(np.int8)
+    return float(balanced_accuracy_score(labels, predictions))
+
+
+def _learn_binary_threshold(
+    scores,
+    labels,
+    default_threshold=FIXED_BINARY_THRESHOLD,
+):
+    scores, labels = _clean_binary_threshold_inputs(scores, labels)
     if scores.size == 0 or np.unique(labels).size < 2:
         return float(default_threshold), np.nan
 
@@ -628,6 +644,10 @@ def _learn_binary_threshold(scores, labels, default_threshold=0.5):
             best_threshold = float(threshold)
 
     return best_threshold, best_metric
+
+
+def _format_metric_value(value):
+    return "n/a" if np.isnan(value) else f"{value:.4f}"
 
 
 def plot_threshold_comparison_histogram(
@@ -1088,6 +1108,8 @@ def _plot_binary_histograms(
     sa_name,
     run_idx,
     pair_strategy,
+    variant_label=None,
+    filename_suffix="",
 ):
     hist_prefix = f"{df_name}_{sa_name}_run{run_idx + 1}_{pair_strategy}"
     hist_specs = {
@@ -1097,13 +1119,74 @@ def _plot_binary_histograms(
     }
     for name, predictions in shared_predictions.items():
         suffix, title = hist_specs[name]
+        title_suffix = "" if variant_label is None else f" ({variant_label})"
         plot_threshold_comparison_histogram(
             raw_predictions=predictions,
             thresholded_predictions=thresholded_predictions[name],
             threshold=shared_thresholds[name],
-            output_path=HISTOGRAM_DIR / f"{hist_prefix}_{suffix}.png",
-            title=f"{title} (run {run_idx + 1})",
+            output_path=HISTOGRAM_DIR / f"{hist_prefix}_{suffix}{filename_suffix}.png",
+            title=f"{title} (run {run_idx + 1}{title_suffix})",
         )
+
+
+def _shared_binary_threshold_predictions(
+    shared_models,
+    shared_predictions,
+    data_val_encoder,
+    is_scut,
+    run_idx,
+    num_runs,
+):
+    thresholded_predictions = {"dynamic": {}, "fixed05": {}}
+    threshold_summary = {
+        "dynamic": {"thresholds": {}, "val_bal_acc": {}},
+        "fixed05": {"thresholds": {}, "val_bal_acc": {}},
+    }
+    val_features, val_targets = _extract_validation_examples(
+        data_val_encoder,
+        is_scut=is_scut,
+    )
+
+    for name, model in shared_models.items():
+        if val_features is None:
+            dynamic_threshold = FIXED_BINARY_THRESHOLD
+            dynamic_metric = np.nan
+            fixed_metric = np.nan
+        else:
+            val_scores = _score_shared_model(model, val_features, is_scut)
+            dynamic_threshold, dynamic_metric = _learn_binary_threshold(
+                val_scores,
+                val_targets,
+                default_threshold=FIXED_BINARY_THRESHOLD,
+            )
+            fixed_metric = _balanced_accuracy_at_threshold(
+                val_scores,
+                val_targets,
+                FIXED_BINARY_THRESHOLD,
+            )
+
+        dynamic_threshold = float(dynamic_threshold)
+        threshold_summary["dynamic"]["thresholds"][name] = dynamic_threshold
+        threshold_summary["dynamic"]["val_bal_acc"][name] = dynamic_metric
+        threshold_summary["fixed05"]["thresholds"][name] = FIXED_BINARY_THRESHOLD
+        threshold_summary["fixed05"]["val_bal_acc"][name] = fixed_metric
+        thresholded_predictions["dynamic"][name] = (
+            np.asarray(shared_predictions[name], dtype=np.float64) >= dynamic_threshold
+        ).astype(int)
+        thresholded_predictions["fixed05"][name] = (
+            np.asarray(shared_predictions[name], dtype=np.float64)
+            >= FIXED_BINARY_THRESHOLD
+        ).astype(int)
+
+        print(
+            f"[Run {run_idx + 1}/{num_runs}] Shared encoder ({name}) "
+            f"threshold comparison: dynamic={dynamic_threshold:.4f} "
+            f"(balanced_accuracy={_format_metric_value(dynamic_metric)}), "
+            f"fixed_0.5={FIXED_BINARY_THRESHOLD:.4f} "
+            f"(balanced_accuracy={_format_metric_value(fixed_metric)})."
+        )
+
+    return thresholded_predictions, threshold_summary
 
 
 def _sample_comparable_pairs(y_values, num_pairs):
@@ -1216,6 +1299,100 @@ def _rate_value(values_by_name, name):
     return values_by_name.get(name, np.nan)
 
 
+def _result_file_stem(df_name, sa_name, output_nc, pair_strategy):
+    return f"{df_name}_{sa_name}_{output_nc}_{pair_strategy}"
+
+
+def _test_prediction_output_path(df_name, sa_name, output_nc, pair_strategy, run_idx):
+    stem = _result_file_stem(df_name, sa_name, output_nc, pair_strategy)
+    return PREDICTIONS_DIR / f"{stem}_run{run_idx + 1}_raw_predictions.csv"
+
+
+def _save_raw_test_predictions(
+    *,
+    df_name,
+    sa_name,
+    output_nc,
+    pair_strategy,
+    run_idx,
+    y_true,
+    sa_values,
+    raw_predictions,
+):
+    output_path = _test_prediction_output_path(
+        df_name=df_name,
+        sa_name=sa_name,
+        output_nc=output_nc,
+        pair_strategy=pair_strategy,
+        run_idx=run_idx,
+    )
+    prediction_frame = pd.DataFrame(
+        {
+            "test_index": np.arange(len(y_true), dtype=np.int64),
+            "y_true": np.asarray(y_true),
+            "sa": np.asarray(sa_values),
+        }
+    )
+    for name, predictions in raw_predictions.items():
+        prediction_frame[f"raw_{name}"] = np.asarray(predictions).reshape(-1)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    prediction_frame.to_csv(output_path, index=False)
+    return output_path
+
+
+def _add_binary_method_metrics(
+    result,
+    *,
+    prediction_key,
+    acc_key,
+    f1_key,
+    aod_key,
+    eod_key,
+    i_sep_key,
+    violate_key,
+    violate_comp_key,
+    final_predictions,
+    method_metrics,
+    violation_rates,
+    comparative_rates,
+    y_true,
+    sa_values,
+):
+    result[acc_key] = _prediction_value(
+        final_predictions,
+        prediction_key,
+        accuracy_score,
+        y_true,
+    )
+    result[f1_key] = _prediction_value(
+        final_predictions,
+        prediction_key,
+        f1_score,
+        y_true,
+    )
+    result[aod_key] = _metric_value(
+        method_metrics,
+        prediction_key,
+        "AOD",
+        sa_values,
+    )
+    result[eod_key] = _metric_value(
+        method_metrics,
+        prediction_key,
+        "EOD",
+        sa_values,
+    )
+    result[i_sep_key] = _metric_value(
+        method_metrics,
+        prediction_key,
+        "MI_con_info",
+        sa_values,
+    )
+    result[violate_key] = _rate_value(violation_rates, prediction_key)
+    result[violate_comp_key] = _rate_value(comparative_rates, prediction_key)
+
+
 def _run_experiments_impl(
     num_runs=10,
     dataset="scut",
@@ -1229,6 +1406,7 @@ def _run_experiments_impl(
     model_epochs=100,
     validation_fraction=0.1,
     tabular_encoder_type="cnn",
+    save_test_predictions=True,
 ):
     results = []
     output_df_name = None
@@ -1306,64 +1484,76 @@ def _run_experiments_impl(
             tabular_encoder_type=tabular_encoder_type,
         )
 
+        reference_raw_predictions = None
         if is_scut:
             reference_predictions = None
         elif is_binary:
-            reference_predictions = make_pipeline(
+            reference_model = make_pipeline(
                 StandardScaler(),
                 LogisticRegression(max_iter=2000),
-            ).fit(train_features, y_train).predict(test_features)
+            ).fit(train_features, y_train)
+            reference_predictions = reference_model.predict(test_features)
+            reference_raw_predictions = reference_model.predict_proba(test_features)[
+                :, 1
+            ]
         else:
-            reference_predictions = LinearRegression().fit(
-                train_features, y_train
-            ).predict(test_features)
+            reference_model = LinearRegression().fit(train_features, y_train)
+            reference_predictions = reference_model.predict(test_features)
+            reference_raw_predictions = reference_predictions
 
         shared_predictions = {
             name: _score_shared_model(model, test_inputs, is_scut)
             for name, model in shared_models.items()
         }
-        shared_thresholds = {}
+        thresholded_shared_predictions = None
+        threshold_summary = None
         if is_binary:
-            val_features, val_targets = _extract_validation_examples(
-                data_val_encoder,
+            (
+                thresholded_shared_predictions,
+                threshold_summary,
+            ) = _shared_binary_threshold_predictions(
+                shared_models=shared_models,
+                shared_predictions=shared_predictions,
+                data_val_encoder=data_val_encoder,
                 is_scut=is_scut,
+                run_idx=run_idx,
+                num_runs=num_runs,
             )
-            for name, model in shared_models.items():
-                if val_features is None:
-                    threshold, val_metric = 0.5, np.nan
-                else:
-                    val_scores = _score_shared_model(model, val_features, is_scut)
-                    threshold, val_metric = _learn_binary_threshold(
-                        val_scores,
-                        val_targets,
-                        default_threshold=0.5,
-                    )
-                shared_thresholds[name] = threshold
-                metric_display = (
-                    "n/a" if np.isnan(val_metric) else f"{val_metric:.4f}"
-                )
-                print(
-                    f"[Run {run_idx + 1}/{num_runs}] Shared encoder ({name}) "
-                    f"validation threshold={threshold:.4f} "
-                    f"(balanced_accuracy={metric_display})."
-                )
         final_predictions = (
-            {
-                name: (predictions >= shared_thresholds[name]).astype(int)
-                for name, predictions in shared_predictions.items()
-            }
+            dict(thresholded_shared_predictions["dynamic"])
             if is_binary
             else dict(shared_predictions)
         )
+        if is_binary:
+            final_predictions.update(
+                {
+                    f"{name}_fixed05": predictions
+                    for name, predictions in thresholded_shared_predictions[
+                        "fixed05"
+                    ].items()
+                }
+            )
         if is_binary and plot_histograms:
             _plot_binary_histograms(
                 shared_predictions=shared_predictions,
-                thresholded_predictions=final_predictions,
-                shared_thresholds=shared_thresholds,
+                thresholded_predictions=thresholded_shared_predictions["dynamic"],
+                shared_thresholds=threshold_summary["dynamic"]["thresholds"],
                 df_name=df_name,
                 sa_name=output_sa_name,
                 run_idx=run_idx,
                 pair_strategy=pair_strategy,
+                variant_label="dynamic threshold",
+            )
+            _plot_binary_histograms(
+                shared_predictions=shared_predictions,
+                thresholded_predictions=thresholded_shared_predictions["fixed05"],
+                shared_thresholds=threshold_summary["fixed05"]["thresholds"],
+                df_name=df_name,
+                sa_name=output_sa_name,
+                run_idx=run_idx,
+                pair_strategy=pair_strategy,
+                variant_label="fixed 0.5 threshold",
+                filename_suffix="_fixed05",
             )
 
         if "single_encoder" in optional_baselines:
@@ -1372,7 +1562,7 @@ def _run_experiments_impl(
                 test_features.values.astype(np.float32),
             )
             final_predictions["single_encoder"] = (
-                (single_encoder_predictions >= 0.5).astype(int)
+                (single_encoder_predictions >= FIXED_BINARY_THRESHOLD).astype(int)
                 if is_binary
                 else single_encoder_predictions
             )
@@ -1383,6 +1573,33 @@ def _run_experiments_impl(
                     test_inputs,
                     batch_size=4,
                 )
+            )
+
+        if save_test_predictions:
+            raw_test_predictions = {}
+            if reference_raw_predictions is not None:
+                raw_test_predictions["lr"] = reference_raw_predictions
+            raw_test_predictions.update(shared_predictions)
+            if "single_encoder" in optional_baselines:
+                raw_test_predictions["single_encoder"] = single_encoder_predictions
+            if "vgg_baseline" in final_predictions:
+                raw_test_predictions["vgg_baseline"] = final_predictions[
+                    "vgg_baseline"
+                ]
+
+            raw_prediction_path = _save_raw_test_predictions(
+                df_name=df_name,
+                sa_name=output_sa_name,
+                output_nc=output_nc,
+                pair_strategy=pair_strategy,
+                run_idx=run_idx,
+                y_true=y_test,
+                sa_values=sa_values,
+                raw_predictions=raw_test_predictions,
+            )
+            print(
+                f"[Run {run_idx + 1}/{num_runs}] Saved raw test predictions to "
+                f"{raw_prediction_path}."
             )
 
         eval_arrays = {
@@ -1412,81 +1629,120 @@ def _run_experiments_impl(
                 "fairness_lambda": FAIRNESS_LAMBDA,
                 "num_comp_pairs_eval": num_comp_pairs_eval,
                 **reference_results,
-                "Acc_single_encoder": _prediction_value(
-                    final_predictions, "single_encoder", accuracy_score, y_test
-                ),
-                "Acc_unweight": _prediction_value(
-                    final_predictions, "unweight", accuracy_score, y_test
-                ),
-                "Acc_weighted": _prediction_value(
-                    final_predictions, "weighted", accuracy_score, y_test
-                ),
-                "Acc_fairreg": _prediction_value(
-                    final_predictions, "fairreg", accuracy_score, y_test
-                ),
-                "F1_single_encoder": _prediction_value(
-                    final_predictions, "single_encoder", f1_score, y_test
-                ),
-                "F1_unweight": _prediction_value(
-                    final_predictions, "unweight", f1_score, y_test
-                ),
-                "F1_weighted": _prediction_value(
-                    final_predictions, "weighted", f1_score, y_test
-                ),
-                "F1_fairreg": _prediction_value(
-                    final_predictions, "fairreg", f1_score, y_test
-                ),
-                "AOD_single_encoder": _metric_value(
-                    method_metrics, "single_encoder", "AOD", sa_values
-                ),
-                "AOD_unweight": _metric_value(
-                    method_metrics, "unweight", "AOD", sa_values
-                ),
-                "AOD_weighted": _metric_value(
-                    method_metrics, "weighted", "AOD", sa_values
-                ),
-                "AOD_fairreg": _metric_value(
-                    method_metrics, "fairreg", "AOD", sa_values
-                ),
-                "EOD_single_encoder": _metric_value(
-                    method_metrics, "single_encoder", "EOD", sa_values
-                ),
-                "EOD_unweight": _metric_value(
-                    method_metrics, "unweight", "EOD", sa_values
-                ),
-                "EOD_weighted": _metric_value(
-                    method_metrics, "weighted", "EOD", sa_values
-                ),
-                "EOD_fairreg": _metric_value(
-                    method_metrics, "fairreg", "EOD", sa_values
-                ),
-                "I_sep_single_encoder_bi": _metric_value(
-                    method_metrics, "single_encoder", "MI_con_info", sa_values
-                ),
-                "I_sep_bi": _metric_value(
-                    method_metrics, "unweight", "MI_con_info", sa_values
-                ),
-                "I_sep_weighted_bi": _metric_value(
-                    method_metrics, "weighted", "MI_con_info", sa_values
-                ),
-                "I_sep_fairreg_bi": _metric_value(
-                    method_metrics, "fairreg", "MI_con_info", sa_values
-                ),
-                "violate_r": _rate_value(violation_rates, "unweight"),
-                "violate_r_single_encoder": _rate_value(
-                    violation_rates, "single_encoder"
-                ),
-                "violate_r_weighted": _rate_value(violation_rates, "weighted"),
-                "violate_r_fairreg": _rate_value(violation_rates, "fairreg"),
-                "violate_comp_r": _rate_value(comparative_rates, "unweight"),
-                "violate_comp_r_single_encoder": _rate_value(
-                    comparative_rates, "single_encoder"
-                ),
-                "violate_comp_r_w": _rate_value(comparative_rates, "weighted"),
-                "violate_comp_r_fairreg": _rate_value(
-                    comparative_rates, "fairreg"
-                ),
             }
+            for model_name in ("unweight", "weighted", "fairreg"):
+                result[f"threshold_{model_name}_dynamic"] = (
+                    threshold_summary["dynamic"]["thresholds"].get(model_name, np.nan)
+                )
+                result[f"val_bal_acc_{model_name}_dynamic"] = (
+                    threshold_summary["dynamic"]["val_bal_acc"].get(model_name, np.nan)
+                )
+                result[f"threshold_{model_name}_fixed05"] = (
+                    threshold_summary["fixed05"]["thresholds"].get(model_name, np.nan)
+                )
+                result[f"val_bal_acc_{model_name}_fixed05"] = (
+                    threshold_summary["fixed05"]["val_bal_acc"].get(model_name, np.nan)
+                )
+
+            binary_metric_specs = [
+                (
+                    "single_encoder",
+                    "Acc_single_encoder",
+                    "F1_single_encoder",
+                    "AOD_single_encoder",
+                    "EOD_single_encoder",
+                    "I_sep_single_encoder_bi",
+                    "violate_r_single_encoder",
+                    "violate_comp_r_single_encoder",
+                ),
+                (
+                    "unweight",
+                    "Acc_unweight",
+                    "F1_unweight",
+                    "AOD_unweight",
+                    "EOD_unweight",
+                    "I_sep_bi",
+                    "violate_r",
+                    "violate_comp_r",
+                ),
+                (
+                    "weighted",
+                    "Acc_weighted",
+                    "F1_weighted",
+                    "AOD_weighted",
+                    "EOD_weighted",
+                    "I_sep_weighted_bi",
+                    "violate_r_weighted",
+                    "violate_comp_r_w",
+                ),
+                (
+                    "fairreg",
+                    "Acc_fairreg",
+                    "F1_fairreg",
+                    "AOD_fairreg",
+                    "EOD_fairreg",
+                    "I_sep_fairreg_bi",
+                    "violate_r_fairreg",
+                    "violate_comp_r_fairreg",
+                ),
+                (
+                    "unweight_fixed05",
+                    "Acc_unweight_fixed05",
+                    "F1_unweight_fixed05",
+                    "AOD_unweight_fixed05",
+                    "EOD_unweight_fixed05",
+                    "I_sep_unweight_fixed05_bi",
+                    "violate_r_unweight_fixed05",
+                    "violate_comp_r_unweight_fixed05",
+                ),
+                (
+                    "weighted_fixed05",
+                    "Acc_weighted_fixed05",
+                    "F1_weighted_fixed05",
+                    "AOD_weighted_fixed05",
+                    "EOD_weighted_fixed05",
+                    "I_sep_weighted_fixed05_bi",
+                    "violate_r_weighted_fixed05",
+                    "violate_comp_r_weighted_fixed05",
+                ),
+                (
+                    "fairreg_fixed05",
+                    "Acc_fairreg_fixed05",
+                    "F1_fairreg_fixed05",
+                    "AOD_fairreg_fixed05",
+                    "EOD_fairreg_fixed05",
+                    "I_sep_fairreg_fixed05_bi",
+                    "violate_r_fairreg_fixed05",
+                    "violate_comp_r_fairreg_fixed05",
+                ),
+            ]
+            for (
+                prediction_key,
+                acc_key,
+                f1_key,
+                aod_key,
+                eod_key,
+                i_sep_key,
+                violate_key,
+                violate_comp_key,
+            ) in binary_metric_specs:
+                _add_binary_method_metrics(
+                    result,
+                    prediction_key=prediction_key,
+                    acc_key=acc_key,
+                    f1_key=f1_key,
+                    aod_key=aod_key,
+                    eod_key=eod_key,
+                    i_sep_key=i_sep_key,
+                    violate_key=violate_key,
+                    violate_comp_key=violate_comp_key,
+                    final_predictions=final_predictions,
+                    method_metrics=method_metrics,
+                    violation_rates=violation_rates,
+                    comparative_rates=comparative_rates,
+                    y_true=y_test,
+                    sa_values=sa_values,
+                )
         else:
             result = {
                 "fairness_lambda": FAIRNESS_LAMBDA,
@@ -1572,7 +1828,7 @@ def _run_experiments_impl(
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(results).to_csv(
         RESULTS_DIR
-        / f"{output_df_name}_{output_sa_name}_{output_nc}_{pair_strategy}.csv",
+        / f"{_result_file_stem(output_df_name, output_sa_name, output_nc, pair_strategy)}.csv",
         index=False,
     )
 
@@ -1591,6 +1847,7 @@ def run_experiments(
     validation_fraction=0.1,
     tabular_encoder_type="cnn",
     training_log_path=None,
+    save_test_predictions=True,
 ):
     with _tee_training_output(training_log_path) as resolved_log_path:
         if resolved_log_path is not None:
@@ -1611,22 +1868,24 @@ def run_experiments(
             model_epochs=model_epochs,
             validation_fraction=validation_fraction,
             tabular_encoder_type=tabular_encoder_type,
+            save_test_predictions=save_test_predictions,
         )
 
 
 if __name__ == "__main__":
     DATASET = "adult"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
-    NUM_RUNS = 1
+    NUM_RUNS = 5
     USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
     NUM_COMP_TRAIN = 1
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
     PLOT_HISTOGRAMS = True  # Set False to skip writing prediction histogram images.
     NUM_COMP_PAIRS_RATIO = 0.1
-    MODEL_EPOCHS = 500
+    MODEL_EPOCHS = 200
     TABULAR_ENCODER_TYPE = "linear"  # Options for tabular datasets: "cnn", "linear"
     TRAINING_LOG_PATH = _default_training_log_path(DATASET, SA)
+    SAVE_TEST_PREDICTIONS = True
 
     run_experiments(
         num_runs=NUM_RUNS,
@@ -1641,30 +1900,19 @@ if __name__ == "__main__":
         model_epochs=MODEL_EPOCHS,
         tabular_encoder_type=TABULAR_ENCODER_TYPE,
         training_log_path=TRAINING_LOG_PATH,
+        save_test_predictions=SAVE_TEST_PREDICTIONS,
     )
 
-    # TODO: Changing test size to 10% of testing pairs, change training /testing split to 90/10, and rerunning experiments.
-    # TODO: Add pearson and spearman metrics for scut dataset.
-    # TODO: try sigmoid activation encoder for scut
-    
-    # TODO: Add contribution paragraph
+    # ## Recent Updates
+    # - Added a fixed `0.5` threshold comparison alongside the learned dynamic
+    #   validation threshold for binary shared models.
+    # - Kept the dynamic-threshold metrics as the main reported results and added
+    #   side-by-side `*_fixed05` metrics plus threshold / validation balanced
+    #   accuracy columns for comparison.
+    # - Saved raw test predictions before thresholding to
+    #   `Code/Synthetic/Results/Predictions/*_raw_predictions.csv`.
+    # - Kept single-encoder preprocessing consistent with `StandardScaler` for
+    #   binary tabular baselines.
 
-    # TODO: Try using sigmoid activation for non-scut datasets as well, to see if it improves fairness metrics. Plot the prediction and see if it's already well-seperated
-    # TODO: Switch to SGD compiler and try different learning rates, including decaying learning rates.
-
-    # TODO: Include another baseline with one encoder
-    # TODO: Try sigmoid with single encoder
-    # TODO: Try SGD with non-scut datasets as well, to see if it improves faßirness metrics
-    # TODO: Run on local and see acuuracy change
-
-    # TODO: Try linear single encoder with regression dataset, and sigmoid single encoder with classification datasets
-
-    # TODO: Try simpler encoder architectures for tabular datasets, to see if it improves fairness metrics. Maybe start with 1-2 hidden layers and smaller hidden sizes.
-
-    # TODO: Adult data is not performing well, and single encoder model is not showing the same result with logistic regression model.
-
-    # Single-encoder with consistent preprocessing (StandardScaler)
-    # learning validation thresholds with accuracy instead of relying on k-means 
-    # TODO: Try 0.5 threshold and see how it compares with dynamic thresholding.
-    # TODO: FairReweighing on regression and classification model.
-    # TODO: Saving the test predicition before thresholding.
+    # ## Next Ideas
+    # - Try FairReweighing on both regression and classification models.
