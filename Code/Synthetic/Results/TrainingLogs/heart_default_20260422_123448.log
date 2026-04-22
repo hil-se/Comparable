@@ -1,0 +1,14 @@
+Training log file: /Users/albertxi/Downloads/PhD Thesis/Comparable/Code/Synthetic/Results/TrainingLogs/heart_default_20260422_123448.log
+Starting experiments (dataset=heart, sensitive_attribute=default).
+[Run 1/5] Training shared encoder (unweighted, sigmoid head, baseline preprocessing)...
+/Users/albertxi/Downloads/PhD Thesis/Comparable/.venv/lib/python3.12/site-packages/keras/src/trainers/trainer.py:234: UserWarning: Model doesn't support `jit_compile=True`. Proceeding with `jit_compile=False`.
+  warnings.warn(
+Epoch 1/200
+52/52 - 3s - 60ms/step - loss: 1.0763 - val_loss: 1.0371
+Epoch 2/200
+52/52 - 3s - 50ms/step - loss: 0.9983 - val_loss: 0.9561
+Epoch 3/200
+52/52 - 3s - 51ms/step - loss: 0.9165 - val_loss: 0.8746
+Epoch 4/200
+52/52 - 3s - 49ms/step - loss: 0.8375 - val_loss: 0.7993
+Epoch 5/200

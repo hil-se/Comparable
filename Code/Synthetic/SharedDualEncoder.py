@@ -14,6 +14,7 @@ from tensorflow.keras.layers import (
     Reshape,
     ZeroPadding2D,
 )
+
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent.parent / "Data"
 TABULAR_ENCODER_TYPES = {"cnn", "linear"}

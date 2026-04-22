@@ -15,9 +15,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-# Suppress TensorFlow C++ INFO/WARNING logs (e.g., local_rendezvous messages).
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-
 import tensorflow as tf
 
 import Classification
@@ -73,8 +70,9 @@ def _tee_training_output(log_path):
     with resolved_path.open("a", encoding="utf-8", buffering=1) as log_file:
         tee_stdout = _TeeStream(current_stdout, log_file)
         tee_stderr = _TeeStream(current_stderr, log_file)
-        with contextlib.redirect_stdout(tee_stdout), contextlib.redirect_stderr(
-            tee_stderr
+        with (
+            contextlib.redirect_stdout(tee_stdout),
+            contextlib.redirect_stderr(tee_stderr),
         ):
             print(f"Training log file: {resolved_path}")
             yield resolved_path
@@ -379,7 +377,13 @@ def make_adult(sa="gender"):
     df = df.rename(columns={sa_col: "sa"})
     dummy_cols = [
         column
-        for column in ["workclass", "marital-status", "occupation", "relationship", "race"]
+        for column in [
+            "workclass",
+            "marital-status",
+            "occupation",
+            "relationship",
+            "race",
+        ]
         if column != sa_col
     ]
     df = pd.get_dummies(
@@ -663,7 +667,9 @@ def plot_threshold_comparison_histogram(
     if finite_predictions.size == 0:
         return
 
-    thresholded_predictions = np.asarray(thresholded_predictions, dtype=np.int8).reshape(-1)
+    thresholded_predictions = np.asarray(
+        thresholded_predictions, dtype=np.int8
+    ).reshape(-1)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     fig, (ax_raw, ax_binary) = plt.subplots(1, 2, figsize=(11, 4.5))
@@ -989,7 +995,11 @@ def _train_shared_models(
     is_binary,
 ):
     activation = "sigmoid" if is_binary else "linear"
-    preprocessing_note = ", baseline preprocessing" if is_binary and "scut" not in df_name.lower() else ""
+    preprocessing_note = (
+        ", baseline preprocessing"
+        if is_binary and "scut" not in df_name.lower()
+        else ""
+    )
     base_kwargs = {
         "train": train_df,
         "val": val_df,
@@ -1225,7 +1235,11 @@ def _compute_violation_rates(eval_arrays, is_binary, num_comp_pairs_ratio):
             selected = np.random.choice(n_rows, size=sample_size, replace=False)
             for name, data in eval_arrays.items():
                 separation_counts[name] += (
-                    min(separation(data[selected, 1], data[selected, 0], data[selected, 2]))
+                    min(
+                        separation(
+                            data[selected, 1], data[selected, 0], data[selected, 2]
+                        )
+                    )
                     < alpha
                 )
         separation_rates = {
@@ -1583,9 +1597,7 @@ def _run_experiments_impl(
             if "single_encoder" in optional_baselines:
                 raw_test_predictions["single_encoder"] = single_encoder_predictions
             if "vgg_baseline" in final_predictions:
-                raw_test_predictions["vgg_baseline"] = final_predictions[
-                    "vgg_baseline"
-                ]
+                raw_test_predictions["vgg_baseline"] = final_predictions["vgg_baseline"]
 
             raw_prediction_path = _save_raw_test_predictions(
                 df_name=df_name,
@@ -1631,18 +1643,18 @@ def _run_experiments_impl(
                 **reference_results,
             }
             for model_name in ("unweight", "weighted", "fairreg"):
-                result[f"threshold_{model_name}_dynamic"] = (
-                    threshold_summary["dynamic"]["thresholds"].get(model_name, np.nan)
-                )
-                result[f"val_bal_acc_{model_name}_dynamic"] = (
-                    threshold_summary["dynamic"]["val_bal_acc"].get(model_name, np.nan)
-                )
-                result[f"threshold_{model_name}_fixed05"] = (
-                    threshold_summary["fixed05"]["thresholds"].get(model_name, np.nan)
-                )
-                result[f"val_bal_acc_{model_name}_fixed05"] = (
-                    threshold_summary["fixed05"]["val_bal_acc"].get(model_name, np.nan)
-                )
+                result[f"threshold_{model_name}_dynamic"] = threshold_summary[
+                    "dynamic"
+                ]["thresholds"].get(model_name, np.nan)
+                result[f"val_bal_acc_{model_name}_dynamic"] = threshold_summary[
+                    "dynamic"
+                ]["val_bal_acc"].get(model_name, np.nan)
+                result[f"threshold_{model_name}_fixed05"] = threshold_summary[
+                    "fixed05"
+                ]["thresholds"].get(model_name, np.nan)
+                result[f"val_bal_acc_{model_name}_fixed05"] = threshold_summary[
+                    "fixed05"
+                ]["val_bal_acc"].get(model_name, np.nan)
 
             binary_metric_specs = [
                 (
@@ -1807,9 +1819,7 @@ def _run_experiments_impl(
                     violation_rates, "single_encoder"
                 ),
                 "violate_r_weighted": _rate_value(violation_rates, "weighted"),
-                "violate_r_vgg_baseline": _rate_value(
-                    violation_rates, "vgg_baseline"
-                ),
+                "violate_r_vgg_baseline": _rate_value(violation_rates, "vgg_baseline"),
                 "violate_r_fairreg": _rate_value(violation_rates, "fairreg"),
                 "violate_comp_r": _rate_value(comparative_rates, "unweight"),
                 "violate_comp_r_single_encoder": _rate_value(
@@ -1819,9 +1829,7 @@ def _run_experiments_impl(
                 "violate_comp_r_vgg_baseline": _rate_value(
                     comparative_rates, "vgg_baseline"
                 ),
-                "violate_comp_r_fairreg": _rate_value(
-                    comparative_rates, "fairreg"
-                ),
+                "violate_comp_r_fairreg": _rate_value(comparative_rates, "fairreg"),
             }
         results.append(result)
 
@@ -1873,10 +1881,12 @@ def run_experiments(
 
 
 if __name__ == "__main__":
-    DATASET = "german"  # scut, adult, german, heart, compas, comm, lsac
+    DATASET = "heart"  # scut, adult, german, heart, compas, comm, lsac
     SA = None  # None uses dataset default; e.g. "race", "sex", "gender", "age"
     NUM_RUNS = 5
-    USE_ALL_PAIRS = False  # Set False to use a fixed number of training pairs per instance.
+    USE_ALL_PAIRS = (
+        True  # Set False to use a fixed number of training pairs per instance.
+    )
     NUM_COMP_TRAIN = 30
     TRAIN_FAIRREG = False  # Set False to disable FairReg model training.
     TRAIN_SINGLE_ENCODER = True  # Set False to skip single-encoder baseline training.
@@ -1904,15 +1914,9 @@ if __name__ == "__main__":
     )
 
     # ## Recent Updates
-    # - Added a fixed `0.5` threshold comparison alongside the learned dynamic
-    #   validation threshold for binary shared models.
-    # - Kept the dynamic-threshold metrics as the main reported results and added
-    #   side-by-side `*_fixed05` metrics plus threshold / validation balanced
-    #   accuracy columns for comparison.
-    # - Saved raw test predictions before thresholding to
-    #   `Code/Synthetic/Results/Predictions/*_raw_predictions.csv`.
-    # - Kept single-encoder preprocessing consistent with `StandardScaler` for
-    #   binary tabular baselines.
+    # - Added a fixed 0.5 threshold comparison
+    # - Saved raw test predictions before thresholding
 
     # ## Next Ideas
     # - Try FairReweighing on both regression and classification models.
+    # - Find a participant with higher I-separation

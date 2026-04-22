@@ -70,9 +70,7 @@ class Metrics:
         for i in range(len(s)):
             for j in range(len(s)):
                 if s[i] > s[j]:
-                    total += (self.y_pred[i] - self.y_pred[j]) - (
-                        self.y[i] - self.y[j]
-                    )
+                    total += (self.y_pred[i] - self.y_pred[j]) - (self.y[i] - self.y[j])
                     count += 1
         return total, count
 
@@ -99,7 +97,11 @@ class Metrics:
     def _mi_term(count, left_total, right_total, global_total, normalizer):
         if not count or not left_total or not right_total or not global_total:
             return 0.0
-        return np.log((count / left_total) / (right_total / global_total)) * count / normalizer
+        return (
+            np.log((count / left_total) / (right_total / global_total))
+            * count
+            / normalizer
+        )
 
     def EOD(self, s):
         tp, fp, tn, fn = self._group_confusion(s, 0)
@@ -285,7 +287,11 @@ class Metrics:
     def Within_comp(self, s):
         same_one = (s["A"].to_numpy() == 1) & (s["B"].to_numpy() == 1)
         same_zero = (s["A"].to_numpy() == 0) & (s["B"].to_numpy() == 0)
-        acc_one = np.mean(self.y[same_one] == self.y_pred[same_one]) if np.any(same_one) else 0.0
+        acc_one = (
+            np.mean(self.y[same_one] == self.y_pred[same_one])
+            if np.any(same_one)
+            else 0.0
+        )
         acc_zero = (
             np.mean(self.y[same_zero] == self.y_pred[same_zero])
             if np.any(same_zero)

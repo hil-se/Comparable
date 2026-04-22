@@ -337,7 +337,9 @@ def predict_single_encoder_baseline(model, features, batch_size=2048):
         features,
         baseline.preprocessor,
     )
-    return baseline.model.predict(features, batch_size=batch_size, verbose=0).reshape(-1)
+    return baseline.model.predict(features, batch_size=batch_size, verbose=0).reshape(
+        -1
+    )
 
 
 def train_model(
@@ -391,11 +393,7 @@ def evaluate(y_true, y_pred):
     fn = np.sum((labels == 1) & (predictions != 1))
     precision = tp / (tp + fp) if tp + fp else 0.0
     recall = tp / (tp + fn) if tp + fn else 0.0
-    f1 = (
-        (2 * recall * precision) / (recall + precision)
-        if recall + precision
-        else 0.0
-    )
+    f1 = (2 * recall * precision) / (recall + precision) if recall + precision else 0.0
     accuracy = (tp + tn) / len(labels) if len(labels) else 0.0
     return recall, precision, f1, accuracy
 
